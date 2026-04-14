@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Isla del Diablo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;700&display=swap');
+:root{
+  --oro:#f0c040;--oro-scuro:#b8860b;--sabbia:#c8a96e;--inchiostro:#1a0a00;
+  --pergamena:#f4e4bc;--rum:#8b1a1a;--rum-chiaro:#c0392b;--verde:#2d6a2d;--verde-ch:#4a9c4a;
+  --panel:rgba(8,18,30,0.95);--bordo:rgba(240,192,64,0.35);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'IM Fell English',serif;background:#060e18;color:var(--pergamena);
+  display:flex;flex-direction:column;height:100dvh;width:100vw;user-select:none;}
+
+/* ── TITOLO ── */
+#schermata-titolo{position:fixed;inset:0;z-index:200;
+  background:radial-gradient(ellipse at 50% 55%,#1a3a5c 0%,#04080f 72%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+#schermata-titolo .teschio{font-size:clamp(70px,14vw,110px);animation:bob 3s ease-in-out infinite;}
+#schermata-titolo h1{font-family:'Pirata One',cursive;font-size:clamp(2.8rem,9vw,5.5rem);
+  color:var(--oro);text-shadow:0 0 40px rgba(240,192,64,.6),4px 4px 0 #000;letter-spacing:4px;}
+#schermata-titolo .sub{font-family:'Cinzel',serif;font-size:clamp(.75rem,2.2vw,1rem);
+  color:var(--sabbia);letter-spacing:7px;text-transform:uppercase;opacity:.75;}
+#schermata-titolo .motto{font-size:.9rem;color:var(--sabbia);opacity:.55;font-style:italic;text-align:center;max-width:340px;}
+#btn-inizia{margin-top:14px;font-family:'Pirata One',cursive;font-size:1.4rem;
+  background:linear-gradient(135deg,var(--oro-scuro),var(--oro));color:var(--inchiostro);
+  border:none;padding:13px 50px;border-radius:4px;cursor:pointer;letter-spacing:2px;
+  box-shadow:0 4px 24px rgba(240,192,64,.45),inset 0 1px 0 rgba(255,255,255,.2);
+  transition:transform .1s,box-shadow .1s;}
+#btn-inizia:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(240,192,64,.55);}
+
+/* ── BARRA SUPERIORE ── */
+#barra-sup{background:linear-gradient(180deg,#070d18 0%,rgba(7,13,24,.97)100%);
+  border-bottom:2px solid var(--oro-scuro);padding:5px 10px;
+  display:none;flex-shrink:0;align-items:center;gap:7px;flex-wrap:wrap;}
+.logo{font-family:'Pirata One',cursive;font-size:1.2rem;color:var(--oro);
+  text-shadow:0 0 10px rgba(240,192,64,.4);flex-shrink:0;}
+.barra-res{display:flex;gap:5px;flex-wrap:wrap;flex:1;}
+.res{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.04);
+  border:1px solid var(--bordo);border-radius:4px;padding:2px 7px;font-size:.8rem;white-space:nowrap;}
+.res .icona{font-size:.9rem;}
+.res .val{color:var(--oro);font-family:'Cinzel',serif;font-weight:700;min-width:26px;}
+.res .etich{color:var(--sabbia);font-size:.62rem;opacity:.7;}
+.barra-rep{display:flex;gap:5px;align-items:center;}
+.rep{font-size:.63rem;border:1px solid var(--bordo);border-radius:3px;padding:2px 6px;white-space:nowrap;}
+.rep.reale{border-color:rgba(100,100,255,.5);color:#aaaaff;}
+.rep.mercante{border-color:rgba(100,200,100,.5);color:#aaffaa;}
+.rep.corsaro{border-color:rgba(255,100,100,.5);color:#ffaaaa;}
+#info-giorno{font-family:'Cinzel',serif;font-size:.75rem;color:var(--sabbia);flex-shrink:0;}
+#info-giorno span{color:var(--oro);font-weight:700;}
+
+/* ── PRINCIPALE ── */
+#principale{display:none;flex:1;overflow:hidden;}
+
+/* ── MAPPA ── */
+#mappa-wrap{position:relative;flex:1;overflow:hidden;cursor:default;}
+#mappa-canvas{display:block;}
+#mappa-wrap.modalita-costruzione{cursor:crosshair;}
+
+/* ── LOG MESSAGGI ── */
+#log-msg{position:absolute;bottom:8px;left:8px;width:min(340px,calc(100vw - 180px));
+  max-height:85px;overflow:hidden;pointer-events:none;}
+.msg{font-size:.72rem;color:var(--pergamena);background:rgba(0,0,0,.72);
+  border-left:3px solid var(--oro);padding:2px 8px;margin-top:3px;
+  border-radius:0 3px 3px 0;animation:fadeMsg .3s ease;}
+.msg.male{border-color:var(--rum-chiaro);color:#ffaaaa;}
+.msg.bene{border-color:var(--verde-ch);color:#aaffaa;}
+.msg.info{border-color:#6af;color:#aaddff;}
+
+/* ── BATTAGLIA NAVALE ── */
+#overlay-battaglia{position:fixed;inset:0;background:rgba(0,0,0,.88);
+  display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:14px;overflow-y:auto;}
+#overlay-battaglia.aperto{display:flex;}
+.titolo-battaglia{font-family:'Pirata One',cursive;font-size:2rem;color:var(--oro);text-shadow:0 0 20px rgba(240,192,64,.5);}
+.navi-battaglia{display:flex;gap:40px;align-items:center;font-size:3.5rem;}
+.vs-battaglia{font-family:'Pirata One',cursive;font-size:1.5rem;color:var(--rum-chiaro);}
+.log-battaglia{background:rgba(0,0,0,.5);border:1px solid var(--bordo);border-radius:6px;
+  padding:10px 18px;max-width:400px;width:90%;text-align:center;font-size:.82rem;line-height:1.7;}
+.risultato-battaglia{font-family:'Pirata One',cursive;font-size:1.4rem;}
+.risultato-battaglia.vinto{color:var(--oro);}
+.risultato-battaglia.perso{color:var(--rum-chiaro);}
+.riga-hp{display:flex;gap:20px;justify-content:center;}
+.box-hp{text-align:center;font-size:.75rem;color:var(--sabbia);}
+.barra-hp{width:120px;height:8px;background:#222;border-radius:4px;margin-top:3px;}
+.riempi-hp{height:100%;border-radius:4px;transition:width .4s;}
+.riempi-hp.blu{background:linear-gradient(90deg,#1a6aff,#6ab4ff);}
+.riempi-hp.rosso{background:linear-gradient(90deg,#ff1a1a,#ff8888);}
+/* battle overlay mobile */
+.navi-battaglia{font-size:clamp(2rem,8vw,3.5rem);}
+.titolo-battaglia{font-size:clamp(1.3rem,5vw,2rem);text-align:center;}
+.log-battaglia{font-size:clamp(.72rem,2.5vw,.82rem);padding:8px 14px;}
+#bt-chiudi{margin-top:4px;}
+
+/* ── PANNELLO DESTRO ── */
+#pannello-dx{width:215px;background:var(--panel);border-left:2px solid var(--oro-scuro);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+#tab-pannello{display:flex;border-bottom:1px solid var(--bordo);flex-shrink:0;}
+.ptab{flex:1;padding:6px 3px;text-align:center;font-size:.7rem;cursor:pointer;
+  border:none;background:none;color:var(--sabbia);font-family:'Cinzel',serif;
+  transition:all .15s;border-bottom:2px solid transparent;}
+.ptab:hover{color:var(--pergamena);}
+.ptab.attivo{color:var(--oro);border-bottom-color:var(--oro);}
+#contenuto-pannello{flex:1;overflow-y:auto;padding:8px;}
+#contenuto-pannello::-webkit-scrollbar{width:5px;}
+#contenuto-pannello::-webkit-scrollbar-track{background:#0a1520;}
+#contenuto-pannello::-webkit-scrollbar-thumb{background:var(--oro-scuro);border-radius:3px;}
+.titolo-sez{font-family:'Pirata One',cursive;font-size:.95rem;color:var(--oro);
+  letter-spacing:1px;margin-bottom:7px;margin-top:4px;}
+.btn-costruisci{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--bordo);
+  border-radius:4px;color:var(--pergamena);font-family:'IM Fell English',serif;font-size:.75rem;
+  padding:5px 7px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:4px;transition:background .15s,border-color .15s;text-align:left;}
+.btn-costruisci:hover:not(:disabled){background:rgba(240,192,64,.1);border-color:var(--oro);}
+.btn-costruisci:disabled{opacity:.38;cursor:not-allowed;}
+.btn-costruisci.attivo-strumento{border-color:var(--oro);background:rgba(240,192,64,.18);}
+.costo{color:var(--oro);font-size:.67rem;flex-shrink:0;}
+.carta-pirata{background:rgba(255,255,255,.04);border:1px solid var(--bordo);border-radius:4px;
+  padding:5px 7px;margin-bottom:5px;cursor:pointer;transition:background .15s,border-color .15s;}
+.carta-pirata:hover,.carta-pirata.sel{background:rgba(240,192,64,.12);border-color:var(--oro);}
+.nome-p{font-size:.78rem;font-weight:bold;color:var(--pergamena);}
+.ruolo-p{font-size:.65rem;color:var(--sabbia);font-style:italic;}
+.stat-p{display:flex;gap:7px;margin-top:3px;}
+.sp{font-size:.62rem;color:var(--sabbia);}
+.sp span{color:var(--oro);font-family:'Cinzel',serif;}
+.barra-umore{height:3px;background:#1a2a3a;border-radius:2px;margin-top:3px;overflow:hidden;}
+.riempi-umore{height:100%;border-radius:2px;transition:width .5s;}
+.carta-nave{background:rgba(255,255,255,.04);border:1px solid var(--bordo);border-radius:4px;padding:6px 8px;margin-bottom:5px;}
+.nome-n{font-size:.78rem;color:var(--pergamena);font-weight:bold;}
+.stato-n{font-size:.65rem;color:var(--sabbia);font-style:italic;}
+.btn-piccolo{font-family:'IM Fell English',serif;font-size:.7rem;background:rgba(255,255,255,.08);
+  border:1px solid var(--bordo);color:var(--pergamena);padding:3px 9px;border-radius:3px;
+  cursor:pointer;margin-top:4px;transition:background .15s;}
+.btn-piccolo:hover:not(:disabled){background:rgba(240,192,64,.15);border-color:var(--oro);}
+.btn-piccolo:disabled{opacity:.35;cursor:not-allowed;}
+.nodo-tech{background:rgba(255,255,255,.04);border:1px solid var(--bordo);border-radius:5px;
+  padding:7px 9px;margin-bottom:6px;}
+.nodo-tech.ricercato{border-color:var(--verde-ch);background:rgba(74,156,74,.12);}
+.nodo-tech.disponibile{border-color:var(--oro);cursor:pointer;}
+.nodo-tech.disponibile:hover{background:rgba(240,192,64,.12);}
+.nodo-tech.bloccato{opacity:.4;}
+.nome-t{font-size:.78rem;font-weight:bold;}
+.desc-t{font-size:.63rem;color:var(--sabbia);margin-top:2px;font-style:italic;}
+.costo-t{font-size:.65rem;color:var(--oro);margin-top:3px;}
+.nodo-tech.ricercato .nome-t::after{content:' ✓';color:var(--verde-ch);}
+.riga-fazione{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.fazione-icon{font-size:1.3rem;}
+.fazione-info{flex:1;}
+.barra-fazione{height:5px;background:#1a2a3a;border-radius:3px;overflow:hidden;}
+.riempi-fazione{height:100%;border-radius:3px;transition:width .5s;}
+.carta-missione{background:rgba(255,255,255,.04);border:1px solid var(--bordo);border-radius:4px;
+  padding:7px 9px;margin-bottom:6px;}
+.titolo-missione{font-size:.8rem;font-weight:bold;color:var(--oro);margin-bottom:3px;}
+.desc-missione{font-size:.68rem;color:var(--sabbia);font-style:italic;margin-bottom:5px;}
+.ricompensa-missione{font-size:.65rem;color:var(--verde-ch);}
+
+/* ── BARRA INFERIORE ── */
+#barra-inf{background:linear-gradient(0deg,#040a12 0%,rgba(7,13,24,.97)100%);
+  border-top:2px solid var(--oro-scuro);padding:5px 10px;display:none;
+  align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;}
+.btn-azione{font-family:'IM Fell English',serif;font-size:.78rem;background:rgba(255,255,255,.06);
+  border:1px solid var(--bordo);color:var(--pergamena);padding:5px 12px;border-radius:4px;
+  cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-azione:hover{background:rgba(240,192,64,.12);border-color:var(--oro);color:var(--oro);}
+.btn-azione:disabled{opacity:.35;cursor:not-allowed;}
+.btn-azione.pericolo{border-color:rgba(192,57,43,.45);}
+.btn-azione.pericolo:hover{background:rgba(192,57,43,.2);border-color:var(--rum-chiaro);color:#ffaaaa;}
+#btn-velocita{margin-left:auto;font-size:.78rem;background:rgba(255,255,255,.06);
+  border:1px solid var(--bordo);color:var(--oro);padding:5px 11px;border-radius:4px;
+  cursor:pointer;font-family:'Cinzel',serif;}
+#btn-annulla{display:none;}
+#btn-annulla.mostra{display:inline-block;}
+
+/* ── MODALE ── */
+#overlay-modale{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.77);
+  display:none;align-items:center;justify-content:center;}
+#overlay-modale.aperto{display:flex;}
+#box-modale{background:linear-gradient(160deg,#0d1e30,#060f1a);border:2px solid var(--oro-scuro);
+  border-radius:8px;padding:22px;width:min(400px,95vw);max-height:82vh;overflow-y:auto;position:relative;}
+#box-modale h2{font-family:'Pirata One',cursive;color:var(--oro);font-size:1.45rem;margin-bottom:10px;}
+#box-modale p{font-size:.83rem;color:var(--sabbia);margin-bottom:7px;line-height:1.55;}
+#chiudi-modale{position:absolute;top:9px;right:13px;background:none;border:none;color:var(--oro);font-size:1.3rem;cursor:pointer;}
+.mbtn{font-family:'IM Fell English',serif;font-size:.82rem;padding:7px 18px;border-radius:4px;
+  cursor:pointer;margin-right:7px;margin-top:7px;transition:all .15s;display:inline-block;}
+.mbtn.primario{background:linear-gradient(135deg,var(--oro-scuro),var(--oro));border:none;color:var(--inchiostro);font-weight:bold;}
+.mbtn.secondario{background:none;border:1px solid var(--bordo);color:var(--sabbia);}
+.mbtn.pericolo{background:none;border:1px solid rgba(192,57,43,.5);color:#ff8888;}
+.mbtn:hover{opacity:.85;transform:translateY(-1px);}
+
+/* ── NOTIFICHE ── */
+#area-notifiche{position:fixed;top:56px;right:8px;z-index:300;
+  display:flex;flex-direction:column;gap:5px;pointer-events:none;}
+.notifica{background:linear-gradient(135deg,#0d1e30,#060f1a);border:1px solid var(--oro-scuro);
+  border-radius:6px;padding:7px 13px;font-size:.76rem;color:var(--pergamena);
+  animation:slideIn .3s ease, fadeOut .45s ease 3.8s forwards;max-width:230px;}
+.notifica.male{border-color:var(--rum-chiaro);}
+.notifica.missione{border-color:var(--verde-ch);}
+.titolo-notifica{font-family:'Pirata One',cursive;color:var(--oro);font-size:.88rem;}
+.notifica.male .titolo-notifica{color:#ff6b6b;}
+.notifica.missione .titolo-notifica{color:#aaffaa;}
+
+/* ── ANIMAZIONI ── */
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+@keyframes fadeMsg{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+@keyframes fadeOut{to{opacity:0;transform:translateX(30px)}}
+
+@media(max-width:600px){
+  .res .etich{display:none;}
+  .barra-rep{display:none;}
+}
+
+/* ── PORTRAIT MOBILE: pannello va sotto la mappa ── */
+@media(max-width:600px) and (orientation:portrait){
+  #principale{flex-direction:column;}
+  #pannello-dx{
+    width:100% !important;
+    height:220px;
+    border-left:none;
+    border-top:2px solid var(--oro-scuro);
+    flex-direction:column;
+    flex-shrink:0;
+  }
+  #tab-pannello .ptab{font-size:.75rem;padding:7px 2px;}
+  #contenuto-pannello{padding:6px 8px;}
+  /* contenuto pannello orizzontale scrollabile */
+  #contenuto-pannello{
+    overflow-y:auto;
+    overflow-x:hidden;
+  }
+  /* bottoni costruzione su 2 colonne */
+  #contenuto-pannello .btn-costruisci{
+    width:100%;
+    font-size:.72rem;
+  }
+  /* log messaggi non copre i bottoni */
+  #log-msg{bottom:4px;width:calc(100vw - 16px);}
+  /* barra inferiore compatta */
+  #barra-inf{padding:4px 6px;gap:5px;}
+  .btn-azione{font-size:.72rem;padding:4px 8px;}
+  #btn-velocita{font-size:.72rem;padding:4px 8px;}
+  /* barra superiore compatta */
+  #barra-sup{padding:3px 6px;gap:5px;}
+  .res{padding:2px 5px;font-size:.72rem;}
+  .logo{font-size:1rem;}
+  #info-giorno{font-size:.68rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- TITOLO -->
+<div id="schermata-titolo">
+  <div class="teschio">💀</div>
+  <h1>Isla del Diablo</h1>
+  <div class="sub">Una Colonia di Pirati</div>
+  <div class="motto">"Costruisci la tua fortezza. Saccheggia i mari. Governa con il terrore e il rum."</div>
+  <button id="btn-inizia" onclick="avviaGioco()">⚓ Salpa!</button>
+</div>
+
+<!-- BARRA SUPERIORE -->
+<div id="barra-sup">
+  <div class="logo">☠ Isla del Diablo</div>
+  <div class="barra-res">
+    <div class="res"><span class="icona">💰</span><span class="val" id="r-oro">0</span><span class="etich">Oro</span></div>
+    <div class="res"><span class="icona">🍖</span><span class="val" id="r-cibo">0</span><span class="etich">Cibo</span></div>
+    <div class="res"><span class="icona">🪵</span><span class="val" id="r-legno">0</span><span class="etich">Legno</span></div>
+    <div class="res"><span class="icona">🍺</span><span class="val" id="r-rum">0</span><span class="etich">Rum</span></div>
+    <div class="res"><span class="icona">🔭</span><span class="val" id="r-ric">0</span><span class="etich">Ricerca</span></div>
+    <div class="res"><span class="icona">👤</span><span class="val" id="r-pop">0</span><span class="etich">Pirati</span></div>
+  </div>
+  <div class="barra-rep">
+    <div class="rep reale" id="rep-reale">👑 0</div>
+    <div class="rep mercante" id="rep-mercante">🤝 0</div>
+    <div class="rep corsaro" id="rep-corsaro">☠ 0</div>
+  </div>
+  <div id="info-giorno">Giorno <span id="num-giorno">1</span></div>
+</div>
+
+<!-- PRINCIPALE -->
+<div id="principale">
+  <div id="mappa-wrap">
+    <canvas id="mappa-canvas"></canvas>
+
+    <!-- OVERLAY BATTAGLIA -->
+    <div id="overlay-battaglia">
+      <div class="titolo-battaglia" id="bt-titolo">⚔ Battaglia Navale!</div>
+      <div class="navi-battaglia">
+        <span id="bt-nave1">⛵</span>
+        <span class="vs-battaglia">VS</span>
+        <span id="bt-nave2">🚢</span>
+      </div>
+      <div class="riga-hp">
+        <div class="box-hp">
+          <div id="bt-nome1">La Tua Nave</div>
+          <div class="barra-hp"><div class="riempi-hp blu" id="bt-hp1" style="width:100%"></div></div>
+          <div id="bt-hp1-txt">100</div>
+        </div>
+        <div class="box-hp">
+          <div id="bt-nome2">Nemico</div>
+          <div class="barra-hp"><div class="riempi-hp rosso" id="bt-hp2" style="width:100%"></div></div>
+          <div id="bt-hp2-txt">100</div>
+        </div>
+      </div>
+      <div class="log-battaglia" id="bt-log">I cannoni tuonano...</div>
+      <div class="risultato-battaglia" id="bt-risultato" style="display:none"></div>
+      <button class="btn-azione" id="bt-chiudi" style="display:none" onclick="chiudiBattaglia()">Continua</button>
+    </div>
+
+    <div id="log-msg"></div>
+  </div>
+
+  <div id="pannello-dx">
+    <div id="tab-pannello">
+      <button class="ptab attivo" onclick="mostraTab('costruisci')">🏗</button>
+      <button class="ptab" onclick="mostraTab('ciurma')">☠</button>
+      <button class="ptab" onclick="mostraTab('flotta')">⛵</button>
+      <button class="ptab" onclick="mostraTab('ricerca')">🔭</button>
+      <button class="ptab" onclick="mostraTab('fazioni')">🌐</button>
+      <button class="ptab" onclick="mostraTab('missioni')">📜</button>
+    </div>
+    <div id="contenuto-pannello"></div>
+  </div>
+</div>
+
+<!-- BARRA INFERIORE -->
+<div id="barra-inf">
+  <button class="btn-azione" onclick="inviaRaid()">⚔ Raid</button>
+  <button class="btn-azione" onclick="apriCommercio()">🤝 Commercio</button>
+  <button class="btn-azione" onclick="apriEditti()">📜 Editti</button>
+  <button class="btn-azione" onclick="apriPrigione()">⛓ Prigione</button>
+  <button class="btn-azione pericolo" id="btn-annulla" onclick="annullaCostruzione()">✕ Annulla</button>
+  <button id="btn-velocita" onclick="cambiaVelocita()">▶▶ Veloce</button>
+</div>
+
+<!-- MODALE -->
+<div id="overlay-modale">
+  <div id="box-modale">
+    <button id="chiudi-modale" onclick="chiudiModale()">✕</button>
+    <h2 id="titolo-modale"></h2>
+    <div id="corpo-modale"></div>
+  </div>
+</div>
+
+<!-- NOTIFICHE -->
+<div id="area-notifiche"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// STATO
+// ═══════════════════════════════════════════════════
+const G={
+  giorno:1, oro:250, cibo:100, legno:150, rum:50,
+  pirati:[], navi:[], edifici:[], prigionieri:[],
+  missioniAttive:[],
+  mappa:[], COLS:30, RIGHE:24, TILE:38,
+  camX:0, camY:0,
+  velocita:1, tickMs:2800,
+  modalitaCostruzione:null, pirataSelezionato:null,
+  cooldownRaid:0, tick:0,
+  tabCorrente:'costruisci',
+  hoverR:-1, hoverC:-1,
+  fazioni:{
+    reale:{rep:0,   nome:'Marina Reale',   icona:'👑'},
+    mercante:{rep:20,nome:'Mercanti',       icona:'🤝'},
+    corsaro:{rep:50, nome:'Corsari',        icona:'☠'},
+  },
+  ricerca:{completate:new Set(), punti:0},
+  battagliaAttiva:false,
+  contatori:{raid:0, riscatti:0},
+  // rendering
+  alberi:[], rocce:[],
+};
+
+const T={OCEANO:0,SABBIA:1,ERBA:2,FORESTA:3,ROCCIA:4,BASSO:5,COLLINA:6,FIUME:7,SENTIERO:8,PALUDE:9};
+
+// ── EDIFICI ──
+const ED={
+  taverna:    {icona:'🍺',nome:'Taverna',         costo:{oro:80,legno:20},  effetto:'Morale +5/g, consuma rum'},
+  cantiere:   {icona:'⚓',nome:'Cantiere Navale',  costo:{oro:120,legno:50}, effetto:'Permette costruzione navi'},
+  fortezza:   {icona:'🏰',nome:'Fortezza',         costo:{oro:180,legno:80}, effetto:'+difesa contro attacchi'},
+  fattoria:   {icona:'🌿',nome:'Fattoria',          costo:{oro:60,legno:30},  effetto:'+9 cibo/giorno'},
+  distilleria:{icona:'🏭',nome:'Distilleria',       costo:{oro:90,legno:40},  effetto:'+6 rum/giorno'},
+  segheria:   {icona:'🪓',nome:'Segheria',          costo:{oro:50,legno:20},  effetto:'+7 legno/giorno'},
+  caserma:    {icona:'⚔', nome:'Caserma',           costo:{oro:100,legno:60}, effetto:'+addestramento combattimento'},
+  osservatorio:{icona:'🔭',nome:'Osservatorio',     costo:{oro:150,legno:50}, effetto:'+3 ricerca/giorno'},
+  prigione:   {icona:'⛓', nome:'Prigione',          costo:{oro:80,legno:40},  effetto:'Trattieni prigionieri'},
+  mercatonero:{icona:'🛒',nome:'Mercato Nero',       costo:{oro:200,legno:30}, effetto:'+20% entrate commercio'},
+  casapirata:  {icona:'🏠',nome:'Casa del Pirata',    costo:{oro:40,legno:30},  effetto:'+8 oro/g, riduce paga pirata'},
+};
+
+// ── TECNOLOGIE ──
+const TECH=[
+  {id:'cannoni',    nome:'Cannoni Pesanti',   desc:'Bottino raid +30%',          costo:40, req:[],              icona:'💣'},
+  {id:'mappe',      nome:'Carte Nautiche',    desc:'Durata raid -1 giorno',       costo:35, req:[],              icona:'🗺'},
+  {id:'medicina',   nome:'Chirurgia di Bordo',desc:'I pirati disertano meno',     costo:50, req:[],              icona:'⚕'},
+  {id:'armatura',   nome:'Scafo Rinforzato',  desc:'+20 HP in battaglia',         costo:60, req:['cannoni'],     icona:'🛡'},
+  {id:'diplomazia', nome:'Lettera di Corsa',  desc:'Rep mercanti più rapida',     costo:45, req:['mappe'],       icona:'📜'},
+  {id:'alchimia',   nome:'Alchimia del Rum',  desc:'Il rum cura in battaglia',    costo:55, req:['medicina'],    icona:'⚗'},
+  {id:'bordata',    nome:'Doppia Bordata',     desc:'Doppio colpo di cannone',     costo:80, req:['armatura','cannoni'],icona:'🔥'},
+  {id:'leggenda',   nome:'Leggenda Pirata',   desc:'Tutti i pirati +15 morale',   costo:100,req:['diplomazia','alchimia'],icona:'💀'},
+];
+
+const NOMI_PIRATI=['Giacomo il Rosso','Maria la Nera','Pietro Scorbutico','Occhio di Vetro',
+  'Diego il Pazzo','Anna la Sanguinaria','Calabrone','Salato Billo','Rosa del Rum',
+  'Karl Cannone','Delia il Pugnale','Lo Squalo','Bernacolo','Nora la Tempesta','Lingua d\'Argento'];
+const RUOLI_PIRATI=['Bucaniere','Navigatore','Cannoniere','Chirurgo','Cuoco','Nostromo','Spia','Quartier Mastro'];
+
+const NAVI_NEMICHE=['HMS Risoluto','Vendetta Reale','La Costanza','HMS Furia','Lady Giustizia'];
+const NAVI_MERCANTI=['Caravella d\'Oro','Mercante Felice','Fortuna di Mare','Brezza Ambrata','Ricca Preda'];
+
+const POOL_MISSIONI=[
+  {id:'m_raid3',  titolo:'Tre Razzie',         desc:'Invia 3 raid',                 obiettivo:3,   tipo:'raid',    ricompensa:{oro:200}},
+  {id:'m_ciurma8',titolo:'Ciurma al Completo', desc:'Recluta 8 pirati',             obiettivo:8,   tipo:'pirati',  ricompensa:{oro:150,rum:30}},
+  {id:'m_build5', titolo:'Costruttore',         desc:'Costruisci 5 edifici',         obiettivo:5,   tipo:'edifici', ricompensa:{oro:250,legno:50}},
+  {id:'m_oro1k',  titolo:'Tesoro del Diavolo',  desc:'Accumula 1000 oro',            obiettivo:1000,tipo:'oro',     ricompensa:{ricerca:30}},
+  {id:'m_ric3',   titolo:'Pirata Erudito',      desc:'Ricerca 3 tecnologie',         obiettivo:3,   tipo:'ricerca', ricompensa:{oro:200,ricerca:20}},
+  {id:'m_prig3',  titolo:'Maestro del Riscatto',desc:'Riscatta 3 prigionieri',       obiettivo:3,   tipo:'riscatti',ricompensa:{oro:300}},
+];
+
+const NOMI_PRIGIONIERI=['Ten. Belfair','Cap. Sterling','Gov. Blackwell','Amm. Graves',
+  'Mercante Hans','Lady Rosalind','Fra Navarro','Duca Alderman','Sgt. Colby'];
+
+// ═══════════════════════════════════════════════════
+// GENERAZIONE MAPPA
+// ═══════════════════════════════════════════════════
+
+// heightmap semplice con noise
+function generaHeightmap(rows, cols, cx, cy){
+  const h=[];
+  for(let r=0;r<rows;r++){
+    h.push([]);
+    for(let c=0;c<cols;c++){
+      const dx=c-cx, dy=r-cy;
+      const dist=Math.sqrt(dx*dx+dy*dy*1.15);
+      // noise multi-ottava
+      const n1=(Math.sin(c*.65+r*.3)*.5+Math.cos(c*1.1-r*.8)*.5)*2.8;
+      const n2=(Math.sin(c*1.3-r*.7)*.3+Math.cos(c*.5+r*1.2)*.3)*1.2;
+      const n3=Math.sin(c*2.1+r*1.8)*.4;
+      h[r].push(dist - n1 - n2 - n3);
+    }
+  }
+  return h;
+}
+
+function generaMappa(){
+  const cx=G.COLS/2, cy=G.RIGHE/2;
+  const hm=generaHeightmap(G.RIGHE,G.COLS,cx,cy);
+  G.altezza=hm; // salva per uso nel renderer (ombreggiatura colline)
+
+  G.mappa=Array.from({length:G.RIGHE},()=>Array(G.COLS).fill(T.OCEANO));
+
+  // biomi base da heightmap
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    const d=hm[r][c];
+    if(d<2.8)       G.mappa[r][c]=T.COLLINA;   // cime
+    else if(d<4.5)  G.mappa[r][c]=T.FORESTA;
+    else if(d<6.8)  G.mappa[r][c]=T.ERBA;
+    else if(d<8.5)  G.mappa[r][c]=T.SABBIA;
+    else if(d<10.2) G.mappa[r][c]=T.BASSO;
+    // else OCEANO
+  }
+
+  // ── FIUME: scende dalla collina verso il mare ──
+  // trova un punto di partenza sulle colline
+  let fsr=-1, fsc=-1;
+  for(let r=2;r<G.RIGHE-2;r++) for(let c=2;c<G.COLS-2;c++){
+    if(G.mappa[r][c]===T.COLLINA && fsr===-1){
+      // prende il primo punto collinare non troppo al centro
+      const dx=c-cx, dy=r-cy;
+      if(Math.abs(dx)>2||Math.abs(dy)>2){ fsr=r; fsc=c; }
+    }
+  }
+  G.fiume=[]; // array di {r,c} per il percorso
+  if(fsr>0){
+    let r=fsr, c=fsc;
+    const visited=new Set();
+    for(let step=0;step<60;step++){
+      const k=r+','+c;
+      if(visited.has(k)) break;
+      visited.add(k);
+      if(r<0||r>=G.RIGHE||c<0||c>=G.COLS) break;
+      const t=G.mappa[r][c];
+      if(t===T.OCEANO||t===T.BASSO) break;
+      G.fiume.push({r,c});
+      G.mappa[r][c]=T.FIUME;
+      // scende verso il punto più basso (più alto hm = più vicino all'oceano)
+      const dirs=[[r-1,c],[r+1,c],[r,c-1],[r,c+1],[r-1,c-1],[r+1,c+1],[r-1,c+1],[r+1,c-1]];
+      let best=null, bestH=-Infinity;
+      for(const[nr,nc] of dirs){
+        if(nr<0||nr>=G.RIGHE||nc<0||nc>=G.COLS) continue;
+        if(visited.has(nr+','+nc)) continue;
+        const nh=hm[nr][nc];
+        if(nh>bestH){ bestH=nh; best=[nr,nc]; }
+      }
+      if(!best) break;
+      r=best[0]; c=best[1];
+    }
+  }
+
+  // ── SENTIERO: dalla spiaggia verso il centro ──
+  G.sentieri=[];
+  // trova un tile di sabbia sul bordo est
+  let psr=-1, psc=-1;
+  for(let r=Math.floor(cy)-2;r<Math.floor(cy)+3;r++){
+    for(let c=G.COLS-2;c>G.COLS-6;c--){
+      if(G.mappa[r] && G.mappa[r][c]===T.SABBIA){ psr=r; psc=c; break; }
+    }
+    if(psr>0) break;
+  }
+  if(psr>0){
+    // percorso greedy verso il centro
+    let r=psr, c=psc;
+    const visited=new Set();
+    for(let step=0;step<50;step++){
+      const k=r+','+c;
+      if(visited.has(k)) break;
+      visited.add(k);
+      if(r<0||r>=G.RIGHE||c<0||c>=G.COLS) break;
+      const t=G.mappa[r][c];
+      if(t===T.COLLINA||t===T.FIUME||t===T.OCEANO||t===T.BASSO) break;
+      G.sentieri.push({r,c});
+      G.mappa[r][c]=T.SENTIERO;
+      // muoviti verso il centro
+      const dc=cx-c, dr=cy-r;
+      const dirs=[];
+      if(Math.abs(dc)>Math.abs(dr)) dirs.push([r,c+(dc>0?1:-1)],[r+(dr>0?1:-1),c]);
+      else dirs.push([r+(dr>0?1:-1),c],[r,c+(dc>0?1:-1)]);
+      dirs.push([r+(dr>0?1:-1),c+(dc>0?1:-1)]);
+      let moved=false;
+      for(const[nr,nc] of dirs){
+        if(nr<0||nr>=G.RIGHE||nc<0||nc>=G.COLS) continue;
+        if(visited.has(nr+','+nc)) continue;
+        const nt=G.mappa[nr][nc];
+        if(nt===T.OCEANO||nt===T.BASSO||nt===T.FIUME) continue;
+        r=nr; c=nc; moved=true; break;
+      }
+      if(!moved) break;
+    }
+  }
+
+  // ── PALUDE: zona umida vicino al fiume/acqua bassa ──
+  for(let r=1;r<G.RIGHE-1;r++) for(let c=1;c<G.COLS-1;c++){
+    if(G.mappa[r][c]!==T.ERBA) continue;
+    // vicino a BASSO o FIUME?
+    let vicino=false;
+    for(const[dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const nt=G.mappa[r+dr]&&G.mappa[r+dr][c+dc];
+      if(nt===T.BASSO||nt===T.FIUME){ vicino=true; break; }
+    }
+    if(vicino && Math.random()<0.45) G.mappa[r][c]=T.PALUDE;
+  }
+
+  // ── rocce sulle colline ──
+  G.rocce=[];
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    if(G.mappa[r][c]===T.COLLINA && Math.random()<0.25){
+      G.rocce.push({r,c,scala:0.5+Math.random()*.6});
+    }
+    if((G.mappa[r][c]===T.ERBA||G.mappa[r][c]===T.FORESTA) && Math.random()<0.04){
+      G.rocce.push({r,c,scala:0.4+Math.random()*.4});
+    }
+  }
+
+  // ── alberi ──
+  G.alberi=[];
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    const t=G.mappa[r][c];
+    if(t===T.FORESTA && Math.random()<0.72){
+      G.alberi.push({r,c,ox:(Math.random()-.5)*.8,oy:(Math.random()-.5)*.8,
+        scala:0.55+Math.random()*.42,tinta:Math.random()});
+    }
+    if(t===T.PALUDE && Math.random()<0.3){
+      // alberi di palude più bassi/pallidi
+      G.alberi.push({r,c,ox:(Math.random()-.5)*.6,oy:(Math.random()-.5)*.6,
+        scala:0.35+Math.random()*.25,tinta:0.2+Math.random()*.2,palude:true});
+    }
+  }
+
+  G.pois=[
+    {etich:'Rotta Commerciale',icona:'🚢',c:G.COLS-3,r:2,tipo:'mercante'},
+    {etich:'Pattuglia Reale',  icona:'⚓',c:1,r:2,tipo:'reale'},
+    {etich:'Cala dei Corsari', icona:'💀',c:G.COLS-4,r:G.RIGHE-3,tipo:'corsaro'},
+    {etich:'Rovine Antiche',   icona:'🏛',c:2,r:G.RIGHE-4,tipo:'rovine'},
+  ];
+}
+
+// ═══════════════════════════════════════════════════
+// CANVAS RENDERER  —  top-down dettagliato
+// ═══════════════════════════════════════════════════
+let canvas, ctx;
+let frame=0;
+
+// cache dei gradienti riutilizzabili
+let _tileCache=null;
+
+function ridimensionaCanvas(){
+  const wrap=document.getElementById('mappa-wrap');
+  canvas.width=wrap.clientWidth;
+  canvas.height=wrap.clientHeight;
+  G.camX=Math.floor((canvas.width -G.COLS*G.TILE)/2);
+  G.camY=Math.floor((canvas.height-G.RIGHE*G.TILE)/2);
+  _tileCache=null; // invalida cache al resize
+}
+
+// hash deterministico per variazioni per-tile
+function hash(r,c,salt){
+  let v=(r*2749+c*1597+salt*3571)&0xffff;
+  v=((v^(v>>>7))*0x45d9f3b)&0xffff;
+  return (v&0xffff)/0xffff;
+}
+
+// ── disegna un singolo tile ──
+function disegnaTile(t,x,y,r,c){
+  const S=G.TILE;
+
+  // ── OCEANO PROFONDO ──
+  if(t===T.OCEANO){
+    const profondo=hash(r,c,1)>.5;
+    ctx.fillStyle=profondo?'#0a2240':'#0c2848';
+    ctx.fillRect(x,y,S,S);
+    // gradiente profondità radiale per-tile
+    const gd=ctx.createRadialGradient(x+S*.5,y+S*.5,0,x+S*.5,y+S*.5,S*.8);
+    gd.addColorStop(0,'rgba(20,80,140,.0)');
+    gd.addColorStop(1,'rgba(4,14,28,.35)');
+    ctx.fillStyle=gd;
+    ctx.fillRect(x,y,S,S);
+    // onde animate — 2 layer sfasati
+    const f1=frame*.016+c*.6+r*.32;
+    const f2=frame*.011+c*.42-r*.28;
+    ctx.lineWidth=1.8;
+    ctx.strokeStyle=`rgba(100,180,255,${.09+Math.sin(f1)*.03})`;
+    ctx.beginPath();
+    ctx.moveTo(x,y+S*.3+Math.sin(f1)*2.5);
+    ctx.bezierCurveTo(x+S*.25,y+S*.3+Math.sin(f1+1)*3,x+S*.75,y+S*.3-Math.sin(f1+2)*3,x+S,y+S*.3+Math.sin(f1+3)*2.5);
+    ctx.stroke();
+    ctx.strokeStyle=`rgba(100,180,255,${.06+Math.sin(f2)*.02})`;
+    ctx.beginPath();
+    ctx.moveTo(x,y+S*.62+Math.sin(f2)*2);
+    ctx.bezierCurveTo(x+S*.3,y+S*.62-Math.sin(f2+1)*2.5,x+S*.7,y+S*.62+Math.sin(f2+2)*2.5,x+S,y+S*.62+Math.sin(f2+3)*2);
+    ctx.stroke();
+    // riflesso luce solare in alto a sx
+    const shimmer=.03+Math.sin(frame*.02+c+r)*.015;
+    const gs=ctx.createLinearGradient(x,y,x+S,y+S*.4);
+    gs.addColorStop(0,`rgba(180,230,255,${shimmer})`);
+    gs.addColorStop(1,'rgba(180,230,255,0)');
+    ctx.fillStyle=gs;
+    ctx.fillRect(x,y,S,S*.4);
+    return;
+  }
+
+  // ── ACQUE BASSE ──
+  if(t===T.BASSO){
+    ctx.fillStyle='#174e7a';
+    ctx.fillRect(x,y,S,S);
+    const gb=ctx.createLinearGradient(x,y,x+S,y+S);
+    gb.addColorStop(0,'rgba(30,120,180,.18)');
+    gb.addColorStop(1,'rgba(10,40,80,.18)');
+    ctx.fillStyle=gb;
+    ctx.fillRect(x,y,S,S);
+    // fondale sabbioso visibile in trasparenza
+    const sv=hash(r,c,9);
+    ctx.fillStyle=`rgba(180,150,80,${.08+sv*.06})`;
+    ctx.fillRect(x,y,S,S);
+    // increspature più corte
+    const fb=frame*.014+c*.5+r*.25;
+    ctx.strokeStyle=`rgba(160,220,255,${.1+Math.sin(fb)*.04})`;
+    ctx.lineWidth=1.2;
+    ctx.beginPath();
+    ctx.moveTo(x+S*.05,y+S*.4+Math.sin(fb)*1.8);
+    ctx.bezierCurveTo(x+S*.3,y+S*.38,x+S*.7,y+S*.42,x+S*.95,y+S*.4+Math.sin(fb+2)*1.8);
+    ctx.stroke();
+    return;
+  }
+
+  // ── SABBIA ──
+  if(t===T.SABBIA){
+    // colore base con micro-variazione
+    const sv=hash(r,c,2);
+    const lum=Math.floor(175+sv*25);
+    ctx.fillStyle=`rgb(${lum},${Math.floor(lum*.82)},${Math.floor(lum*.48)})`;
+    ctx.fillRect(x,y,S,S);
+    // texture: cerchietti irregolari (sassolini)
+    for(let i=0;i<5;i++){
+      const hx=hash(r,c,i+10),hy=hash(r,c,i+20),hr=hash(r,c,i+30);
+      const alpha=.12+hr*.1;
+      ctx.fillStyle=`rgba(${Math.floor(140+hr*60)},${Math.floor(110+hr*40)},${Math.floor(50+hr*30)},${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x+hx*S,y+hy*S,1+hr*2.5,0,Math.PI*2);
+      ctx.fill();
+    }
+    // bordo bagnato in basso (verso mare) — sfumato
+    const gw=ctx.createLinearGradient(x,y+S*.65,x,y+S);
+    gw.addColorStop(0,'rgba(100,140,120,0)');
+    gw.addColorStop(1,'rgba(80,120,100,.32)');
+    ctx.fillStyle=gw;
+    ctx.fillRect(x,y+S*.65,S,S*.35);
+    // luce radente da sx
+    const gl=ctx.createLinearGradient(x,y,x+S*.35,y);
+    gl.addColorStop(0,'rgba(255,240,200,.12)');
+    gl.addColorStop(1,'rgba(255,240,200,0)');
+    ctx.fillStyle=gl;
+    ctx.fillRect(x,y,S*.35,S);
+    return;
+  }
+
+  // ── ERBA ──
+  if(t===T.ERBA){
+    const ev=hash(r,c,3);
+    const g=Math.floor(95+ev*25);
+    ctx.fillStyle=`rgb(${Math.floor(40+ev*18)},${g},${Math.floor(35+ev*15)})`;
+    ctx.fillRect(x,y,S,S);
+    // macchie di colore più scuro/chiaro
+    const gp=ctx.createRadialGradient(x+S*(0.3+hash(r,c,40)*.4),y+S*(0.3+hash(r,c,41)*.4),0,x+S*.5,y+S*.5,S*.6);
+    gp.addColorStop(0,`rgba(60,130,40,${.12+ev*.08})`);
+    gp.addColorStop(1,'rgba(20,60,15,.04)');
+    ctx.fillStyle=gp;
+    ctx.fillRect(x,y,S,S);
+    // fili d'erba — raggruppati e inclinati
+    ctx.lineWidth=.9;
+    for(let i=0;i<5;i++){
+      const gx=x+hash(r,c,i+50)*S;
+      const gy=y+hash(r,c,i+60)*S;
+      const gh=3+hash(r,c,i+70)*4;
+      const incl=(hash(r,c,i+80)-.5)*3;
+      ctx.strokeStyle=`rgba(${Math.floor(50+ev*30)},${Math.floor(140+ev*30)},${Math.floor(30+ev*20)},.55)`;
+      ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+incl,gy-gh);ctx.stroke();
+    }
+    // illuminazione direzionale da sx-alto
+    const gli=ctx.createLinearGradient(x,y,x+S,y+S);
+    gli.addColorStop(0,'rgba(255,255,220,.06)');
+    gli.addColorStop(0.5,'rgba(0,0,0,0)');
+    gli.addColorStop(1,'rgba(0,20,0,.08)');
+    ctx.fillStyle=gli;
+    ctx.fillRect(x,y,S,S);
+    return;
+  }
+
+  // ── FORESTA ──
+  if(t===T.FORESTA){
+    const fv=hash(r,c,4);
+    ctx.fillStyle=`rgb(${Math.floor(18+fv*12)},${Math.floor(55+fv*20)},${Math.floor(18+fv*10)})`;
+    ctx.fillRect(x,y,S,S);
+    // sottobosco — cerchi scuri
+    for(let i=0;i<3;i++){
+      const bx=x+hash(r,c,i+90)*S, by=y+hash(r,c,i+95)*S;
+      ctx.fillStyle=`rgba(10,30,10,${.15+hash(r,c,i+100)*.1})`;
+      ctx.beginPath();ctx.arc(bx,by,3+hash(r,c,i+105)*5,0,Math.PI*2);ctx.fill();
+    }
+    return;
+  }
+
+  // ── ROCCIA (tile) ──
+  if(t===T.ROCCIA){
+    const rv=hash(r,c,5);
+    ctx.fillStyle=`rgb(${Math.floor(65+rv*20)},${Math.floor(60+rv*18)},${Math.floor(50+rv*15)})`;
+    ctx.fillRect(x,y,S,S);
+    // crepe
+    ctx.strokeStyle=`rgba(30,25,20,${.2+rv*.1})`;
+    ctx.lineWidth=.8;
+    ctx.beginPath();
+    ctx.moveTo(x+hash(r,c,110)*S,y+hash(r,c,111)*S);
+    ctx.lineTo(x+hash(r,c,112)*S,y+hash(r,c,113)*S);
+    ctx.stroke();
+    return;
+  }
+
+  // ── COLLINA ──
+  if(t===T.COLLINA){
+    const cv=hash(r,c,6);
+    // base rocciosa con tinta calda
+    ctx.fillStyle=`rgb(${Math.floor(110+cv*20)},${Math.floor(95+cv*18)},${Math.floor(70+cv*15)})`;
+    ctx.fillRect(x,y,S,S);
+    // gradiente di quota — più chiaro in alto a sinistra (luce)
+    const gc=ctx.createLinearGradient(x,y,x+S,y+S);
+    gc.addColorStop(0,`rgba(255,240,200,${.14+cv*.06})`);
+    gc.addColorStop(0.45,'rgba(0,0,0,0)');
+    gc.addColorStop(1,`rgba(0,0,0,${.2+cv*.1})`);
+    ctx.fillStyle=gc;
+    ctx.fillRect(x,y,S,S);
+    // erba sparsa in cima
+    ctx.strokeStyle=`rgba(80,110,40,${.3+cv*.15})`;
+    ctx.lineWidth=.8;
+    for(let i=0;i<3;i++){
+      const gx=x+hash(r,c,i+120)*S, gy=y+hash(r,c,i+130)*S;
+      ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+(hash(r,c,i+140)-.5)*3,gy-3-hash(r,c,i+150)*3);ctx.stroke();
+    }
+    return;
+  }
+
+  // ── FIUME ──
+  if(t===T.FIUME){
+    // base terreno sotto
+    ctx.fillStyle='#2a5a3a';
+    ctx.fillRect(x,y,S,S);
+    // acqua del fiume
+    const ff=frame*.02+c*.4+r*.3;
+    ctx.fillStyle=`rgba(30,100,180,${.75+Math.sin(ff)*.08})`;
+    // fiume occupa il centro del tile
+    ctx.fillRect(x+S*.15,y+S*.15,S*.7,S*.7);
+    // bagliore superficie
+    const gf=ctx.createLinearGradient(x+S*.15,y+S*.15,x+S*.45,y+S*.45);
+    gf.addColorStop(0,`rgba(120,200,255,${.18+Math.sin(ff+1)*.06})`);
+    gf.addColorStop(1,'rgba(30,100,180,0)');
+    ctx.fillStyle=gf;
+    ctx.fillRect(x+S*.15,y+S*.15,S*.7,S*.7);
+    // increspatura animata
+    ctx.strokeStyle=`rgba(180,230,255,${.2+Math.sin(ff*1.3)*.08})`;
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(x+S*.18,y+S*.4+Math.sin(ff)*2);
+    ctx.bezierCurveTo(x+S*.4,y+S*.38,x+S*.6,y+S*.42,x+S*.82,y+S*.4+Math.sin(ff+2)*2);
+    ctx.stroke();
+    // rive erbose
+    ctx.fillStyle='rgba(40,100,40,.5)';
+    ctx.fillRect(x,y,S,S*.16);
+    ctx.fillRect(x,y+S*.84,S,S*.16);
+    ctx.fillRect(x,y,S*.16,S);
+    ctx.fillRect(x+S*.84,y,S*.16,S);
+    return;
+  }
+
+  // ── SENTIERO ──
+  if(t===T.SENTIERO){
+    // terra battuta — base sabbia scura
+    const pv=hash(r,c,7);
+    ctx.fillStyle=`rgb(${Math.floor(155+pv*20)},${Math.floor(125+pv*15)},${Math.floor(70+pv*12)})`;
+    ctx.fillRect(x,y,S,S);
+    // solchi del cammino
+    ctx.strokeStyle=`rgba(120,90,45,${.4+pv*.2})`;
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x+S*.35,y);ctx.lineTo(x+S*.3,y+S);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x+S*.65,y);ctx.lineTo(x+S*.7,y+S);ctx.stroke();
+    // ciottoli
+    for(let i=0;i<4;i++){
+      const sx=x+hash(r,c,i+160)*S, sy=y+hash(r,c,i+170)*S;
+      ctx.fillStyle=`rgba(180,160,110,${.3+hash(r,c,i+180)*.3})`;
+      ctx.beginPath();ctx.arc(sx,sy,1+hash(r,c,i+190)*1.5,0,Math.PI*2);ctx.fill();
+    }
+    // erba ai bordi
+    const ge=ctx.createLinearGradient(x,y,x+S*.3,y);
+    ge.addColorStop(0,'rgba(40,90,30,.35)');ge.addColorStop(1,'rgba(40,90,30,0)');
+    ctx.fillStyle=ge;ctx.fillRect(x,y,S*.3,S);
+    const ge2=ctx.createLinearGradient(x+S,y,x+S*.7,y);
+    ge2.addColorStop(0,'rgba(40,90,30,.35)');ge2.addColorStop(1,'rgba(40,90,30,0)');
+    ctx.fillStyle=ge2;ctx.fillRect(x+S*.7,y,S*.3,S);
+    return;
+  }
+
+  // ── PALUDE ──
+  if(t===T.PALUDE){
+    const mv=hash(r,c,8);
+    ctx.fillStyle=`rgb(${Math.floor(45+mv*15)},${Math.floor(65+mv*18)},${Math.floor(35+mv*12)})`;
+    ctx.fillRect(x,y,S,S);
+    // pozze d'acqua scura
+    for(let i=0;i<2;i++){
+      const wx=x+hash(r,c,i+200)*S*.7+S*.1;
+      const wy=y+hash(r,c,i+210)*S*.7+S*.1;
+      const wr=3+hash(r,c,i+220)*6;
+      ctx.fillStyle=`rgba(20,50,40,${.55+hash(r,c,i+230)*.2})`;
+      ctx.beginPath();ctx.ellipse(wx,wy,wr,wr*.6,0,0,Math.PI*2);ctx.fill();
+    }
+    // alghe/muschio
+    ctx.strokeStyle=`rgba(30,80,30,${.4+mv*.2})`;
+    ctx.lineWidth=.8;
+    for(let i=0;i<3;i++){
+      const ax=x+hash(r,c,i+240)*S, ay=y+hash(r,c,i+250)*S;
+      ctx.beginPath();ctx.arc(ax,ay,2+hash(r,c,i+260)*3,0,Math.PI*2);ctx.stroke();
+    }
+    // nebbia leggera
+    const gm=ctx.createRadialGradient(x+S*.5,y+S*.5,0,x+S*.5,y+S*.5,S*.6);
+    gm.addColorStop(0,'rgba(150,200,150,.04)');
+    gm.addColorStop(1,'rgba(100,160,100,.12)');
+    ctx.fillStyle=gm;ctx.fillRect(x,y,S,S);
+    return;
+  }
+
+  // fallback
+  ctx.fillStyle='#333';
+  ctx.fillRect(x,y,S,S);
+}
+
+// ── disegna transizioni bordo tra biomi ──
+function disegnaTransizioni(){
+  const S=G.TILE;
+  // passa sopra ai tile già disegnati aggiungendo sfumature ai bordi
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    const t=G.mappa[r][c];
+    const x=G.camX+c*S, y=G.camY+r*S;
+    if(x+S<0||y+S<0||x>canvas.width||y>canvas.height) continue;
+    if(t!==T.SABBIA&&t!==T.ERBA&&t!==T.FORESTA) continue;
+
+    // controlla vicini e aggiungi ombra sfumata
+    const vicini=[
+      [r-1,c,0,1,'top'],
+      [r+1,c,0,-1,'bot'],
+      [r,c-1,1,0,'lft'],
+      [r,c+1,-1,0,'rgt'],
+    ];
+    for(const vicino of vicini){ const nr=vicino[0],nc=vicino[1],dir=vicino[4];
+      const nt=G.mappa[nr]&&G.mappa[nr][nc];
+      if(nt===undefined) continue;
+      // bordo verso acqua: aggiungi ombra bagnata
+      if((nt===T.OCEANO||nt===T.BASSO)&&t===T.SABBIA){
+        let gx1=x,gy1=y,gx2=x,gy2=y;
+        const d=S*.4;
+        if(dir==='top'){gy2=y+d;}
+        else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
+        else if(dir==='lft'){gx2=x+d;}
+        else{gx1=x+S;gx2=x+S-d;}
+        const gt=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
+        gt.addColorStop(0,'rgba(60,100,120,.35)');
+        gt.addColorStop(1,'rgba(60,100,120,0)');
+        ctx.fillStyle=gt;
+        ctx.fillRect(x,y,S,S);
+      }
+      // bordo foresta->erba: ombra vegetazione
+      if(nt===T.FORESTA&&(t===T.ERBA||t===T.SABBIA)){
+        let gx1=x,gy1=y,gx2=x,gy2=y;
+        const d=S*.5;
+        if(dir==='top'){gy2=y+d;}
+        else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
+        else if(dir==='lft'){gx2=x+d;}
+        else{gx1=x+S;gx2=x+S-d;}
+        const gf=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
+        gf.addColorStop(0,'rgba(10,40,10,.28)');
+        gf.addColorStop(1,'rgba(10,40,10,0)');
+        ctx.fillStyle=gf;
+        ctx.fillRect(x,y,S,S);
+      }
+    }
+  }
+}
+
+// ── disegna albero ──
+function disegnaAlbero(ax,ay,scala,tinta){
+  const S=G.TILE;
+  const cx2=ax+S/2, cy2=ay+S/2;
+  const h=S*scala;
+  // ombra a terra ellittica
+  ctx.save();
+  ctx.globalAlpha=.3;
+  ctx.fillStyle='#000';
+  ctx.beginPath();
+  ctx.ellipse(cx2+h*.18,cy2+h*.3,h*.32,h*.11,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+  // tronco
+  const tg=ctx.createLinearGradient(cx2-S*.05,cy2,cx2+S*.05,cy2+S*.18*scala);
+  tg.addColorStop(0,'#7a4e22');tg.addColorStop(1,'#3e2008');
+  ctx.fillStyle=tg;
+  ctx.beginPath();
+  ctx.ellipse(cx2,cy2+S*.06*scala,S*.055,S*.12*scala,0,0,Math.PI*2);
+  ctx.fill();
+  // strati chioma — dal basso verso l'alto, più scuri sotto
+  const hue=110+tinta*18;
+  const layers=[
+    {dy:.12,  rx:.42, ry:.28, sat:45,lum:18, a:1},
+    {dy:-.04, rx:.38, ry:.26, sat:50,lum:22, a:1},
+    {dy:-.18, rx:.32, ry:.22, sat:55,lum:28, a:1},
+    {dy:-.28, rx:.22, ry:.16, sat:58,lum:34, a:.9},
+  ];
+  for(const l of layers){
+    const grad=ctx.createRadialGradient(
+      cx2-h*.08, cy2+h*l.dy-h*.06, 0,
+      cx2, cy2+h*l.dy, h*l.rx
+    );
+    grad.addColorStop(0,`hsla(${hue+5},${l.sat+10}%,${l.lum+8}%,${l.a})`);
+    grad.addColorStop(0.6,`hsla(${hue},${l.sat}%,${l.lum}%,${l.a})`);
+    grad.addColorStop(1,`hsla(${hue-8},${l.sat-8}%,${l.lum-6}%,${l.a})`);
+    ctx.fillStyle=grad;
+    ctx.beginPath();
+    ctx.ellipse(cx2,cy2+h*l.dy,h*l.rx,h*l.ry,0,0,Math.PI*2);
+    ctx.fill();
+  }
+  // highlight luce sx-alto
+  ctx.fillStyle=`rgba(255,255,200,${.06+tinta*.04})`;
+  ctx.beginPath();
+  ctx.ellipse(cx2-h*.15,cy2-h*.22,h*.14,h*.09,-.4,0,Math.PI*2);
+  ctx.fill();
+}
+
+// ── disegna roccia ──
+function disegnaRoccia(rx,ry,scala){
+  const S=G.TILE;
+  const cx2=rx+S*.5, cy2=ry+S*.58;
+  const w=S*.4*scala, h=S*.3*scala;
+  // ombra morbida
+  ctx.save();
+  ctx.globalAlpha=.25;
+  ctx.fillStyle='#000';
+  ctx.beginPath();
+  ctx.ellipse(cx2+w*.15,cy2+h*.55,w*.75,h*.22,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+  // corpo principale
+  const gr=ctx.createRadialGradient(cx2-w*.22,cy2-h*.3,h*.05,cx2,cy2,w);
+  gr.addColorStop(0,'#a09070');
+  gr.addColorStop(0.4,'#756550');
+  gr.addColorStop(0.8,'#504535');
+  gr.addColorStop(1,'#302820');
+  ctx.fillStyle=gr;
+  ctx.beginPath();
+  ctx.ellipse(cx2,cy2,w,h,-.15,0,Math.PI*2);
+  ctx.fill();
+  // crepa/highlight
+  ctx.strokeStyle='rgba(255,240,200,.18)';ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(cx2-w*.35,cy2-h*.25);
+  ctx.quadraticCurveTo(cx2-w*.1,cy2-h*.45,cx2+w*.1,cy2-h*.2);
+  ctx.stroke();
+  // bordo scuro base
+  ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=1.2;
+  ctx.beginPath();
+  ctx.ellipse(cx2,cy2,w,h,-.15,Math.PI*.1,Math.PI*.9);
+  ctx.stroke();
+}
+
+// ── disegna edificio — sprite procedurali top-down ──
+function disegnaEdificio(tipo,ex,ey){
+  const S=G.TILE;
+  const cx=ex+S/2, cy=ey+S/2;
+  ctx.save();
+
+  // ombra a terra comune
+  ctx.globalAlpha=.28;
+  ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(cx+S*.08,cy+S*.35,S*.38,S*.12,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+
+  switch(tipo){
+
+    case 'taverna':{
+      // corpo principale — casa larga con tetto a spiovente
+      // pavimento
+      ctx.fillStyle='#7a4e28';
+      ctx.fillRect(ex+S*.08,ey+S*.38,S*.84,S*.48);
+      // facciata (lato verso player)
+      const gFac=ctx.createLinearGradient(ex,ey+S*.38,ex,ey+S*.86);
+      gFac.addColorStop(0,'#a0652a');gFac.addColorStop(1,'#6b3f18');
+      ctx.fillStyle=gFac;
+      ctx.fillRect(ex+S*.08,ey+S*.42,S*.84,S*.44);
+      // tetto spiovente
+      ctx.fillStyle='#4a2a0a';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.04,ey+S*.44);
+      ctx.lineTo(cx,ey+S*.1);
+      ctx.lineTo(ex+S*.96,ey+S*.44);
+      ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#2a1400';ctx.lineWidth=1;ctx.stroke();
+      // tegole tetto
+      ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=.8;
+      for(let i=0;i<4;i++){
+        ctx.beginPath();
+        ctx.moveTo(ex+S*.04+i*S*.23,ey+S*.44);
+        ctx.lineTo(cx,ey+S*.1);ctx.stroke();
+      }
+      // insegna
+      ctx.fillStyle='#c8820a';
+      ctx.fillRect(ex+S*.25,ey+S*.28,S*.5,S*.13);
+      ctx.strokeStyle='#8b5a00';ctx.lineWidth=1;ctx.strokeRect(ex+S*.25,ey+S*.28,S*.5,S*.13);
+      // finestre
+      ctx.fillStyle='rgba(255,220,120,.85)';
+      ctx.fillRect(ex+S*.15,ey+S*.52,S*.2,S*.18);
+      ctx.fillRect(ex+S*.65,ey+S*.52,S*.2,S*.18);
+      // porta
+      ctx.fillStyle='#3a1e08';
+      ctx.fillRect(ex+S*.38,ey+S*.62,S*.24,S*.24);
+      // boccale sul tetto (segno della taverna)
+      ctx.fillStyle='#c8a020';
+      ctx.beginPath();ctx.arc(cx,ey+S*.22,S*.07,0,Math.PI*2);ctx.fill();
+      break;
+    }
+
+    case 'cantiere':{
+      // bacino — forma a U vista dall'alto con nave dentro
+      ctx.fillStyle='#1a4a6e';
+      ctx.fillRect(ex+S*.06,ey+S*.3,S*.88,S*.6);
+      // moli laterali
+      ctx.fillStyle='#7a5a2a';
+      ctx.fillRect(ex+S*.06,ey+S*.2,S*.14,S*.7);
+      ctx.fillRect(ex+S*.8,ey+S*.2,S*.14,S*.7);
+      // molo superiore
+      ctx.fillRect(ex+S*.06,ey+S*.2,S*.88,S*.12);
+      // acqua interna animata
+      ctx.fillStyle=`rgba(30,100,160,${.6+Math.sin(frame*.04)*.1})`;
+      ctx.fillRect(ex+S*.2,ey+S*.32,S*.6,S*.5);
+      // scafo nave nel bacino
+      ctx.fillStyle='#5c3a1a';
+      ctx.beginPath();ctx.ellipse(cx,ey+S*.58,S*.25,S*.1,0,0,Math.PI*2);ctx.fill();
+      // albero nave
+      ctx.strokeStyle='#7a5020';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(cx,ey+S*.58);ctx.lineTo(cx,ey+S*.28);ctx.stroke();
+      // pennone
+      ctx.beginPath();ctx.moveTo(cx-S*.15,ey+S*.35);ctx.lineTo(cx+S*.15,ey+S*.35);ctx.stroke();
+      // gru/argano
+      ctx.strokeStyle='#8a6a2a';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(ex+S*.15,ey+S*.2);ctx.lineTo(ex+S*.15,ey+S*.55);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ex+S*.15,ey+S*.3);ctx.lineTo(ex+S*.42,ey+S*.42);ctx.stroke();
+      break;
+    }
+
+    case 'fortezza':{
+      // torre centrale quadrata
+      ctx.fillStyle='#5a5040';
+      ctx.fillRect(ex+S*.2,ey+S*.15,S*.6,S*.65);
+      // gradiente pietra
+      const gFort=ctx.createLinearGradient(ex+S*.2,ey+S*.15,ex+S*.8,ey+S*.8);
+      gFort.addColorStop(0,'#7a6a50');gFort.addColorStop(1,'#4a3e2e');
+      ctx.fillStyle=gFort;
+      ctx.fillRect(ex+S*.2,ey+S*.15,S*.6,S*.65);
+      // merlature top
+      ctx.fillStyle='#5a4e3a';
+      for(let i=0;i<4;i++){
+        ctx.fillRect(ex+S*.2+i*S*.15,ey+S*.1,S*.1,S*.1);
+      }
+      // torri angolari
+      ctx.fillStyle='#6a5a42';
+      ctx.fillRect(ex+S*.06,ey+S*.28,S*.18,S*.5);
+      ctx.fillRect(ex+S*.76,ey+S*.28,S*.18,S*.5);
+      // merlature torri
+      ctx.fillStyle='#5a4e3a';
+      for(let i=0;i<2;i++){
+        ctx.fillRect(ex+S*.07+i*S*.09,ey+S*.24,S*.07,S*.07);
+        ctx.fillRect(ex+S*.77+i*S*.09,ey+S*.24,S*.07,S*.07);
+      }
+      // portone ad arco
+      ctx.fillStyle='#1a0e06';
+      ctx.beginPath();
+      ctx.arc(cx,ey+S*.7,S*.12,Math.PI,0,false);
+      ctx.lineTo(cx+S*.12,ey+S*.82);
+      ctx.lineTo(cx-S*.12,ey+S*.82);
+      ctx.closePath();ctx.fill();
+      // feritoie
+      ctx.fillStyle='rgba(0,0,0,.7)';
+      ctx.fillRect(cx-S*.04,ey+S*.28,S*.08,S*.2);
+      ctx.fillRect(cx-S*.14,ey+S*.38,S*.2,S*.07);
+      // bandiera
+      ctx.strokeStyle='#4a2a0a';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(cx,ey+S*.1);ctx.lineTo(cx,ey+S*.02);ctx.stroke();
+      ctx.fillStyle='#c0392b';
+      ctx.fillRect(cx,ey+S*.02,S*.16,S*.1);
+      break;
+    }
+
+    case 'fattoria':{
+      // campi coltivati a righe visti dall'alto
+      const colori=['#4a7a20','#3a6a18','#5a8a28','#426020'];
+      for(let r=0;r<5;r++){
+        ctx.fillStyle=colori[r%colori.length];
+        ctx.fillRect(ex+S*.06,ey+S*.1+r*S*.14,S*.6,S*.11);
+      }
+      // recinzione
+      ctx.strokeStyle='#8a6030';ctx.lineWidth=1.5;
+      ctx.strokeRect(ex+S*.04,ey+S*.08,S*.64,S*.76);
+      // pali recinzione
+      for(let i=0;i<4;i++){
+        ctx.beginPath();
+        ctx.moveTo(ex+S*.04+i*S*.22,ey+S*.08);
+        ctx.lineTo(ex+S*.04+i*S*.22,ey+S*.84);ctx.stroke();
+      }
+      // fienile piccolo
+      ctx.fillStyle='#c8780a';
+      ctx.fillRect(ex+S*.7,ey+S*.15,S*.24,S*.32);
+      ctx.fillStyle='#8a4a08';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.68,ey+S*.17);
+      ctx.lineTo(ex+S*.82,ey+S*.06);
+      ctx.lineTo(ex+S*.96,ey+S*.17);
+      ctx.closePath();ctx.fill();
+      // pozzo
+      ctx.fillStyle='#6a4a2a';
+      ctx.beginPath();ctx.arc(ex+S*.82,ey+S*.62,S*.09,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#4a2a0a';ctx.lineWidth=1.5;ctx.stroke();
+      break;
+    }
+
+    case 'distilleria':{
+      // edificio con ciminiera e botti
+      ctx.fillStyle='#5a3a1a';
+      ctx.fillRect(ex+S*.1,ey+S*.3,S*.65,S*.55);
+      const gDist=ctx.createLinearGradient(ex+S*.1,ey+S*.3,ex+S*.75,ey+S*.85);
+      gDist.addColorStop(0,'#7a5028');gDist.addColorStop(1,'#4a2e12');
+      ctx.fillStyle=gDist;
+      ctx.fillRect(ex+S*.1,ey+S*.3,S*.65,S*.55);
+      // tetto
+      ctx.fillStyle='#3a2008';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.08,ey+S*.32);
+      ctx.lineTo(ex+S*.42,ey+S*.1);
+      ctx.lineTo(ex+S*.77,ey+S*.32);
+      ctx.closePath();ctx.fill();
+      // ciminiera
+      ctx.fillStyle='#3a3028';
+      ctx.fillRect(ex+S*.62,ey+S*.04,S*.16,S*.3);
+      // fumo ciminiera
+      for(let i=0;i<3;i++){
+        const fy=ey+S*.04-i*S*.08-Math.sin(frame*.05+i)*S*.03;
+        ctx.globalAlpha=.35-i*.1;
+        ctx.fillStyle='#aaa';
+        ctx.beginPath();ctx.arc(ex+S*.7,fy,S*(.04+i*.02),0,Math.PI*2);ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      // botti allineate
+      for(let i=0;i<3;i++){
+        ctx.fillStyle='#6a3a10';
+        ctx.beginPath();ctx.arc(ex+S*(.18+i*.22),ey+S*.72,S*.09,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#3a1a00';ctx.lineWidth=1;ctx.stroke();
+        ctx.strokeStyle='#8a5a20';ctx.lineWidth=.7;
+        ctx.beginPath();ctx.moveTo(ex+S*(.09+i*.22),ey+S*.72);ctx.lineTo(ex+S*(.27+i*.22),ey+S*.72);ctx.stroke();
+      }
+      break;
+    }
+
+    case 'segheria':{
+      // tronchi impilati + capannone aperto
+      // piazzale tronchi
+      ctx.fillStyle='#8a6030';
+      ctx.fillRect(ex+S*.04,ey+S*.5,S*.55,S*.4);
+      // tronchi sovrapposti
+      const logColors=['#8a5a20','#6a4218','#9a6828'];
+      for(let row=0;row<3;row++){
+        for(let col=0;col<3;col++){
+          ctx.fillStyle=logColors[(row+col)%3];
+          ctx.beginPath();
+          ctx.ellipse(ex+S*(.12+col*.17),ey+S*(.9-row*.12),S*.07,S*.04,0,0,Math.PI*2);
+          ctx.fill();
+          ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=.8;ctx.stroke();
+          // anelli tronco
+          ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=.5;
+          ctx.beginPath();ctx.arc(ex+S*(.12+col*.17),ey+S*(.9-row*.12),S*.04,0,Math.PI*2);ctx.stroke();
+        }
+      }
+      // capannone
+      ctx.fillStyle='#a07040';
+      ctx.fillRect(ex+S*.58,ey+S*.22,S*.36,S*.6);
+      ctx.fillStyle='#6a4018';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.55,ey+S*.24);
+      ctx.lineTo(ex+S*.76,ey+S*.08);
+      ctx.lineTo(ex+S*.97,ey+S*.24);
+      ctx.closePath();ctx.fill();
+      // lama sega (vista dall'alto)
+      ctx.fillStyle='#c8c8c8';
+      ctx.fillRect(ex+S*.62,ey+S*.44,S*.24,S*.06);
+      ctx.fillStyle='#a0a0a0';
+      for(let i=0;i<6;i++) ctx.fillRect(ex+S*(.62+i*.04),ey+S*.44,S*.02,S*.03);
+      break;
+    }
+
+    case 'caserma':{
+      // edificio militare con cortile
+      // cortile
+      ctx.fillStyle='#8a7a50';
+      ctx.fillRect(ex+S*.12,ey+S*.38,S*.76,S*.5);
+      // edificio principale
+      const gCas=ctx.createLinearGradient(ex+S*.12,ey+S*.15,ex+S*.88,ey+S*.5);
+      gCas.addColorStop(0,'#6a6040');gCas.addColorStop(1,'#4a4428');
+      ctx.fillStyle=gCas;
+      ctx.fillRect(ex+S*.12,ey+S*.15,S*.76,S*.3);
+      // tetto piatto con parapetto
+      ctx.fillStyle='#3a3422';
+      ctx.fillRect(ex+S*.1,ey+S*.12,S*.8,S*.07);
+      // merlature
+      for(let i=0;i<5;i++) ctx.fillRect(ex+S*(.12+i*.16),ey+S*.06,S*.1,S*.09);
+      // porta
+      ctx.fillStyle='#1a1208';
+      ctx.fillRect(ex+S*.4,ey+S*.27,S*.2,S*.18);
+      // finestre con sbarre
+      ctx.fillStyle='rgba(200,180,100,.6)';
+      ctx.fillRect(ex+S*.16,ey+S*.19,S*.14,S*.1);
+      ctx.fillRect(ex+S*.7,ey+S*.19,S*.14,S*.1);
+      ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1;
+      for(let b=0;b<3;b++){
+        ctx.beginPath();ctx.moveTo(ex+S*(.19+b*.04),ey+S*.19);ctx.lineTo(ex+S*(.19+b*.04),ey+S*.29);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(ex+S*(.73+b*.04),ey+S*.19);ctx.lineTo(ex+S*(.73+b*.04),ey+S*.29);ctx.stroke();
+      }
+      // soldati nel cortile (puntini)
+      ctx.fillStyle='#c8a040';
+      for(let i=0;i<4;i++){
+        ctx.beginPath();ctx.arc(ex+S*(.22+i*.19),ey+S*.58,S*.04,0,Math.PI*2);ctx.fill();
+      }
+      break;
+    }
+
+    case 'osservatorio':{
+      // torre rotonda con cupola
+      // base torre
+      ctx.fillStyle='#7a6a50';
+      ctx.beginPath();ctx.arc(cx,cy+S*.12,S*.3,0,Math.PI*2);ctx.fill();
+      const gOss=ctx.createRadialGradient(cx-S*.08,cy,0,cx,cy+S*.12,S*.3);
+      gOss.addColorStop(0,'#9a8860');gOss.addColorStop(1,'#5a4a30');
+      ctx.fillStyle=gOss;
+      ctx.beginPath();ctx.arc(cx,cy+S*.12,S*.28,0,Math.PI*2);ctx.fill();
+      // cupola
+      ctx.fillStyle='#2a5080';
+      ctx.beginPath();ctx.arc(cx,cy-S*.08,S*.22,Math.PI,0,false);ctx.fill();
+      ctx.strokeStyle='#1a3a60';ctx.lineWidth=1.5;ctx.stroke();
+      // striscia cupola
+      ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(cx,cy-S*.08,S*.22,-Math.PI*.7,-Math.PI*.3,false);ctx.stroke();
+      // cannocchiale
+      ctx.strokeStyle='#8a7a50';ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(cx-S*.1,cy-S*.08);
+      ctx.lineTo(cx+S*.2,cy-S*.22);ctx.stroke();
+      ctx.fillStyle='#6a5a38';
+      ctx.beginPath();ctx.arc(cx+S*.2,cy-S*.22,S*.04,0,Math.PI*2);ctx.fill();
+      // stella (lente)
+      ctx.fillStyle='rgba(200,220,255,.8)';
+      ctx.beginPath();ctx.arc(cx-S*.18,ey+S*.1,S*.03,0,Math.PI*2);ctx.fill();
+      break;
+    }
+
+    case 'prigione':{
+      // edificio basso con sbarre visibili
+      ctx.fillStyle='#4a4038';
+      ctx.fillRect(ex+S*.08,ey+S*.25,S*.84,S*.6);
+      const gPrig=ctx.createLinearGradient(ex,ey+S*.25,ex,ey+S*.85);
+      gPrig.addColorStop(0,'#5a5040');gPrig.addColorStop(1,'#323028');
+      ctx.fillStyle=gPrig;
+      ctx.fillRect(ex+S*.08,ey+S*.25,S*.84,S*.6);
+      // tetto
+      ctx.fillStyle='#282420';
+      ctx.fillRect(ex+S*.06,ey+S*.2,S*.88,S*.1);
+      // celle con sbarre (3 celle)
+      for(let c=0;c<3;c++){
+        const cx2=ex+S*(.14+c*.28);
+        // cella
+        ctx.fillStyle='rgba(0,0,0,.5)';
+        ctx.fillRect(cx2,ey+S*.35,S*.22,S*.35);
+        // sbarre verticali
+        ctx.strokeStyle='#8a8878';ctx.lineWidth=1.5;
+        for(let b=0;b<4;b++){
+          ctx.beginPath();
+          ctx.moveTo(cx2+S*(.03+b*.05),ey+S*.35);
+          ctx.lineTo(cx2+S*(.03+b*.05),ey+S*.7);ctx.stroke();
+        }
+        // sbarra orizzontale
+        ctx.beginPath();
+        ctx.moveTo(cx2,ey+S*.52);ctx.lineTo(cx2+S*.22,ey+S*.52);ctx.stroke();
+      }
+      // porta principale
+      ctx.fillStyle='#1a1510';
+      ctx.fillRect(ex+S*.4,ey+S*.58,S*.2,S*.27);
+      // catena
+      ctx.strokeStyle='#888';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(ex+S*.5,ey+S*.64,S*.04,0,Math.PI*2);ctx.stroke();
+      break;
+    }
+
+    case 'mercatonero':{
+      // bancarelle e tende colorate, aspetto caotico
+      // tenda principale
+      ctx.fillStyle='#8a1a1a';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.05,ey+S*.45);
+      ctx.lineTo(ex+S*.5,ey+S*.1);
+      ctx.lineTo(ex+S*.95,ey+S*.45);
+      ctx.closePath();ctx.fill();
+      ctx.fillStyle='#6a0e0e';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.05,ey+S*.45);
+      ctx.lineTo(ex+S*.5,ey+S*.1);
+      ctx.lineTo(ex+S*.5,ey+S*.45);
+      ctx.closePath();ctx.fill();
+      // bordi tenda a strisce
+      ctx.strokeStyle='#c83030';ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.05,ey+S*.45);
+      ctx.lineTo(ex+S*.5,ey+S*.1);
+      ctx.lineTo(ex+S*.95,ey+S*.45);ctx.stroke();
+      // casse e merci sotto
+      ctx.fillStyle='#7a5a20';
+      ctx.fillRect(ex+S*.08,ey+S*.45,S*.24,S*.18);
+      ctx.fillRect(ex+S*.38,ey+S*.48,S*.2,S*.15);
+      ctx.fillRect(ex+S*.65,ey+S*.45,S*.26,S*.18);
+      // dettagli casse
+      ctx.strokeStyle='#5a3a10';ctx.lineWidth=1;
+      ctx.strokeRect(ex+S*.08,ey+S*.45,S*.24,S*.18);
+      ctx.strokeRect(ex+S*.65,ey+S*.45,S*.26,S*.18);
+      // monete/oggetti
+      ctx.fillStyle='#f0c040';
+      ctx.beginPath();ctx.arc(ex+S*.2,ey+S*.54,S*.04,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(ex+S*.72,ey+S*.52,S*.04,0,Math.PI*2);ctx.fill();
+      // bandierine decorative
+      ctx.strokeStyle='#f0c040';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(ex+S*.1,ey+S*.28);ctx.lineTo(ex+S*.9,ey+S*.28);ctx.stroke();
+      for(let i=0;i<5;i++){
+        ctx.fillStyle=i%2===0?'#f0c040':'#c0392b';
+        ctx.beginPath();
+        ctx.moveTo(ex+S*(.1+i*.2),ey+S*.28);
+        ctx.lineTo(ex+S*(.1+i*.2)+S*.06,ey+S*.36);
+        ctx.lineTo(ex+S*(.1+i*.2)+S*.12,ey+S*.28);
+        ctx.closePath();ctx.fill();
+      }
+      break;
+    }
+
+    case 'casapirata':{
+      // casetta umile con tetto rosso, amaca fuori, casse
+      // base casa
+      const gCasa=ctx.createLinearGradient(ex+S*.15,ey+S*.3,ex+S*.85,ey+S*.82);
+      gCasa.addColorStop(0,'#9a7040');gCasa.addColorStop(1,'#6a4a20');
+      ctx.fillStyle=gCasa;
+      ctx.fillRect(ex+S*.15,ey+S*.32,S*.7,S*.5);
+      // tetto a spiovente basso
+      ctx.fillStyle='#8a2020';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.1,ey+S*.34);
+      ctx.lineTo(cx,ey+S*.1);
+      ctx.lineTo(ex+S*.9,ey+S*.34);
+      ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#5a1010';ctx.lineWidth=1;ctx.stroke();
+      // linea colmo tetto
+      ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=.8;
+      ctx.beginPath();ctx.moveTo(cx,ey+S*.1);ctx.lineTo(cx,ey+S*.34);ctx.stroke();
+      // porta
+      ctx.fillStyle='#3a2008';
+      ctx.fillRect(ex+S*.41,ey+S*.58,S*.18,S*.24);
+      ctx.beginPath();ctx.arc(ex+S*.5,ey+S*.58,S*.09,Math.PI,0,false);ctx.fill();
+      // finestra con croce
+      ctx.fillStyle='rgba(255,220,140,.7)';
+      ctx.fillRect(ex+S*.19,ey+S*.42,S*.16,S*.14);
+      ctx.fillRect(ex+S*.65,ey+S*.42,S*.16,S*.14);
+      ctx.strokeStyle='rgba(80,40,0,.6)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(ex+S*.27,ey+S*.42);ctx.lineTo(ex+S*.27,ey+S*.56);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ex+S*.19,ey+S*.49);ctx.lineTo(ex+S*.35,ey+S*.49);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ex+S*.73,ey+S*.42);ctx.lineTo(ex+S*.73,ey+S*.56);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ex+S*.65,ey+S*.49);ctx.lineTo(ex+S*.81,ey+S*.49);ctx.stroke();
+      // amaca (simbolo della vita del pirata)
+      ctx.strokeStyle='#8a6030';ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.04,ey+S*.55);
+      ctx.quadraticCurveTo(ex+S*.12,ey+S*.72,ex+S*.2,ey+S*.55);
+      ctx.stroke();
+      ctx.fillStyle='rgba(180,140,60,.5)';
+      ctx.beginPath();
+      ctx.moveTo(ex+S*.04,ey+S*.55);
+      ctx.quadraticCurveTo(ex+S*.12,ey+S*.72,ex+S*.2,ey+S*.55);
+      ctx.closePath();ctx.fill();
+      // cassa con monete fuori
+      ctx.fillStyle='#7a5020';
+      ctx.fillRect(ex+S*.72,ey+S*.6,S*.2,S*.14);
+      ctx.strokeStyle='#4a2a00';ctx.lineWidth=1;ctx.strokeRect(ex+S*.72,ey+S*.6,S*.2,S*.14);
+      ctx.fillStyle='#f0c040';
+      ctx.beginPath();ctx.arc(ex+S*.82,ey+S*.59,S*.04,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(ex+S*.76,ey+S*.62,S*.03,0,Math.PI*2);ctx.fill();
+      break;
+    }
+
+    default:{
+      ctx.fillStyle='#6b4520';
+      ctx.fillRect(ex+S*.1,ey+S*.1,S*.8,S*.8);
+      ctx.strokeStyle='rgba(240,192,64,.4)';ctx.lineWidth=1.5;
+      ctx.strokeRect(ex+S*.1,ey+S*.1,S*.8,S*.8);
+    }
+  }
+  ctx.restore();
+}
+
+// ── disegna nave in mare ──
+function disegnaNav(sx,sy,colore){
+  ctx.save();
+  ctx.translate(sx,sy);
+  // scafo
+  ctx.fillStyle=colore||'#5c3a1a';
+  ctx.beginPath();
+  ctx.ellipse(0,4,18,7,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle='#3a2010';ctx.lineWidth=1.5;ctx.stroke();
+  // albero
+  ctx.strokeStyle='#7a5020';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,4);ctx.lineTo(0,-22);ctx.stroke();
+  // vela
+  ctx.fillStyle='rgba(244,228,188,.9)';
+  ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(14,-8);ctx.lineTo(0,2);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=1;ctx.stroke();
+  // bandiera nera
+  ctx.fillStyle='#111';
+  ctx.fillRect(0,-22,10,-6);
+  ctx.restore();
+}
+
+// ── disegna pirata ──
+function disegnaPirata(px,py,selezionato,umore){
+  const mc=coloreUmore(umore);
+  if(selezionato){
+    ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);
+    ctx.fillStyle='rgba(240,192,64,.2)';ctx.fill();
+    ctx.strokeStyle='rgba(240,192,64,.7)';ctx.lineWidth=1.5;ctx.stroke();
+  }
+  // ombra a terra
+  ctx.save();ctx.globalAlpha=.3;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(px+2,py+9,7,2.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  // gambe
+  ctx.fillStyle='#2a1a08';
+  ctx.fillRect(px-4,py+2,3,7);
+  ctx.fillRect(px+1,py+2,3,7);
+  // corpo con gradiente
+  const gc=ctx.createLinearGradient(px-5,py-4,px+5,py+4);
+  gc.addColorStop(0,'#6a3e18');gc.addColorStop(1,'#3a1e08');
+  ctx.fillStyle=gc;
+  ctx.beginPath();ctx.ellipse(px,py-2,5,7,0,0,Math.PI*2);ctx.fill();
+  // cintura
+  ctx.fillStyle='#8a6020';
+  ctx.fillRect(px-5,py+1,10,2);
+  // testa
+  const gt=ctx.createRadialGradient(px-1,py-10,0,px,py-8,6);
+  gt.addColorStop(0,'#e0b888');gt.addColorStop(1,'#b87840');
+  ctx.fillStyle=gt;
+  ctx.beginPath();ctx.arc(px,py-8,5.5,0,Math.PI*2);ctx.fill();
+  // cappello tricorno
+  ctx.fillStyle='#0e0e0e';
+  ctx.beginPath();
+  ctx.moveTo(px-9,py-13);ctx.lineTo(px,py-20);ctx.lineTo(px+9,py-13);
+  ctx.closePath();ctx.fill();
+  ctx.fillRect(px-9,py-14,18,3);
+  ctx.strokeStyle='#f0c040';ctx.lineWidth=.8;
+  ctx.beginPath();ctx.moveTo(px-9,py-14);ctx.lineTo(px+9,py-14);ctx.stroke();
+  // spada al fianco
+  ctx.strokeStyle='#c0c0c0';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(px+4,py+2);ctx.lineTo(px+8,py+8);ctx.stroke();
+  ctx.fillStyle='#8a6020';
+  ctx.beginPath();ctx.arc(px+4,py+2,1.5,0,Math.PI*2);ctx.fill();
+  // indicatore umore
+  ctx.fillStyle=mc;
+  ctx.beginPath();ctx.arc(px,py-24,3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=.8;ctx.stroke();
+}
+
+// ── DRAW PRINCIPALE ──
+function disegnaScena(){
+  frame++;
+  // sfondo oceano profondo
+  const bgGrad=ctx.createRadialGradient(canvas.width*.5,canvas.height*.5,0,canvas.width*.5,canvas.height*.5,canvas.width*.7);
+  bgGrad.addColorStop(0,'#0d2a48');
+  bgGrad.addColorStop(1,'#040a14');
+  ctx.fillStyle=bgGrad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ── tile ──
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    const t=G.mappa[r][c];
+    const x=G.camX+c*G.TILE, y=G.camY+r*G.TILE;
+    if(x+G.TILE<0||y+G.TILE<0||x>canvas.width||y>canvas.height) continue;
+    disegnaTile(t,x,y,r,c);
+  }
+
+  // ── transizioni biomi ──
+  disegnaTransizioni();
+
+  // ── ombreggiatura colline ──
+  if(G.altezza){
+    for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+      const t=G.mappa[r][c];
+      if(t!==T.COLLINA&&t!==T.FORESTA&&t!==T.ERBA) continue;
+      const x=G.camX+c*G.TILE, y=G.camY+r*G.TILE;
+      if(x+G.TILE<0||y+G.TILE<0||x>canvas.width||y>canvas.height) continue;
+      // calcola gradiente dell'altezza con i vicini
+      const h=G.altezza[r][c];
+      const hn=G.altezza[r-1]?G.altezza[r-1][c]:h;
+      const hw=G.altezza[r][c-1]!==undefined?G.altezza[r][c-1]:h;
+      const slope=(h-hn)+(h-hw); // pendenza verso luce (sx-alto)
+      const shade=Math.max(-1,Math.min(1,slope*.18));
+      if(shade<0){
+        ctx.fillStyle=`rgba(255,240,180,${Math.min(.18,-shade)})`;
+      } else {
+        ctx.fillStyle=`rgba(0,0,20,${Math.min(.22,shade)})`;
+      }
+      ctx.fillRect(x,y,G.TILE,G.TILE);
+    }
+  }
+
+  // ── rocce ──
+  for(const rc of G.rocce){
+    const x=G.camX+rc.c*G.TILE, y=G.camY+rc.r*G.TILE;
+    disegnaRoccia(x,y,rc.scala);
+  }
+
+  // ── alberi ──
+  for(const a of G.alberi){
+    const x=G.camX+a.c*G.TILE+a.ox*G.TILE;
+    const y=G.camY+a.r*G.TILE+a.oy*G.TILE;
+    disegnaAlbero(x,y,a.scala,a.tinta);
+  }
+
+  // ── edifici ──
+  for(const b of G.edifici){
+    const x=G.camX+b.c*G.TILE, y=G.camY+b.r*G.TILE;
+    disegnaEdificio(b.tipo,x,y);
+  }
+
+  // ── pirati ──
+  for(const p of G.pirati){
+    const x=G.camX+p.mc*G.TILE+G.TILE/2;
+    const y=G.camY+p.mr*G.TILE+G.TILE/2;
+    disegnaPirata(x,y,G.pirataSelezionato===p.id,p.umore);
+    if(!G.battagliaAttiva){
+      p.mc+=(Math.random()-.5)*.05*G.velocita;
+      p.mr+=(Math.random()-.5)*.05*G.velocita;
+      p.mc=Math.max(G.COLS*.28,Math.min(G.COLS*.68,p.mc));
+      p.mr=Math.max(G.RIGHE*.3,Math.min(G.RIGHE*.68,p.mr));
+    }
+  }
+
+  // ── navi in mare ──
+  for(const n of G.navi){
+    if(n.inMare){
+      const ox=G.camX+(G.COLS+1)*G.TILE+Math.sin(frame*.015+n.id)*22;
+      const oy=G.camY+(3+n.id*2.8)*G.TILE+Math.cos(frame*.012+n.id)*12;
+      disegnaNav(ox,oy,'#5c3a1a');
+    }
+  }
+
+  // ── POI ──
+  for(const p of G.pois||[]){
+    const x=G.camX+p.c*G.TILE+G.TILE/2;
+    const y=G.camY+p.r*G.TILE+G.TILE/2;
+    const pulse=Math.sin(frame*.04)*3;
+    ctx.beginPath();ctx.arc(x,y,9+pulse,0,Math.PI*2);
+    ctx.fillStyle='rgba(240,192,64,.18)';ctx.fill();
+    ctx.strokeStyle='rgba(240,192,64,.55)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.font=`${G.TILE*.68}px serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(p.icona,x,y);
+  }
+
+  // ── hover costruzione ──
+  if(G.modalitaCostruzione&&G.hoverC>=0&&G.hoverR>=0){
+    const x=G.camX+G.hoverC*G.TILE, y=G.camY+G.hoverR*G.TILE;
+    const ok=puoCostruire(G.hoverR,G.hoverC);
+    ctx.fillStyle=ok?'rgba(80,220,80,.28)':'rgba(220,60,60,.28)';
+    ctx.fillRect(x,y,G.TILE,G.TILE);
+    ctx.strokeStyle=ok?'#4f4':'#f44';ctx.lineWidth=2;
+    ctx.strokeRect(x,y,G.TILE,G.TILE);
+    // anteprima edificio
+    if(ok){
+      ctx.globalAlpha=.5;
+      disegnaEdificio(G.modalitaCostruzione,x,y);
+      ctx.globalAlpha=1;
+    }
+  }
+}
+
+function coloreUmore(u){return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b';}
+
+// ═══════════════════════════════════════════════════
+// AVVIO
+// ═══════════════════════════════════════════════════
+function avviaGioco(){
+  document.getElementById('schermata-titolo').style.display='none';
+  document.getElementById('barra-sup').style.display='flex';
+  document.getElementById('principale').style.display='flex';
+  document.getElementById('barra-inf').style.display='flex';
+  canvas = document.getElementById('mappa-canvas');
+  ctx = canvas.getContext('2d');
+  generaMappa();
+  ridimensionaCanvas();
+  window.addEventListener('resize',ridimensionaCanvas);
+  window.addEventListener('orientationchange',()=>setTimeout(ridimensionaCanvas,100));
+  for(let i=0;i<4;i++) creaaPirata();
+  G.navi.push({id:0,nome:'La Marea Maledetta',tipo:'sciabecco',hp:80,hpMax:80,inMare:false,timerRaid:0});
+  assegnaMissioni();
+  impostaInput();
+  mostraTab('costruisci');
+  notifica('⚓ Benvenuto, Capitano!','La tua isola ti aspetta. Costruisci, saccheggia e forgia una leggenda!');
+  aggiornaUI();
+  cicloGioco();
+}
+
+function creaaPirata(){
+  const n=NOMI_PIRATI[Math.floor(Math.random()*NOMI_PIRATI.length)];
+  const r=RUOLI_PIRATI[Math.floor(Math.random()*RUOLI_PIRATI.length)];
+  const cx=G.COLS/2, cy=G.RIGHE/2;
+  G.pirati.push({
+    id:Date.now()+Math.random(),
+    nome:n, ruolo:r,
+    combattimento:20+Math.floor(Math.random()*60),
+    navigazione:20+Math.floor(Math.random()*60),
+    umore:40+Math.floor(Math.random()*40),
+    mc:cx-2+Math.random()*4,
+    mr:cy-2+Math.random()*4,
+    naveId:null, paga:4,
+  });
+  controllaMissione('pirati',G.pirati.length);
+}
+
+// ═══════════════════════════════════════════════════
+// COSTRUZIONE
+// ═══════════════════════════════════════════════════
+function selezionaCostruzione(tipo){
+  G.modalitaCostruzione=tipo;
+  document.querySelectorAll('.btn-costruisci').forEach(b=>b.classList.remove('attivo-strumento'));
+  const btn=document.getElementById('b-'+tipo);
+  if(btn) btn.classList.add('attivo-strumento');
+  document.getElementById('btn-annulla').classList.add('mostra');
+  document.getElementById('mappa-wrap').classList.add('modalita-costruzione');
+  aggMsg(`Seleziona un tile di terra per costruire ${ED[tipo].nome}.`,'info');
+}
+function annullaCostruzione(){
+  G.modalitaCostruzione=null;
+  document.querySelectorAll('.btn-costruisci').forEach(b=>b.classList.remove('attivo-strumento'));
+  document.getElementById('btn-annulla').classList.remove('mostra');
+  document.getElementById('mappa-wrap').classList.remove('modalita-costruzione');
+}
+function puoCostruire(r,c){
+  if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) return false;
+  const t=G.mappa[r][c];
+  if(t!==T.SABBIA&&t!==T.ERBA&&t!==T.COLLINA&&t!==T.SENTIERO) return false;
+  if(G.edifici.find(b=>b.r===r&&b.c===c)) return false;
+  // non sopra alberi o rocce
+  return true;
+}
+function piazzaEdificio(r,c){
+  const tipo=G.modalitaCostruzione, def=ED[tipo];
+  if(!puoCostruire(r,c)){aggMsg('Non puoi costruire qui!','male');return;}
+  if(G.oro<def.costo.oro||G.legno<def.costo.legno){
+    aggMsg(`Servono ${def.costo.oro} oro e ${def.costo.legno} legno.`,'male');return;
+  }
+  G.oro-=def.costo.oro; G.legno-=def.costo.legno;
+  G.edifici.push({tipo,r,c});
+  // rimuovi alberi/rocce in quel tile
+  G.alberi=G.alberi.filter(a=>!(a.r===r&&a.c===c));
+  G.rocce=G.rocce.filter(rc=>!(rc.r===r&&rc.c===c));
+  annullaCostruzione();
+  notifica(`${def.icona} ${def.nome} Costruito!`,def.effetto);
+  controllaMissione('edifici',G.edifici.length);
+  aggiornaUI();
+}
+
+// ═══════════════════════════════════════════════════
+// NAVI
+// ═══════════════════════════════════════════════════
+function costruisciNave(){
+  if(G.oro<150||G.legno<80){aggMsg('Servono 150 oro e 80 legno.','male');return;}
+  if(!G.edifici.find(b=>b.tipo==='cantiere')){aggMsg('Costruisci prima un Cantiere Navale!','male');return;}
+  G.oro-=150; G.legno-=80;
+  const nomi=['Serpente di Ferro','Burrasca Nera','Scia del Diavolo','Orizzonte Insanguinato','Mietitore dei Mari'];
+  const bonus=G.ricerca.completate.has('armatura')?20:0;
+  G.navi.push({id:G.navi.length,nome:nomi[G.navi.length%nomi.length],
+    tipo:'sciabecco',hp:80+bonus,hpMax:80+bonus,inMare:false,timerRaid:0});
+  notifica('⛵ Nave Costruita!','La flotta cresce.');
+  aggiornaUI();
+}
+
+// ═══════════════════════════════════════════════════
+// RAID & BATTAGLIA
+// ═══════════════════════════════════════════════════
+function inviaRaid(){
+  const nave=G.navi.find(n=>!n.inMare);
+  if(!nave){aggMsg('Nessuna nave disponibile!','male');return;}
+  if(G.cooldownRaid>0){aggMsg(`Attendi ancora ${G.cooldownRaid} giorni.`,'male');return;}
+  if(G.pirati.length<2){aggMsg('Servono almeno 2 pirati!','male');return;}
+  const chBattaglia=G.fazioni.reale.rep>30 ? 0.45 : 0.25;
+  if(Math.random()<chBattaglia) iniziaBattaglia(nave,false);
+  else if(Math.random()<.3) iniziaBattaglia(nave,true);
+  else lanciaRaid(nave);
+}
+function lanciaRaid(nave){
+  nave.inMare=true;
+  const dur=G.ricerca.completate.has('mappe')?2+Math.floor(Math.random()*2):3+Math.floor(Math.random()*3);
+  nave.timerRaid=dur;
+  G.cooldownRaid=4;
+  G.contatori.raid++;
+  aggMsg(`${nave.nome} salpa per razziare!`,'bene');
+  notifica('⚔ Raid Lanciato!',`${nave.nome} torna in ${dur} giorni.`);
+  controllaMissione('raid',G.contatori.raid);
+  aggiornaUI();
+}
+
+// ── BATTAGLIA ──
+let datiBattaglia={};
+function iniziaBattaglia(nave,eMercante){
+  if(G.battagliaAttiva) return;
+  G.battagliaAttiva=true;
+  const enome=eMercante?NAVI_MERCANTI[Math.floor(Math.random()*NAVI_MERCANTI.length)]:NAVI_NEMICHE[Math.floor(Math.random()*NAVI_NEMICHE.length)];
+  const eHP=eMercante?50+Math.floor(Math.random()*30):80+Math.floor(Math.random()*40);
+  datiBattaglia={nave,enome,eMercante,eHP,eHPMax:eHP,pHP:nave.hp,pHPMax:nave.hpMax,round:0};
+  document.getElementById('bt-titolo').textContent=eMercante?'💰 Nave Mercantile!':'⚔ Battaglia Navale!';
+  document.getElementById('bt-nave1').textContent='⛵';
+  document.getElementById('bt-nave2').textContent=eMercante?'🚢':'⛵';
+  document.getElementById('bt-nome1').textContent=nave.nome;
+  document.getElementById('bt-nome2').textContent=enome;
+  document.getElementById('bt-hp1').style.width='100%';
+  document.getElementById('bt-hp2').style.width='100%';
+  document.getElementById('bt-hp1-txt').textContent=nave.hp;
+  document.getElementById('bt-hp2-txt').textContent=eHP;
+  document.getElementById('bt-log').textContent='La battaglia comincia!';
+  document.getElementById('bt-risultato').style.display='none';
+  document.getElementById('bt-chiudi').style.display='none';
+  document.getElementById('overlay-battaglia').classList.add('aperto');
+  setTimeout(roundBattaglia,650);
+}
+function roundBattaglia(){
+  if(!G.battagliaAttiva) return;
+  const bd=datiBattaglia; bd.round++;
+  const haiBordata=G.ricerca.completate.has('bordata');
+  const haiCannoni=G.ricerca.completate.has('cannoni');
+  const baseAtk=G.pirati.reduce((a,p)=>a+p.combattimento,0)/Math.max(G.pirati.length,1);
+  let pAtk=Math.floor(5+(baseAtk*.15)+(haiCannoni?8:0)+(Math.random()*12));
+  if(haiBordata&&Math.random()<.35) pAtk*=2;
+  let eAtk=Math.floor(4+(Math.random()*10)+(bd.eMercante?0:6));
+  if(G.edifici.find(b=>b.tipo==='fortezza')&&Math.random()<.25) eAtk=Math.floor(eAtk*.5);
+  bd.eHP=Math.max(0,bd.eHP-pAtk);
+  bd.pHP=Math.max(0,bd.pHP-eAtk);
+  if(G.ricerca.completate.has('alchimia')&&G.rum>=5&&bd.pHP<bd.pHPMax*.5){G.rum-=5;bd.pHP=Math.min(bd.pHPMax,bd.pHP+10);}
+  const pPct=bd.pHP/bd.pHPMax*100, ePct=bd.eHP/bd.eHPMax*100;
+  document.getElementById('bt-hp1').style.width=pPct+'%';
+  document.getElementById('bt-hp2').style.width=ePct+'%';
+  document.getElementById('bt-hp1-txt').textContent=bd.pHP;
+  document.getElementById('bt-hp2-txt').textContent=bd.eHP;
+  const frasi=['I cannoni tuonano!','Fumo ovunque!','Fuoco di risposta!','La ciurma regge!','Colpo diretto!','Bordata completa!'];
+  document.getElementById('bt-log').textContent=frasi[Math.floor(Math.random()*frasi.length)]+
+    ` -${pAtk} HP al nemico, -${eAtk} HP a te.`;
+  if(bd.eHP<=0||bd.pHP<=0||bd.round>=8){fineBattaglia();return;}
+  setTimeout(roundBattaglia,900);
+}
+function fineBattaglia(){
+  const bd=datiBattaglia;
+  bd.nave.hp=bd.pHP;
+  const vinto=bd.pHP>bd.eHP;
+  const el=document.getElementById('bt-risultato');
+  el.style.display='block';
+  if(vinto){
+    el.className='risultato-battaglia vinto';
+    if(bd.eMercante){
+      const bottino=80+Math.floor(Math.random()*120), cibo=20+Math.floor(Math.random()*40);
+      G.oro+=bottino; G.cibo+=cibo;
+      G.fazioni.mercante.rep=Math.max(-100,G.fazioni.mercante.rep-15);
+      G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+10);
+      el.textContent=`💰 Vittoria! Catturati ${bottino} oro e ${cibo} cibo!`;
+      if(Math.random()<.5) catturaPrigioniero('Mercante');
+    } else {
+      const bottino=50+Math.floor(Math.random()*80);
+      G.oro+=bottino;
+      G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-10);
+      G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+15);
+      el.textContent=`⚔ Vittoria! Affondata ${bd.enome}! +${bottino} oro!`;
+      if(Math.random()<.4) catturaPrigioniero('Marina Reale');
+    }
+    for(const p of G.pirati) p.umore=Math.min(100,p.umore+15);
+    notifica('⚔ Vittoria in Battaglia!',`${bd.nave.nome} trionfa!`);
+  } else {
+    el.className='risultato-battaglia perso';
+    el.textContent=`💀 Sconfitta! ${bd.nave.nome} torna danneggiata.`;
+    bd.nave.hp=Math.max(10,Math.floor(bd.nave.hpMax*.2));
+    for(const p of G.pirati) p.umore=Math.max(5,p.umore-20);
+    notifica('💀 Battaglia Persa!','La nave batte in ritirata.','male');
+  }
+  document.getElementById('bt-chiudi').style.display='inline-block';
+  aggiornaUI();
+}
+function chiudiBattaglia(){
+  G.battagliaAttiva=false;
+  document.getElementById('overlay-battaglia').classList.remove('aperto');
+  if(datiBattaglia.nave&&!datiBattaglia.nave.inMare&&datiBattaglia.pHP>datiBattaglia.eHP)
+    lanciaRaid(datiBattaglia.nave);
+}
+
+// ── PRIGIONIERI ──
+function catturaPrigioniero(fazione){
+  const nome=NOMI_PRIGIONIERI[Math.floor(Math.random()*NOMI_PRIGIONIERI.length)];
+  const riscatto=100+Math.floor(Math.random()*200);
+  G.prigionieri.push({id:Date.now(),nome,fazione,riscatto,giorni:0});
+  aggMsg(`⛓ Catturato: ${nome} (${fazione})!`,'info');
+}
+function riscattaPrigioniero(id){
+  const p=G.prigionieri.find(x=>x.id===id);
+  if(!p) return;
+  if(!G.edifici.find(b=>b.tipo==='prigione')){aggMsg('Costruisci prima una Prigione!','male');return;}
+  G.oro+=p.riscatto;
+  G.prigionieri=G.prigionieri.filter(x=>x.id!==id);
+  G.contatori.riscatti++;
+  if(p.fazione==='Marina Reale') G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+8);
+  if(p.fazione==='Mercante') G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+10);
+  aggMsg(`💰 Riscattato ${p.nome} per ${p.riscatto} oro!`,'bene');
+  controllaMissione('riscatti',G.contatori.riscatti);
+  aggiornaUI();
+}
+function reclutaPrigioniero(id){
+  const p=G.prigionieri.find(x=>x.id===id);
+  if(!p) return;
+  G.prigionieri=G.prigionieri.filter(x=>x.id!==id);
+  creaaPirata();
+  aggMsg(`⚔ ${p.nome} si unisce alla ciurma!`,'bene');
+  aggiornaUI();
+}
+function apriPrigione(){
+  const haPrigione=G.edifici.find(b=>b.tipo==='prigione');
+  let html=`<p>I prigionieri catturati possono essere riscattati per oro o reclutati come pirati.</p>`;
+  if(!haPrigione) html+=`<p style="color:#ffaaaa">⚠ Costruisci una Prigione per tenere i prigionieri!</p>`;
+  if(G.prigionieri.length===0){html+=`<p>Nessun prigioniero al momento.</p>`;}
+  else for(const p of G.prigionieri){
+    html+=`<div style="background:rgba(139,26,26,.2);border:1px solid rgba(192,57,43,.4);border-radius:4px;padding:8px;margin:6px 0">
+      <strong style="color:#ffbbbb">${p.nome}</strong> <span style="font-size:.75rem;color:var(--sabbia)">(${p.fazione})</span><br>
+      <span style="font-size:.75rem">Riscatto: <span style="color:var(--oro)">${p.riscatto} oro</span></span><br>
+      <button class="mbtn primario" onclick="riscattaPrigioniero(${p.id});chiudiModale()">💰 Riscatta</button>
+      <button class="mbtn secondario" onclick="reclutaPrigioniero(${p.id});chiudiModale()">⚔ Recluta</button>
+    </div>`;
+  }
+  apriModale('⛓ Prigione',html);
+}
+
+// ── RICERCA ──
+function puoRicercare(tech){return !G.ricerca.completate.has(tech.id)&&tech.req.every(r=>G.ricerca.completate.has(r));}
+function faiRicerca(techId){
+  const tech=TECH.find(t=>t.id===techId);
+  if(!tech||!puoRicercare(tech)) return;
+  if(G.ricerca.punti<tech.costo){aggMsg(`Servono ${tech.costo} punti ricerca!`,'male');return;}
+  G.ricerca.punti-=tech.costo;
+  G.ricerca.completate.add(techId);
+  if(techId==='leggenda') for(const p of G.pirati) p.umore=Math.min(100,p.umore+15);
+  notifica(`${tech.icona} ${tech.nome} Studiata!`,tech.desc);
+  controllaMissione('ricerca',G.ricerca.completate.size);
+  mostraTab('ricerca');aggiornaUI();
+}
+
+// ── COMMERCIO ──
+function apriCommercio(){
+  const haMercato=G.edifici.find(b=>b.tipo==='mercatonero');
+  apriModale('🤝 Commercio',`
+    <p>Una nave mercantile si ancora nelle vicinanze.</p>
+    <p style="color:var(--oro);margin:8px 0">Prezzi correnti:</p>
+    <p>• 10 Cibo → 15 Oro ${G.fazioni.mercante.rep>30?'<em style="color:#aaffaa">(+fidato)</em>':''}</p>
+    <p>• 10 Legno → 12 Oro</p>
+    <p>• 5 Rum → 22 Oro</p>
+    ${haMercato?`<p style="color:#aaffaa;margin-top:6px">🛒 Mercato Nero: +20% prezzi attivo</p>`:''}
+    <div style="margin-top:12px">
+      <button class="mbtn primario" onclick="commercia('cibo')">Vendi Cibo (${Math.min(50,G.cibo)})</button>
+      <button class="mbtn primario" onclick="commercia('legno')">Vendi Legno (${Math.min(50,G.legno)})</button>
+      <button class="mbtn primario" onclick="commercia('rum')">Vendi Rum (${Math.min(25,G.rum)})</button>
+    </div>
+  `);
+}
+function commercia(risorsa){
+  const quantita={cibo:Math.min(50,G.cibo),legno:Math.min(50,G.legno),rum:Math.min(25,G.rum)};
+  let prezzi={cibo:1.5,legno:1.2,rum:4.4};
+  if(G.edifici.find(b=>b.tipo==='mercatonero')) for(const k in prezzi) prezzi[k]*=1.2;
+  if(G.fazioni.mercante.rep>30) for(const k in prezzi) prezzi[k]*=1.1;
+  const q=quantita[risorsa];
+  if(q<=0){aggMsg('Niente da vendere!','male');chiudiModale();return;}
+  const oro=Math.floor(q*prezzi[risorsa]);
+  G[risorsa]-=q; G.oro+=oro;
+  G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+2);
+  aggMsg(`Venduti ${q} ${risorsa} per ${oro} oro!`,'bene');
+  chiudiModale();aggiornaUI();
+}
+
+// ── EDITTI ──
+function apriEditti(){
+  apriModale('📜 Editti del Capitano',`
+    <p>La tua parola è legge sull'isola.</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
+      <button class="mbtn primario" onclick="editto('banchetto')">🍖 Grande Banchetto — 60 cibo, morale +35</button>
+      <button class="mbtn primario" onclick="editto('bonus')">💰 Paga Straordinaria — 120 oro, morale +25</button>
+      <button class="mbtn primario" onclick="editto('leva')">⚔ Leva Forzata — Pirata gratis, morale -15</button>
+      <button class="mbtn primario" onclick="editto('rum')">🍺 Razione di Rum — 30 rum, morale +20</button>
+      <button class="mbtn pericolo" onclick="editto('chiglia')">💀 Carena — Morale -30, +disciplina</button>
+    </div>
+  `);
+}
+function editto(tipo){
+  chiudiModale();
+  if(tipo==='banchetto'){
+    if(G.cibo<60){aggMsg('Cibo insufficiente!','male');return;}
+    G.cibo-=60; for(const p of G.pirati) p.umore=Math.min(100,p.umore+35);
+    notifica('🍖 Grande Banchetto!','La ciurma festeggia!');
+  } else if(tipo==='bonus'){
+    if(G.oro<120){aggMsg('Oro insufficiente!','male');return;}
+    G.oro-=120; for(const p of G.pirati) p.umore=Math.min(100,p.umore+25);
+    notifica('💰 Paga Distribuita!','Tre urrà per il Capitano!');
+  } else if(tipo==='leva'){
+    creaaPirata(); for(const p of G.pirati) p.umore=Math.max(5,p.umore-15);
+    notifica('⚔ Leva Forzata!','Un nuovo pirata, piuttosto riluttante.');
+  } else if(tipo==='rum'){
+    if(G.rum<30){aggMsg('Rum insufficiente!','male');return;}
+    G.rum-=30; for(const p of G.pirati) p.umore=Math.min(100,p.umore+20);
+    notifica('🍺 Razione di Rum!','La ciurma beve con gioia!');
+  } else if(tipo==='chiglia'){
+    for(const p of G.pirati) p.umore=Math.max(5,p.umore-30);
+    aggMsg('⚓ Un pirata è stato passato sotto la chiglia. Terrore silenzioso.','male');
+  }
+  aggiornaUI();
+}
+
+// ── TICK ──
+function tick(){
+  G.tick++; G.giorno++;
+  const nFattor=G.edifici.filter(b=>b.tipo==='fattoria').length;
+  const nDistil=G.edifici.filter(b=>b.tipo==='distilleria').length;
+  const nSegh=G.edifici.filter(b=>b.tipo==='segheria').length;
+  const nOsserv=G.edifici.filter(b=>b.tipo==='osservatorio').length;
+  const haTaverna=G.edifici.find(b=>b.tipo==='taverna');
+  const haCaserma=G.edifici.find(b=>b.tipo==='caserma');
+
+  const nCasa=G.edifici.filter(b=>b.tipo==='casapirata').length;
+
+  G.cibo+=5+nFattor*9;
+  G.legno+=3+nSegh*7;
+  G.rum+=nDistil*6;
+  G.oro+=12 + nCasa*6;  // base 12 + 6 per casa
+  G.ricerca.punti+=nOsserv*3;
+
+  // Consumo cibo
+  const costoCibo=G.pirati.length*2;
+  G.cibo-=costoCibo;
+  if(G.cibo<0){G.cibo=0;for(const p of G.pirati) p.umore-=10;aggMsg('⚠ I pirati stanno morendo di fame!','male');}
+
+  // Rum e morale
+  const costoRum=G.pirati.length;
+  if(G.rum>=costoRum){G.rum-=costoRum;for(const p of G.pirati) p.umore=Math.min(100,p.umore+3);}
+  else for(const p of G.pirati) p.umore-=6;
+  if(haTaverna) for(const p of G.pirati) p.umore=Math.min(100,p.umore+5);
+
+  // Paghe — le case riducono la paga (ogni casa copre 2 pirati)
+  const pirateCoperti=Math.min(G.pirati.length, nCasa*2);
+  const pagaTotale=G.pirati.reduce((a,p)=>a+p.paga,0);
+  const scontoCasa=pirateCoperti*1; // le case risparmiano 1 oro per pirata coperto
+  const pagaFinale=Math.max(0, pagaTotale-scontoCasa);
+  G.oro-=pagaFinale;
+  if(G.oro<0){G.oro=0;for(const p of G.pirati) p.umore-=8;}
+
+  // Addestramento caserma
+  if(haCaserma&&G.tick%3===0){
+    const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
+    if(p){p.combattimento=Math.min(100,p.combattimento+1);p.navigazione=Math.min(100,p.navigazione+1);}
+  }
+
+  // Deriva umore e diserzione
+  for(const p of G.pirati){
+    p.umore=Math.max(5,Math.min(100,p.umore+(Math.random()-.5)*3));
+    if(p.umore<12&&Math.random()<.2&&!G.ricerca.completate.has('medicina')){
+      aggMsg(`☠ ${p.nome} è disertato!`,'male');
+      G.pirati=G.pirati.filter(x=>x.id!==p.id);
+    }
+  }
+
+  // Rientro navi da raid
+  for(const n of G.navi){
+    if(n.inMare&&n.timerRaid>0){
+      n.timerRaid--;
+      if(n.timerRaid<=0){
+        n.inMare=false;
+        const mult=G.ricerca.completate.has('cannoni')?1.3:1;
+        const bottino=Math.floor((70+Math.random()*130)*mult);
+        const cibo=20+Math.floor(Math.random()*50);
+        G.oro+=bottino; G.cibo+=cibo;
+        n.hp=Math.min(n.hpMax,n.hp+15);
+        for(const p of G.pirati) p.umore=Math.min(100,p.umore+14);
+        notifica('💰 Raid Completato!',`${n.nome} porta ${bottino} oro e ${cibo} cibo!`);
+      }
+    }
+  }
+
+  // Upkeep prigionieri
+  for(const p of G.prigionieri){p.giorni++;G.cibo=Math.max(0,G.cibo-1);}
+
+  if(G.cooldownRaid>0) G.cooldownRaid--;
+  G.fazioni.reale.rep=Math.max(-100,Math.min(100,G.fazioni.reale.rep+.5));
+  G.fazioni.mercante.rep=Math.max(-100,Math.min(100,G.fazioni.mercante.rep+.2));
+  if(G.tick%7===0) eventoRandom();
+  controllaMissione('oro',G.oro);
+  ['cibo','legno','rum'].forEach(k=>G[k]=Math.max(0,Math.min(999,G[k])));
+  G.oro=Math.max(0,G.oro);
+  aggiornaUI();
+}
+
+function eventoRandom(){
+  const eventi=[
+    {p:3,fn:()=>{const g=30+Math.floor(Math.random()*60);G.oro+=g;aggMsg(`Un mercante paga il tributo! +${g} oro`,'bene');}},
+    {p:2,fn:()=>{const f=20+Math.floor(Math.random()*40);G.cibo+=f;aggMsg(`Pescatori locali portano doni! +${f} cibo`,'bene');}},
+    {p:2,fn:()=>{G.rum+=25;aggMsg('Un relitto porta botti di rum! +25 rum','bene');}},
+    {p:2,fn:()=>{G.ricerca.punti+=15;aggMsg('Trovata una carta antica! +15 ricerca🔭','bene');}},
+    {p:1,fn:()=>{const g=20+Math.floor(Math.random()*50);G.oro-=g;aggMsg(`Debiti di gioco: -${g} oro`,'male');}},
+    {p:1,fn:()=>{const f=15+Math.floor(Math.random()*25);G.cibo=Math.max(0,G.cibo-f);aggMsg(`I topi hanno mangiato ${f} cibo!`,'male');}},
+    {p:2,fn:()=>{creaaPirata();aggMsg('Un vagabondo si unisce alla ciurma!','bene');}},
+    {p:1,fn:()=>{
+      const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
+      if(p){p.combattimento=Math.min(100,p.combattimento+8);aggMsg(`${p.nome} si allena sodo! +8 combattimento`,'bene');}
+    }},
+    {p:1,fn:()=>{
+      const k=['reale','mercante','corsaro'][Math.floor(Math.random()*3)];
+      const v=(Math.random()<.5?1:-1)*(5+Math.floor(Math.random()*10));
+      G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));
+      aggMsg(`${G.fazioni[k].nome}: reputazione ${v>0?'+':''}${v}`,'info');
+    }},
+  ];
+  const tot=eventi.reduce((a,e)=>a+e.p,0);
+  let r=Math.random()*tot;
+  for(const e of eventi){r-=e.p;if(r<=0){e.fn();break;}}
+}
+
+function reclutaPirata(){
+  if(G.oro<50){aggMsg('Servono 50 oro!','male');return;}
+  G.oro-=50; creaaPirata();
+  aggMsg('Nuovo pirata reclutato!','bene');aggiornaUI();
+}
+
+// ── MISSIONI ──
+function assegnaMissioni(){
+  G.missioniAttive=POOL_MISSIONI.slice(0,3).map(q=>({...q,progresso:0,completata:false}));
+}
+function controllaMissione(tipo,val){
+  for(const m of G.missioniAttive){
+    if(m.completata) continue;
+    if(m.tipo===tipo){
+      if(tipo==='raid'||tipo==='riscatti'||tipo==='ricerca') m.progresso+=val;
+      else m.progresso=Math.max(m.progresso,val);
+      if(m.progresso>=m.obiettivo){
+        m.completata=true;
+        for(const[k,v] of Object.entries(m.ricompensa)){
+          if(k==='oro') G.oro+=v;
+          else if(k==='legno') G.legno+=v;
+          else if(k==='rum') G.rum+=v;
+          else if(k==='ricerca') G.ricerca.punti+=v;
+        }
+        const rs=Object.entries(m.ricompensa).map(([k,v])=>`${v} ${k}`).join(', ');
+        notifica('📜 Missione Completata!',`"${m.titolo}" — Ricompensa: ${rs}`,'missione');
+        const nuove=POOL_MISSIONI.filter(q2=>!G.missioniAttive.find(a=>a.id===q2.id));
+        if(nuove.length>0){
+          const nm={...nuove[Math.floor(Math.random()*nuove.length)],progresso:0,completata:false};
+          G.missioniAttive=G.missioniAttive.map(x=>x.id===m.id?nm:x);
+        }
+        aggiornaUI();
+      }
+    }
+    if(m.tipo==='oro'&&G.oro>=m.obiettivo&&!m.completata){
+      m.progresso=G.oro;
+      if(m.progresso>=m.obiettivo){
+        m.completata=true; G.ricerca.punti+=m.ricompensa.ricerca||0;
+        notifica('📜 Missione Completata!',`"${m.titolo}"!`,'missione');
+        aggiornaUI();
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER PANNELLO
+// ═══════════════════════════════════════════════════
+function mostraTab(tab){
+  G.tabCorrente=tab;
+  document.querySelectorAll('.ptab').forEach((b,i)=>{
+    const tabs=['costruisci','ciurma','flotta','ricerca','fazioni','missioni'];
+    b.classList.toggle('attivo',tabs[i]===tab);
+  });
+  renderPannello();
+}
+function renderPannello(){
+  const c=document.getElementById('contenuto-pannello');
+  switch(G.tabCorrente){
+    case 'costruisci': c.innerHTML=renderCostruisci(); break;
+    case 'ciurma':     c.innerHTML=renderCiurma(); break;
+    case 'flotta':     c.innerHTML=renderFlotta(); break;
+    case 'ricerca':    c.innerHTML=renderRicerca(); break;
+    case 'fazioni':    c.innerHTML=renderFazioni(); break;
+    case 'missioni':   c.innerHTML=renderMissioni(); break;
+  }
+}
+
+function renderCostruisci(){
+  let h=`<div class="titolo-sez">🏗 Costruisci</div>`;
+  for(const[tipo,def] of Object.entries(ED)){
+    const puoi=G.oro>=def.costo.oro&&G.legno>=def.costo.legno;
+    const n=G.edifici.filter(b=>b.tipo===tipo).length;
+    h+=`<button class="btn-costruisci${G.modalitaCostruzione===tipo?' attivo-strumento':''}" id="b-${tipo}"
+      onclick="selezionaCostruzione('${tipo}')" ${!puoi?'disabled':''}>
+      <span>${def.icona} ${def.nome}${n>0?` <small style="color:var(--verde-ch)">(${n})</small>`:''}</span>
+      <span class="costo">${def.costo.oro}o ${def.costo.legno}l</span>
+    </button>`;
+  }
+  return h;
+}
+
+function renderCiurma(){
+  let h=`<div class="titolo-sez">☠ Ciurma (${G.pirati.length})</div>`;
+  for(const p of G.pirati){
+    const mc=coloreUmore(p.umore);
+    h+=`<div class="carta-pirata${G.pirataSelezionato===p.id?' sel':''}" onclick="selPirata(${p.id})">
+      <div class="nome-p">${p.nome}</div>
+      <div class="ruolo-p">${p.ruolo}</div>
+      <div class="stat-p">
+        <div class="sp">⚔<span>${p.combattimento}</span></div>
+        <div class="sp">⛵<span>${p.navigazione}</span></div>
+        <div class="sp">😊<span>${Math.floor(p.umore)}</span></div>
+      </div>
+      <div class="barra-umore"><div class="riempi-umore" style="width:${p.umore}%;background:${mc}"></div></div>
+    </div>`;
+  }
+  h+=`<button class="btn-costruisci" onclick="reclutaPirata()" ${G.oro<50?'disabled':''}>
+    <span>⚔ Recluta Pirata</span><span class="costo">50 oro</span></button>`;
+  return h;
+}
+
+function renderFlotta(){
+  let h=`<div class="titolo-sez">⛵ Flotta (${G.navi.length})</div>`;
+  for(const n of G.navi){
+    const pct=n.hp/n.hpMax*100;
+    const col=pct>60?'var(--verde-ch)':pct>30?'var(--oro)':'var(--rum-chiaro)';
+    h+=`<div class="carta-nave">
+      <div class="nome-n">⛵ ${n.nome}</div>
+      <div class="stato-n">${n.inMare?`In mare — ${n.timerRaid}g`:'In porto'}</div>
+      <div style="font-size:.63rem;color:var(--sabbia);margin-top:3px">
+        Scafo: <span style="color:${col}">${n.hp}/${n.hpMax}</span></div>
+      <div class="barra-umore" style="margin-top:3px">
+        <div class="riempi-umore" style="width:${pct}%;background:${col}"></div></div>
+      ${!n.inMare&&n.hp<n.hpMax?
+        `<button class="btn-piccolo" onclick="riparaNave(${n.id})" ${G.oro<40?'disabled':''}>🔧 Ripara (40 oro)</button>`:''}
+    </div>`;
+  }
+  h+=`<button class="btn-costruisci" onclick="costruisciNave()"
+    ${G.oro<150||G.legno<80||!G.edifici.find(b=>b.tipo==='cantiere')?'disabled':''}>
+    <span>🛠 Costruisci Sciabecco</span><span class="costo">150o 80l</span></button>`;
+  return h;
+}
+
+function renderRicerca(){
+  let h=`<div class="titolo-sez">🔭 Ricerca <span style="font-size:.75rem;color:var(--sabbia);font-family:'Cinzel'">${Math.floor(G.ricerca.punti)} pt</span></div>`;
+  h+=`<p style="font-size:.65rem;color:var(--sabbia);font-style:italic;margin-bottom:8px">Costruisci un Osservatorio per guadagnare punti ricerca.</p>`;
+  for(const t of TECH){
+    const fatto=G.ricerca.completate.has(t.id);
+    const disp=puoRicercare(t);
+    h+=`<div class="nodo-tech ${fatto?'ricercato':disp?'disponibile':'bloccato'}" ${disp?`onclick="faiRicerca('${t.id}')"`:''}">
+      <div class="nome-t">${t.icona} ${t.nome}</div>
+      <div class="desc-t">${t.desc}</div>
+      ${t.req.length?`<div style="font-size:.6rem;color:#888;margin-top:2px">Richiede: ${t.req.join(', ')}</div>`:''}
+      ${!fatto?`<div class="costo-t">${t.costo} pt${disp?' — clicca per ricercare':''}</div>`:''}
+    </div>`;
+  }
+  return h;
+}
+
+function renderFazioni(){
+  let h=`<div class="titolo-sez">🌐 Fazioni</div>`;
+  for(const[k,f] of Object.entries(G.fazioni)){
+    const pct=Math.min(100,Math.max(0,(f.rep+100)/2));
+    const col=pct>60?'var(--verde-ch)':pct>40?'var(--oro)':'var(--rum-chiaro)';
+    h+=`<div class="riga-fazione">
+      <div class="fazione-icon">${f.icona}</div>
+      <div class="fazione-info">
+        <div style="font-size:.78rem;font-weight:bold">${f.nome}</div>
+        <div style="font-size:.63rem;color:var(--sabbia)">${etichetteRep(f.rep)}</div>
+        <div class="barra-fazione"><div class="riempi-fazione" style="width:${pct}%;background:${col}"></div></div>
+      </div>
+      <div style="font-size:.7rem;color:${col};font-family:'Cinzel'">${Math.floor(f.rep)}</div>
+    </div>`;
+  }
+  h+=`<div style="font-size:.65rem;color:var(--sabbia);font-style:italic;margin-top:8px">
+    Alta rep. Mercanti = prezzi migliori.<br>
+    Alta rep. Corsari = meno attacchi.<br>
+    Bassa rep. Reale = battaglie navali.
+  </div>`;
+  return h;
+}
+
+function renderMissioni(){
+  let h=`<div class="titolo-sez">📜 Missioni</div>`;
+  for(const m of G.missioniAttive){
+    const pct=Math.min(100,Math.floor(m.progresso/m.obiettivo*100));
+    const rs=Object.entries(m.ricompensa).map(([k,v])=>`${v} ${k}`).join(', ');
+    h+=`<div class="carta-missione">
+      <div class="titolo-missione">${m.completata?'✓ ':''} ${m.titolo}</div>
+      <div class="desc-missione">${m.desc}</div>
+      <div class="barra-umore"><div class="riempi-umore" style="width:${pct}%;background:${m.completata?'var(--verde-ch)':'var(--oro)'}"></div></div>
+      <div style="font-size:.62rem;color:var(--sabbia);margin-top:2px">${Math.min(m.progresso,m.obiettivo)} / ${m.obiettivo}</div>
+      <div class="ricompensa-missione">🏆 ${rs}</div>
+    </div>`;
+  }
+  return h;
+}
+
+function etichetteRep(r){
+  if(r>60) return 'Alleata';if(r>30) return 'Amica';if(r>-10) return 'Neutrale';
+  if(r>-40) return 'Ostile';return 'In Guerra';
+}
+function selPirata(id){G.pirataSelezionato=G.pirataSelezionato===id?null:id;renderPannello();}
+function riparaNave(id){
+  const n=G.navi.find(x=>x.id===id);
+  if(!n||G.oro<40) return;
+  G.oro-=40;n.hp=Math.min(n.hpMax,n.hp+30);
+  aggMsg(`${n.nome} riparata!`,'bene');aggiornaUI();
+}
+
+// ── UI SUPERIORE ──
+function aggiornaUI(){
+  document.getElementById('r-oro').textContent=Math.floor(G.oro);
+  document.getElementById('r-cibo').textContent=Math.floor(G.cibo);
+  document.getElementById('r-legno').textContent=Math.floor(G.legno);
+  document.getElementById('r-rum').textContent=Math.floor(G.rum);
+  document.getElementById('r-ric').textContent=Math.floor(G.ricerca.punti);
+  document.getElementById('r-pop').textContent=G.pirati.length;
+  document.getElementById('num-giorno').textContent=G.giorno;
+  document.getElementById('rep-reale').textContent=`👑 ${Math.floor(G.fazioni.reale.rep)}`;
+  document.getElementById('rep-mercante').textContent=`🤝 ${Math.floor(G.fazioni.mercante.rep)}`;
+  document.getElementById('rep-corsaro').textContent=`☠ ${Math.floor(G.fazioni.corsaro.rep)}`;
+  renderPannello();
+}
+
+// ═══════════════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════════════
+// ── INPUT & PAN ──
+const pan={attivo:false,startX:0,startY:0,camStartX:0,camStartY:0,mosso:false};
+
+function limiteCamera(){
+  const minX=-(G.COLS*G.TILE-canvas.width+40);
+  const maxX=40;
+  const minY=-(G.RIGHE*G.TILE-canvas.height+40);
+  const maxY=40;
+  G.camX=Math.max(minX,Math.min(maxX,G.camX));
+  G.camY=Math.max(minY,Math.min(maxY,G.camY));
+}
+
+function impostaInput(){
+  // Mouse pan
+  canvas.addEventListener('mousedown',e=>{
+    if(e.button!==0) return;
+    pan.attivo=true; pan.mosso=false;
+    pan.startX=e.clientX; pan.startY=e.clientY;
+    pan.camStartX=G.camX; pan.camStartY=G.camY;
+    canvas.style.cursor='grabbing';
+  });
+  canvas.addEventListener('mousemove',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    G.hoverR=Math.floor((my-G.camY)/G.TILE);
+    G.hoverC=Math.floor((mx-G.camX)/G.TILE);
+    if(!pan.attivo) return;
+    const dx=e.clientX-pan.startX, dy=e.clientY-pan.startY;
+    if(Math.abs(dx)>4||Math.abs(dy)>4) pan.mosso=true;
+    if(pan.mosso){
+      G.camX=pan.camStartX+dx;
+      G.camY=pan.camStartY+dy;
+      limiteCamera();
+    }
+  });
+  window.addEventListener('mouseup',e=>{
+    if(pan.attivo){ pan.attivo=false; canvas.style.cursor=''; }
+  });
+  canvas.addEventListener('click',e=>{
+    if(pan.mosso) return; // era un drag, non un click
+    cliccaMappa(e);
+  });
+
+  // Touch pan + tap
+  let tocchiPrecedenti=[];
+  canvas.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    pan.attivo=true; pan.mosso=false;
+    pan.startX=t.clientX; pan.startY=t.clientY;
+    pan.camStartX=G.camX; pan.camStartY=G.camY;
+    tocchiPrecedenti=[{x:t.clientX,y:t.clientY}];
+  },{passive:false});
+  canvas.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const t=e.touches[0];
+    const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
+    if(Math.abs(dx)>6||Math.abs(dy)>6) pan.mosso=true;
+    if(pan.mosso){
+      G.camX=pan.camStartX+dx;
+      G.camY=pan.camStartY+dy;
+      limiteCamera();
+    }
+    const rect=canvas.getBoundingClientRect();
+    G.hoverR=Math.floor(((t.clientY-rect.top)-G.camY)/G.TILE);
+    G.hoverC=Math.floor(((t.clientX-rect.left)-G.camX)/G.TILE);
+  },{passive:false});
+  canvas.addEventListener('touchend',e=>{
+    if(!pan.mosso){
+      const t=e.changedTouches[0];
+      const rect=canvas.getBoundingClientRect();
+      const r=Math.floor(((t.clientY-rect.top)-G.camY)/G.TILE);
+      const c=Math.floor(((t.clientX-rect.left)-G.camX)/G.TILE);
+      G.hoverR=r; G.hoverC=c;
+      if(G.modalitaCostruzione) piazzaEdificio(r,c);
+      else{
+        const tt=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
+        if(tt===undefined) return;
+        const b=G.edifici.find(x=>x.r===r&&x.c===c);
+        const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
+        if(b) aggMsg(ED[b.tipo].icona+' '+ED[b.tipo].nome+' — '+ED[b.tipo].effetto,'info');
+        else aggMsg('📍 '+(nomi[tt]||'?'));
+      }
+    }
+    pan.attivo=false;
+  });
+}
+
+function getTile(e){
+  const rect=canvas.getBoundingClientRect();
+  const x=e.clientX-rect.left, y=e.clientY-rect.top;
+  return{r:Math.floor((y-G.camY)/G.TILE),c:Math.floor((x-G.camX)/G.TILE)};
+}
+function cliccaMappa(e){
+  const{r,c}=getTile(e);
+  if(G.modalitaCostruzione){piazzaEdificio(r,c);return;}
+  const t=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
+  if(t===undefined) return;
+  const b=G.edifici.find(x=>x.r===r&&x.c===c);
+  const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
+  if(b) aggMsg(ED[b.tipo].icona+' '+ED[b.tipo].nome+' — '+ED[b.tipo].effetto,'info');
+  else aggMsg('📍 '+(nomi[t]||'?'));
+}
+
+// ── MODALE ──
+function apriModale(titolo,html){
+  document.getElementById('titolo-modale').textContent=titolo;
+  document.getElementById('corpo-modale').innerHTML=html;
+  document.getElementById('overlay-modale').classList.add('aperto');
+}
+function chiudiModale(){document.getElementById('overlay-modale').classList.remove('aperto');}
+document.getElementById('overlay-modale').addEventListener('click',e=>{
+  if(e.target===document.getElementById('overlay-modale')) chiudiModale();
+});
+
+// ── MESSAGGI & NOTIFICHE ──
+function aggMsg(testo,tipo=''){
+  const log=document.getElementById('log-msg');
+  const d=document.createElement('div');
+  d.className='msg'+(tipo?' '+tipo:'');
+  d.textContent=testo;
+  log.appendChild(d);
+  while(log.children.length>4) log.removeChild(log.firstChild);
+}
+function notifica(titolo,corpo,tipo=''){
+  const a=document.getElementById('area-notifiche');
+  const d=document.createElement('div');
+  d.className='notifica'+(tipo?' '+tipo:'');
+  d.innerHTML=`<div class="titolo-notifica">${titolo}</div><div>${corpo}</div>`;
+  a.appendChild(d);
+  setTimeout(()=>{if(d.parentNode)d.remove();},5000);
+}
+
+// ── VELOCITÀ ──
+function cambiaVelocita(){
+  G.velocita=G.velocita===1?2:1;
+  document.getElementById('btn-velocita').textContent=G.velocita===1?'▶▶ Veloce':'▶ Normale';
+}
+
+// ── CICLO GIOCO ──
+let ultimoTick=0;
+function cicloGioco(ts=0){
+  requestAnimationFrame(cicloGioco);
+  if(!G.battagliaAttiva) disegnaScena();
+  const intervallo=G.tickMs/G.velocita;
+  if(ts-ultimoTick>=intervallo){ultimoTick=ts;tick();}
+}
+
+</script>
+</body>
+</html>
