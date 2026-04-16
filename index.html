@@ -2960,16 +2960,16 @@ const EVENTI_NARRATIVI=[
     id:'mercante_rifugio', tag:'Mare', peso:3,
     icona:'🚢', sfondo:'#0a2540',
     titolo:'Il Mercante in Difficoltà',
-    testo:'Una nave mercantile batte bandiera di soccorso al largo dell\'isola. Il capitano chiede rifugio nel vostro porto, promettendo compenso. La Marina Reale potrebbe aver notato i suoi segnali.',
+    testo:'Una nave mercantile batte bandiera di soccorso al largo. Il capitano — un ometto sudaticcio con una parrucca storta — chiede rifugio, promettendo compenso. Aggiunge, sottovoce, che ha anche un\'ottima ricetta per la torta di rum. Come se questo cambiasse qualcosa.',
     scelte:[
       {etich:'Generosità',testo:'Accordate rifugio e rifornimenti',colore:'verde',
-        esito:'Il mercante, riconoscente, vi lascia oro e spezie prima di ripartire. La voce della vostra ospitalità si diffonde.',
+        esito:'Il mercante, commosso fino alle lacrime, vi abbraccia. Vi lasciate abbracciare per cortesia. Vi lascia oro e spezie. La torta di rum, per fortuna, se la tiene.',
         tipo:'bene', fn:()=>{G.oro+=80;G.cibo+=30;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+18);}},
       {etich:'Opportunismo',testo:'Rifugio sì... ma ad un prezzo',colore:'',
-        esito:'Il capitano stringe i denti e accetta. Oro sonante cambia di mano. Gli affari sono affari.',
+        esito:'Il capitano stringe i denti e paga. Mentre salpa, vi urla qualcosa. Probabilmente non era un complimento.',
         tipo:'bene', fn:()=>{G.oro+=150;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+5);}},
       {etich:'Pirateria',testo:'Catturate nave e equipaggio',colore:'rosso',
-        esito:'La nave è vostra. Bottino abbondante, ma un superstite è fuggito a nuoto. La Marina saprà.',
+        esito:'La nave è vostra! Il parrucchino del capitano galleggia ancora sul mare. Poetico. Un superstite però è fuggito a nuoto. La Marina saprà.',
         tipo:'male', fn:()=>{G.oro+=220;G.legno+=40;G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-20);G.fazioni.mercante.rep=Math.max(-100,G.fazioni.mercante.rep-25);if(Math.random()<.5)catturaPrigioniero('Mercante');}},
     ]
   },
@@ -2978,13 +2978,13 @@ const EVENTI_NARRATIVI=[
     id:'relitto', tag:'Mare', peso:2,
     icona:'⚓', sfondo:'#0c2030',
     titolo:'Il Relitto della Tempesta',
-    testo:'I vostri uomini avvistano un relitto che deriva verso la riva. Tra le tavole rotte si scorgono casse, un baule chiuso a chiave e... qualcosa che si muove.',
+    testo:'I vostri uomini avvistano un relitto che deriva verso la riva. Tra le tavole rotte si scorgono casse, un baule chiuso a chiave e... una gallina. Viva. Che vi fissa con assoluta calma, come se stesse aspettando.',
     scelte:[
       {etich:'Salvataggio',testo:'Mettete a mare una scialuppa',colore:'verde',
-        esito:'Recuperate un sopravvissuto mezzo morto di sete. Ringrazia con le lacrime e vi rivela una rotta commerciale segreta.',
-        tipo:'bene', fn:()=>{creaaPirata();G.ricerca.punti+=20;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+12);}},
+        esito:'Recuperate un sopravvissuto mezzo morto di sete. E la gallina. Il sopravvissuto vi rivela una rotta commerciale segreta. La gallina non dice niente, ma sembra approvare.',
+        tipo:'bene', fn:()=>{creaaPirata();G.ricerca.punti+=20;G.cibo+=15;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+12);}},
       {etich:'Razzia',testo:'Portate a riva solo le casse',colore:'',
-        esito:'Nelle casse trovate oro, spezie e un\'enigmatica carta nautica.',
+        esito:'Nelle casse trovate oro, spezie e una lettera d\'amore destinata a qualcuno che probabilmente non la riceverà mai. La lasciate lì. Siete pirati, non mostri.',
         tipo:'bene', fn:()=>{G.oro+=120;G.rum+=30;G.ricerca.punti+=15;}},
     ]
   },
@@ -2992,22 +2992,58 @@ const EVENTI_NARRATIVI=[
   {
     id:'corsaro_alleato', tag:'Mare', peso:2,
     icona:'🏴‍☠️', sfondo:'#1a0a0a',
-    titolo:'Il Corsaro Senza Bandiera',
-    testo:'Un brigantino senza insegne affianca lentamente la vostra isola. Il capitano — una donna con una cicatrice sul viso — chiede di parlare. Si presenta come Lupa di Mare, corsara solitaria.',
+    titolo:'Lupa di Mare',
+    testo:'Un brigantino senza insegne affianca l\'isola. Il capitano — una donna con una cicatrice sul mento e un pappagallo che insulta in tre lingue — chiede di parlare. Il pappagallo urla qualcosa di imbarazzante sulla vostra madre.',
     scelte:[
-      {etich:'Alleanza',testo:'Stringete un patto di mutua difesa',colore:'verde',
-        esito:'Lupa sorride. "Capitano contro capitano." Nei giorni seguenti, le sue vedette vi avvisano di pattuglie nemiche.',
+      {etich:'Alleanza',testo:'Patto di mutua difesa. Il pappagallo può restare.',colore:'verde',
+        esito:'"Capitano contro capitano." Lupa sorride. Il pappagallo smette di insultare. Quasi un rispetto.',
         tipo:'bene', fn:()=>{G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+25);G.oro+=60;}},
-      {etich:'Commercio',testo:'Commerciate rifornimenti contro bottino',colore:'',
-        esito:'Scambio equo tra lupi di mare. Rum e cibo per oro e polvere da sparo.',
-        tipo:'bene', fn:()=>{G.oro+=100;G.rum+=20;G.cibo-=30;G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+10);}},
-      {etich:'Diffidenza',testo:'Rifiutate e tenete i cannoni puntati',colore:'rosso',
-        esito:'"Come volete." Lupa salpa senza una parola. Un\'occasione perduta.',
+      {etich:'Commercio',testo:'Rum contro bottino. Affari senza sentimenti.',colore:'',
+        esito:'Scambio equo. Il pappagallo commenta "affare onesto" in olandese. Incredibilmente, qualcuno capisce.',
+        tipo:'bene', fn:()=>{G.oro+=100;G.rum+=20;G.cibo=Math.max(0,G.cibo-30);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+10);}},
+      {etich:'Diffidenza',testo:'Rifiutate. Cannoni puntati.',colore:'rosso',
+        esito:'"Come volete." Lupa salpa. Il pappagallo vi dedica una parola finale. Non la ripetono nemmeno i pirati più sboccati.',
         tipo:'male', fn:()=>{G.fazioni.corsaro.rep=Math.max(-100,G.fazioni.corsaro.rep-8);}},
     ]
   },
 
-  // ── ISOLA ──
+  {
+    id:'nave_fantasma', tag:'Mare', peso:1,
+    icona:'👻', sfondo:'#080820',
+    titolo:'La Nave Senza Equipaggio',
+    testo:'Una brigantino alla deriva entra in porto da solo, vele ammainate, timone libero. A bordo: nessuno. Solo un tavolo apparecchiato per sei, cibo ancora caldo, e un biglietto che dice "Torneremo presto". Nessuno firma.',
+    scelte:[
+      {etich:'Razzia',testo:'È abbandonata. Prendete tutto.',colore:'verde',
+        esito:'Carica di rum e spezie pregiate. Mentre portate via l\'ultimo barile, sentite ridere qualcuno. Probabilmente il vento.',
+        tipo:'bene', fn:()=>{G.oro+=90;G.rum+=50;G.ricerca.punti+=10;}},
+      {etich:'Prudenza',testo:'Lasciatela andare. Certe cose non si toccano.',colore:'',
+        esito:'La nave riparte da sola con la marea. La ciurma la guarda andare in silenzio. Per tre giorni nessuno parla di fantasmi. Poi ci pensano tutto il tempo.',
+        tipo:'bene', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);}},
+      {etich:'Abitatela',testo:'Fate salire la ciurma. È una nave gratis.',colore:'rosso',
+        esito:()=>{if(Math.random()<.5)return 'Tutto bene. Era solo abbandonata. Siete i nuovi proprietari. Qualcuno trova ancora caldo il minestrone sul fuoco.';return 'La nave riparte da sola alle tre di notte, con metà ciurma ancora a bordo. Li rivedrete fra una settimana, stranamente silenziosi.';},
+        tipo:'', fn:()=>{if(Math.random()<.5){const n=G.navi[0];if(n){n.hp=Math.min(n.hpMax,n.hp+30);G.oro+=60;}}else{if(G.pirati.length>2)G.pirati.splice(0,Math.min(2,G.pirati.length-1));for(const p of G.pirati)p.umore=Math.max(10,p.umore-20);}}},
+    ]
+  },
+
+  {
+    id:'gabbiano_oracolo', tag:'Mare', peso:1,
+    icona:'🕊', sfondo:'#0a1a30',
+    titolo:'Il Gabbiano Profeta',
+    testo:'Un gabbiano si posa sulla prua e non se ne va. Da tre giorni. I marinai giurano che predica sventure. Il cuoco vuole cucinarlo. Il navigatore dice che porta fortuna. Il gabbiano non esprime opinioni, ma ha mangiato le mappe della settimana scorsa.',
+    scelte:[
+      {etich:'Oracolo',testo:'Assecondate la superstizione: il gabbiano resta.',colore:'verde',
+        esito:'Il gabbiano gracchia, torna in mare e ritorna con un pesce. Inspiegabilmente, i pirati trovano questo profetico. Il morale sale.',
+        tipo:'bene', fn:()=>{G.cibo+=25;for(const p of G.pirati)p.umore=Math.min(100,p.umore+15);}},
+      {etich:'Pragmatismo',testo:'Cacciatelo. Le mappe non si mangiano.',colore:'rosso',
+        esito:'Il gabbiano parte offeso. Quella notte, una tempestina modesta danneggia il tetto del magazzino. Coincidenza, sicuramente.',
+        tipo:'male', fn:()=>{G.legno=Math.max(0,G.legno-20);for(const p of G.pirati)p.umore=Math.max(10,p.umore-10);}},
+      {etich:'Gastronomia',testo:'Il cuoco aveva ragione. È la cena di stasera.',colore:'',
+        esito:'Era sorprendentemente buono. Nessuno lo ammetterà mai. La ciurma è stranamente a disagio per una settimana.',
+        tipo:'bene', fn:()=>{G.cibo+=15;for(const p of G.pirati)p.umore=Math.max(15,p.umore-5);}},
+    ]
+  },
+
+  // ── CIURMA ──
   {
     id:'rivolta_ciurma', tag:'Ciurma', peso:2,
     icona:'⚔', sfondo:'#1a0808',
@@ -3015,17 +3051,17 @@ const EVENTI_NARRATIVI=[
     testo:()=>{
       const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
       const nome=p?p.nome:'Un vecchio bucaniere';
-      return nome+' si fa avanti a nome della ciurma. "Capitano, tre settimane senza bottino. Gli uomini parlano di eleggere un nuovo comandante."';
+      return nome+' si fa avanti con un\'espressione che non promette niente di buono. "Capitano, tre settimane senza bottino. Gli uomini parlano. Alcuni parlano anche di voi. Non è gentile."';
     },
     scelte:[
-      {etich:'Autorità',testo:'Silenzio! Chi comanda qui lo decido io.',colore:'rosso',
-        esito:'Un lungo silenzio. Poi, uno ad uno, abbassano la testa. Il vostro carisma regge — per ora.',
+      {etich:'Autorità',testo:'"Chi comanda qui lo decido io. Chiunque non sia d\'accordo può nuotare."',colore:'rosso',
+        esito:'Silenzio assoluto. Poi qualcuno tossisce. Poi tutti fingono di dover fare qualcosa di molto urgente altrove. Funziona.',
         tipo:'male', fn:()=>{for(const p of G.pirati)p.umore=Math.max(15,p.umore-10);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+5);}},
       {etich:'Diplomazia',testo:'Promettete una razzia entro tre giorni',colore:'verde',
-        esito:'Le facce si distendono. "Tre giorni, Capitano. Vi teniamo in parola." La tensione si allenta.',
+        esito:'Le facce si distendono. "Tre giorni, Capitano." Qualcuno al fondo mormora: "Lo diceva anche il capitano precedente." Ignorate.',
         tipo:'bene', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+15);G.cooldownRaid=0;}},
-      {etich:'Generosità',testo:'Distribuite 100 oro di tasca vostra',colore:'',
-        esito:'Occhi che brillano. Per questa notte, la taverna risuona di canti in vostro onore.',
+      {etich:'Generosità',testo:'Distribuite 100 oro. Comprate l\'amore.',colore:'',
+        esito:'Occhi che brillano. Per questa notte la taverna risuona di canti in vostro onore. Domani torneranno a lamentarsi, ma oggi va bene.',
         tipo:'bene', fn:()=>{if(G.oro>=100){G.oro-=100;for(const p of G.pirati)p.umore=Math.min(100,p.umore+30);}else{for(const p of G.pirati)p.umore=Math.max(10,p.umore-5);}}},
     ]
   },
@@ -3036,16 +3072,19 @@ const EVENTI_NARRATIVI=[
     titolo:'Il Compagno Ferito',
     testo:()=>{
       const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
-      const nome=p?p.nome:'Un membro della ciurma';
-      return nome+' è stato trovato a terra, febbricitante. Un vecchio morso di serpente, dicono gli altri. Il chirurgo scuote la testa: senza medicine, non passerà la settimana.';
+      const nome=p?p.nome:'Un pirata';
+      return nome+' è stato trovato a terra, febbricitante. Morso di serpente, dicono. Il chirurgo scuote la testa, poi aggiunge: "O forse è il cibo di ieri sera." Il cuoco protesta. Nessuno gli crede.';
     },
     scelte:[
       {etich:'Sacrificio',testo:'Spendete 60 oro per medicine rare',colore:'verde',
-        esito:()=>{const p=G.pirati[0];return (p?p.nome:'Il pirata')+' si riprende lentamente. Gli uomini non dimenticheranno questo gesto.';},
-        tipo:'bene', fn:()=>{if(G.oro>=60){G.oro-=60;for(const p of G.pirati)p.umore=Math.min(100,p.umore+20);}else aggMsg('Oro insufficiente, il pirata muore.','male');}},
-      {etich:'Fatalismo',testo:'"Il mare dà, il mare toglie."',colore:'rosso',
-        esito:'Il pirata muore all\'alba. La ciurma tace. Qualcuno sputa per terra guardandovi.',
-        tipo:'male', fn:()=>{if(G.pirati.length>1)G.pirati.splice(Math.floor(Math.random()*G.pirati.length),1);for(const p of G.pirati)p.umore=Math.max(5,p.umore-18);}},
+        esito:()=>{const p=G.pirati[0];return (p?p.nome:'Il pirata')+' si riprende lentamente. "Grazie, Capitano." Vi tende la mano. Ha ancora la febbre alta ma il gesto è commovente.';},
+        tipo:'bene', fn:()=>{if(G.oro>=60){G.oro-=60;for(const p of G.pirati)p.umore=Math.min(100,p.umore+20);}else aggMsg('Oro insufficiente. Il pirata aspetta con rassegnazione.','male');}},
+      {etich:'Medicina alternativa',testo:'Il cuoco ha una ricetta della nonna: rum e aglio.',colore:'',
+        esito:()=>{if(Math.random()<.5)return 'Miracolosamente, funziona. O forse era solo un\'indigestione. Comunque, il pirata è in piedi.';return 'Non funziona. Ma il pirata sopravvive lo stesso, con grande disappunto del cuoco che ci teneva alla sua reputazione.';},
+        tipo:'bene', fn:()=>{G.rum=Math.max(0,G.rum-10);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
+      {etich:'Fatalismo',testo:'"Il mare dà, il mare toglie. Il cuoco dà, il cuoco toglie."',colore:'rosso',
+        esito:'Il pirata si riprende da solo, per dispetto. Però non dimentica. Non dimentica mai.',
+        tipo:'male', fn:()=>{for(const p of G.pirati)p.umore=Math.max(5,p.umore-12);}},
     ]
   },
 
@@ -3055,18 +3094,18 @@ const EVENTI_NARRATIVI=[
     titolo:'Il Duello all\'Alba',
     testo:()=>{
       const a=G.pirati[0], b=G.pirati[1];
-      const n1=a?a.nome:'Due pirati', n2=b?b.nome:'si sfidano';
-      return n1+' e '+n2+' si sono sfidati a duello per una vecchia questione di onore. L\'intera ciurma si è radunata in circolo ad aspettare il vostro verdetto.';
+      const n1=a?a.nome:'Due pirati', n2=b?b.nome:'litigano';
+      return n1+' e '+n2+' si sono sfidati a duello. Motivo ufficiale: una questione d\'onore. Motivo reale, che tutti sanno: una scommessa su chi bevesse più rum. Entrambi ricordano a malapena di aver scommesso.';
     },
     scelte:[
       {etich:'Lascia fare',testo:'Il duello faccia il suo corso',colore:'',
-        esito:'Lame che tintinnano nell\'alba. Il vincitore alza il braccio. La ciurma ruggisce. L\'ordine è ristabilito a modo loro.',
-        tipo:'bene', fn:()=>{if(G.pirati.length>1)G.pirati.splice(Math.floor(Math.random()*Math.min(2,G.pirati.length)),1);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
-      {etich:'Autorità',testo:'Vietate il duello, punite entrambi',colore:'rosso',
-        esito:'Brontolio tra la folla. Ma i due abbassano le lame. L\'autorità è salva, il morale un po\' meno.',
+        esito:'Lame che tintinnano nell\'alba. È più commedia che tragedia. Il vincitore non ricorda nemmeno cosa stesse difendendo. La ciurma applaude uguale.',
+        tipo:'bene', fn:()=>{if(G.pirati.length>2)G.pirati.splice(Math.floor(Math.random()*Math.min(2,G.pirati.length)),1);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
+      {etich:'Autorità',testo:'Vietate il duello. Li fate abbracciare.',colore:'rosso',
+        esito:'Brontolio nella folla. I due si stringono la mano con evidente disagio. La pace regna. Brevemente.',
         tipo:'male', fn:()=>{for(const p of G.pirati)p.umore=Math.max(5,p.umore-8);}},
-      {etich:'Spettacolo',testo:'Organizzatelo come sfida ufficiale',colore:'verde',
-        esito:'Scommesse, tifo, rum a fiumi. La tensione si scioglie in festa. La ciurma vi adora per questo.',
+      {etich:'Spettacolo',testo:'Organizzatelo ufficialmente. Scommesse aperte.',colore:'verde',
+        esito:'Tifo, rum, lacrime di gioia e di dolore. Qualcuno vince una fortuna. Qualcuno perde i pantaloni letteralmente. La tensione sparisce in una nuvola di festa.',
         tipo:'bene', fn:()=>{G.rum=Math.max(0,G.rum-15);for(const p of G.pirati)p.umore=Math.min(100,p.umore+22);}},
     ]
   },
@@ -3076,16 +3115,16 @@ const EVENTI_NARRATIVI=[
     id:'naufraghi', tag:'Isola', peso:2,
     icona:'🏝', sfondo:'#0a1a10',
     titolo:'I Naufraghi sulla Riva',
-    testo:'Una decina di uomini e donne stremati raggiungono la spiaggia su una zattera di fortuna. Sono i sopravvissuti di un galeone reale affondato. Guardano la vostra bandiera con terrore.',
+    testo:'Una decina di uomini e donne stremati raggiungono la spiaggia su una zattera. Sono i sopravvissuti di un galeone reale. Guardano la vostra bandiera con terrore. Il più alto di loro tira fuori un foglietto e dice: "Abbiamo preparato un discorso."',
     scelte:[
-      {etich:'Clemenza',testo:'Accoglieteli come uomini liberi',colore:'verde',
-        esito:'Alcuni scelgono di restare, altri ripartono su una barca. Quelli rimasti diventano lavoratori preziosi.',
+      {etich:'Clemenza',testo:'Accoglieteli come uomini liberi. Saltate il discorso.',colore:'verde',
+        esito:'Alcuni restano, diventando lavoratori preziosi. Uno di loro, si scopre, era pasticcere di corte. Il morale raggiunge vette storiche.',
         tipo:'bene', fn:()=>{creaaPirata();creaaPirata();G.cibo=Math.max(0,G.cibo-20);G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+10);}},
-      {etich:'Leva forzata',testo:'Arruolateli d\'autorità',colore:'',
-        esito:'Protestano, poi cedono. Nuove braccia per la ciurma, ma anime poco convinte.',
-        tipo:'bene', fn:()=>{creaaPirata();for(const p of G.pirati)p.umore=Math.max(10,p.umore-8);}},
-      {etich:'Prigionieri',testo:'Rinchiudeteli in attesa di riscatto',colore:'rosso',
-        esito:'La Marina pagherà bene per riavere i suoi uomini — se lo scopre prima che qualcuno parli.',
+      {etich:'Leva forzata',testo:'Arruolateli. Il discorso è vietato.',colore:'',
+        esito:'Protestano, poi cedono. Nuove braccia, spiriti poco convinti, ma il pasticcere sforna comunque delle crostate eccellenti.',
+        tipo:'bene', fn:()=>{creaaPirata();for(const p of G.pirati)p.umore=Math.max(10,p.umore-5);}},
+      {etich:'Riscatto',testo:'Rinchiudeteli. La Marina pagherà.',colore:'rosso',
+        esito:'La Marina pagherà bene. Il pasticcere piange in prigione. La ciurma lo sente. Si sente male per questo.',
         tipo:'male', fn:()=>{const n=2+Math.floor(Math.random()*3);for(let i=0;i<n;i++)catturaPrigioniero('Marina Reale');G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-15);}},
     ]
   },
@@ -3094,16 +3133,16 @@ const EVENTI_NARRATIVI=[
     id:'tesoro_nascosto', tag:'Isola', peso:2,
     icona:'💰', sfondo:'#1a1200',
     titolo:'La Mappa del Tesoro',
-    testo:'Un vecchio pirata moribondo vi consegna con mano tremante un frammento di pergamena. "Sull\'isolotto a nord... scavate dove il corallo forma una croce." Sorride e chiude gli occhi per sempre.',
+    testo:'Un vecchio pirata moribondo vi consegna con mano tremante un frammento di pergamena. "Sull\'isolotto a nord... scavate dove il corallo forma una croce." Sorride e chiude gli occhi. Poi li riapre. "E ricordate: la seconda croce non conta." Chiude di nuovo. Questa volta per davvero.',
     scelte:[
-      {etich:'Spedizione',testo:'Mandate subito una nave a cercarlo',colore:'verde',
-        esito:()=>{const g=200+Math.floor(Math.random()*300);return 'La nave torna con bauli carichi. '+g+' oro in monete antiche e gemme. Il vecchio diceva la verità.';},
-        tipo:'bene', fn:()=>{const nave=G.navi.find(n=>!n.inMare);if(nave){const g=200+Math.floor(Math.random()*300);G.oro+=g;G.ricerca.punti+=25;}else{const g=150+Math.floor(Math.random()*200);G.oro+=g;}}},
-      {etich:'Prudenza',testo:'Decifrare prima la mappa con calma',colore:'',
-        esito:'Gli studiosi ci mettono giorni, ma la posizione è precisa. Il tesoro è vostro, senza rischi.',
+      {etich:'Spedizione',testo:'Mandate subito una nave. Prima croce.',colore:'verde',
+        esito:()=>{const g=200+Math.floor(Math.random()*300);return 'La nave torna carica. '+g+' oro in monete antiche e gemme. Il vecchio diceva la verità. Sulla seconda croce non indagano.';},
+        tipo:'bene', fn:()=>{const nave=G.navi.find(n=>!n.inMare);if(nave){const g=200+Math.floor(Math.random()*300);G.oro+=g;G.ricerca.punti+=25;}else{G.oro+=150+Math.floor(Math.random()*200);}}},
+      {etich:'Prudenza',testo:'Decifrare la mappa. Quale croce è quale.',colore:'',
+        esito:'Gli studiosi passano giorni a discutere della seconda croce. Alla fine scelgono la prima. Era quella giusta. Avrebbero potuto indovinare.',
         tipo:'bene', fn:()=>{G.oro+=180;G.ricerca.punti+=35;}},
-      {etich:'Scetticismo',testo:'Probabilmente un\'esca. Lasciate perdere.',colore:'rosso',
-        esito:'Settimane dopo, una nave straniera ritorna da quel tratto di mare con bandiere festose. Forse il vecchio diceva la verità.',
+      {etich:'Scetticismo',testo:'Un vecchio pazzo. Lasciate perdere.',colore:'rosso',
+        esito:'Settimane dopo, una nave straniera torna da quell\'isolotto con bandiere festose e molto oro. La seconda croce non l\'hanno trovata nemmeno loro.',
         tipo:'male', fn:()=>{}},
     ]
   },
@@ -3112,17 +3151,108 @@ const EVENTI_NARRATIVI=[
     id:'spia_marina', tag:'Isola', peso:1,
     icona:'🕵', sfondo:'#0e0e1a',
     titolo:'La Spia della Corona',
-    testo:'Il vostro capobanda vi porta in disparte. "Capitano, abbiamo pescato questo tizio che disegnava mappe del porto." L\'uomo trema ma non parla. Ha l\'uniforme nascosta sotto stracci di pescatore.',
+    testo:'Il vostro capobanda vi porta in disparte. "Abbiamo pescato questo tizio che disegnava mappe del porto." L\'uomo ha l\'uniforme reale nascosta sotto stracci di pescatore. Porta anche un taccuino che descrive meticolosamente ogni edificio. Inclusa la taverna, con una stellina di apprezzamento.',
     scelte:[
       {etich:'Interrogatorio',testo:'Fate cantare la spia',colore:'rosso',
-        esito:'"C\'è una spedizione punitiva in arrivo entro venti giorni." Adesso sapete dove colpire per primo.',
+        esito:'"C\'è una spedizione punitiva in arrivo. Venti giorni." Aggiunge, non richiesto: "La taverna è davvero buona, però." Gli credete su entrambe le cose.',
         tipo:'bene', fn:()=>{G.oro+=50;G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-10);for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);}},
-      {etich:'Diplomazia',testo:'Offritela come pedina di scambio',colore:'verde',
-        esito:'Un messaggero porta la spia alla Marina con un messaggio: "Noi vi rendiamo i vostri, voi fate finta di non vederci." Un accordo tacito.',
+      {etich:'Scambio',testo:'Usatela come pedina diplomatica',colore:'verde',
+        esito:'"Noi rendiamo i vostri, voi fate finta di non vederci." Un accordo tacito. La spia, libera, torna con la stellina sul taccuino ancora intatta.',
         tipo:'bene', fn:()=>{G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+20);G.oro+=40;}},
-      {etich:'Esempio',testo:'Fate di lei un esempio pubblico',colore:'rosso',
-        esito:'La ciurma batte i piedi. La Marina non dimenticherà.',
+      {etich:'Esempio',testo:'Un esempio pubblico. La stellina non la salva.',colore:'rosso',
+        esito:'La ciurma batte i piedi soddisfatta. La Marina non dimenticherà. La stellina sulla taverna, invece, era meritata.',
         tipo:'male', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+15);G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-25);}},
+    ]
+  },
+
+  {
+    id:'pirata_inventore', tag:'Ciurma', peso:2,
+    icona:'⚙', sfondo:'#0a1520',
+    titolo:'L\'Inventore della Ciurma',
+    testo:()=>{
+      const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
+      const nome=p?p.nome:'Un pirata';
+      return nome+' si presenta con un disegno arrotolato. "Capitano, ho inventato un cannone che spara tre palle alla volta." Il disegno mostra qualcosa che assomiglia principalmente a una catapulta con ambizioni. "Ho solo bisogno di un po\' di materiali e di non essere interrotto per tre settimane."';
+    },
+    scelte:[
+      {etich:'Finanziamento',testo:'Investite. L\'innovazione è il futuro.',colore:'verde',
+        esito:()=>{if(Math.random()<.55)return 'Funziona! Quasi. Spara due palle e mezza, in senso molto stretto. Ma i nemici si confondono lo stesso.';return 'Non funziona. Ma il tentativo era così spettacolare che la ciurma lo rispetta di più. Il cannone ora è un ornamento.';},
+        tipo:'bene', fn:()=>{G.oro=Math.max(0,G.oro-60);G.legno=Math.max(0,G.legno-20);if(Math.random()<.55){G.ricerca.punti+=40;for(const n of G.navi)n.hp=Math.min(n.hpMax,n.hp+15);}else G.ricerca.punti+=20;}},
+      {etich:'Scetticismo',testo:'"Molto bello. Torna alla tua postazione."',colore:'rosso',
+        esito:'Il pirata arrotola il disegno con dignità. Lo trovate sotto il suo cuscino due settimane dopo, ancora fresco di correzioni.',
+        tipo:'male', fn:()=>{const p=G.pirati[0];if(p)p.umore=Math.max(10,p.umore-15);}},
+      {etich:'Compromesso',testo:'Dategli legno e una settimana. Poi basta.',colore:'',
+        esito:'Produce qualcosa. Non è un cannone. Non è una catapulta. È unico. E stranamente, funziona.',
+        tipo:'bene', fn:()=>{G.legno=Math.max(0,G.legno-30);G.ricerca.punti+=25;for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);}},
+    ]
+  },
+
+  {
+    id:'cuoco_minaccia', tag:'Ciurma', peso:2,
+    icona:'🍳', sfondo:'#1a0a00',
+    titolo:'Il Cuoco si Dimette',
+    testo:'Il cuoco — l\'unico a bordo che sa fare qualcosa di commestibile — entra nella vostra capanna con il grembiule piegato sul braccio. "Capitano, me ne vado. Voglio rispetto. Voglio spezie migliori. E voglio che smettano di chiamarmi Zuppa-di-Stivale." La ciurma fuori aspetta in silenzio. Sanno cosa si perde se parte.',
+    scelte:[
+      {etich:'Trattativa',testo:'Promettete spezie, rispetto e un soprannome migliore.',colore:'verde',
+        esito:'"Don Pepito" resta. Quella sera serve una zuppa che fa piangere dalla bontà. Qualcuno piange davvero. Probabilmente per il sale.',
+        tipo:'bene', fn:()=>{G.cibo+=40;for(const p of G.pirati)p.umore=Math.min(100,p.umore+18);}},
+      {etich:'Capitolazione',testo:'Cedete su tutto. È il cuoco.',colore:'',
+        esito:'Spendete oro per spezie pregiate. Vale ogni spicciolo. La ciurma mangia come re. Re pirati, ma comunque.',
+        tipo:'bene', fn:()=>{G.oro=Math.max(0,G.oro-50);G.cibo+=60;for(const p of G.pirati)p.umore=Math.min(100,p.umore+25);}},
+      {etich:'Orgoglio',testo:'"Chiunque può cucinare. Vattene."',colore:'rosso',
+        esito:'Il cuoco parte. Per tre giorni la ciurma tenta di cucinarsi da sola. Perdite nelle riserve di cibo inspiegabilmente alte. Il morale crolla. Qualcuno mangia il cappello.',
+        tipo:'male', fn:()=>{G.cibo=Math.max(0,G.cibo-40);for(const p of G.pirati)p.umore=Math.max(5,p.umore-20);}},
+    ]
+  },
+
+  {
+    id:'ambasciatore_ridicolo', tag:'Politica', peso:2,
+    icona:'📜', sfondo:'#101828',
+    titolo:'L\'Ambasciatore della Corona',
+    testo:'Arriva un\'imbarcazione con bandiera bianca e un uomo in parrucca imponente che si qualifica come "Ambasciatore Straordinario e Plenipotenziario di Sua Maestà per le Questioni di Pirateria Minore". Vi porta un documento di quarantasette pagine. La pagina uno è la copertina. La pagina due è un indice. La pagina quarantasette è la firma.',
+    scelte:[
+      {etich:'Diplomazia',testo:'Leggete (almeno) la prima e l\'ultima pagina.',colore:'verde',
+        esito:'La Corona offre amnistia parziale in cambio di un tributo annuo. La parrucca dell\'ambasciatore si inclina di tre gradi durante la stretta di mano. Accordo.',
+        tipo:'bene', fn:()=>{G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+30);G.oro=Math.max(0,G.oro-80);}},
+      {etich:'Teatralità',testo:'Bruciate il documento. Tenete l\'ambasciatore a cena.',colore:'',
+        esito:'L\'ambasciatore, inspiegabilmente, si diverte moltissimo. Riparte con storie da raccontare. La parrucca resta leggermente storta per tutta la sera.',
+        tipo:'bene', fn:()=>{G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+10);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+15);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
+      {etich:'Arroganza',testo:'Rispedite tutto indietro. Con una nota ironica.',colore:'rosso',
+        esito:'La nota ironica viene letta ad alta voce a corte. Non viene apprezzata. La spedizione punitiva è ora schedulata con priorità alta.',
+        tipo:'male', fn:()=>{G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-30);}},
+    ]
+  },
+
+  {
+    id:'profeta_isola', tag:'Mistero', peso:1,
+    icona:'🔮', sfondo:'#100818',
+    titolo:'Il Profeta dell\'Isola',
+    testo:'Un vecchio vive da solo nelle colline. I pirati lo chiamano "Il Pazzo di Su". Oggi scende al porto per la prima volta in vent\'anni. "Il mare parlerà domani," dice. "Ascoltate il terzo gabbiano da sinistra." Poi torna su. Il terzo gabbiano da sinistra vi fissa.',
+    scelte:[
+      {etich:'Fede',testo:'Ascoltate il terzo gabbiano da sinistra.',colore:'verde',
+        esito:()=>{if(Math.random()<.6)return 'Il gabbiano vola verso nordest. Mandate una nave. Tornano con oro e storie incredibili.';return 'Il gabbiano vola in cerchio per venti minuti e poi si addormenta su una roccia. Ma quella notte trovate 40 oro sul molo. Connessione poco chiara.';},
+        tipo:'bene', fn:()=>{if(Math.random()<.6){G.oro+=120;G.ricerca.punti+=20;}else G.oro+=40;}},
+      {etich:'Razionalità',testo:'"È un gabbiano. Andate a lavorare."',colore:'rosso',
+        esito:'Il giorno dopo, il vecchio scende di nuovo. "L\'avevo detto." Poi risale. Non scende per altri vent\'anni.',
+        tipo:'male', fn:()=>{}},
+    ]
+  },
+
+  {
+    id:'tartaruga_sacra', tag:'Mistero', peso:1,
+    icona:'🐢', sfondo:'#061810',
+    titolo:'La Tartaruga Sacra',
+    testo:'Una tartaruga enorme — grande quanto una tavola da pranzo — si è installata all\'ingresso della vostra capanna. Non si muove. Tre pirati hanno già inciampato su di lei. La ciurma è divisa: metà la considera sacra, metà la considera cena. Voi siete l\'arbitro.',
+    scelte:[
+      {etich:'Sacralità',testo:'È un segno. La tartaruga resta e va rispettata.',colore:'verde',
+        esito:'La tartaruga diventa la mascotte dell\'isola. La chiama Generale. I pirati sviluppano un affetto imbarazzante per lei. Il morale è alto, le caviglie meno.',
+        tipo:'bene', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+15);}},
+      {etich:'Pragmatismo',testo:'Spostatela delicatamente lontano dalla porta.',colore:'',
+        esito:'La tartaruga torna il giorno dopo. E quello dopo. La chiamate Generale per rassegnarvi. La situazione è invariata ma almeno ha un nome.',
+        tipo:'bene', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);}},
+      {etich:'Gastronomia',testo:'La metà pragmatica aveva ragione.',colore:'rosso',
+        esito:'Era effettivamente buona. La metà sacra non dimentica. Una tensione sottile avvelena l\'isola per settimane.',
+        tipo:'male', fn:()=>{G.cibo+=30;for(const p of G.pirati)p.umore=Math.max(10,p.umore-15);}},
     ]
   },
 
@@ -3131,13 +3261,13 @@ const EVENTI_NARRATIVI=[
     id:'carico_misterioso', tag:'Commercio', peso:2,
     icona:'📦', sfondo:'#101020',
     titolo:'Il Carico Senza Mittente',
-    testo:'Al molo arriva una barca con tre casse sigillate. Il barcaiolo consegna un biglietto: "Per il Capitano dell\'Isla del Diablo. In anticipo." Nessun mittente. Nessuna firma.',
+    testo:'Al molo arriva una barca con tre casse sigillate. Il barcaiolo consegna un biglietto: "Per il Capitano dell\'Isla del Diablo. In anticipo." Nessun mittente, nessuna firma. Il barcaiolo, interrogato, dice di essere stato pagato da "un tipo". Descrizione: "normale".',
     scelte:[
-      {etich:'Accettate',testo:'Aprite le casse e tenete il contenuto',colore:'verde',
-        esito:()=>{const r=Math.random();if(r<0.6)return 'Oro, spezie pregiate e una bottiglia di rum invecchiato. Un dono generoso da un amico ignoto.';return 'Dentro: mappe di rotte commerciali riservate. Valgono più dell\'oro.';},
+      {etich:'Accettate',testo:'Aprite le casse. Il tipo normale è generoso.',colore:'verde',
+        esito:()=>{if(Math.random()<0.6)return 'Oro, spezie pregiate e una bottiglia di rum invecchiato. Dono anonimo, qualità non anonima.';return 'Dentro: mappe di rotte commerciali riservate. Vale più dell\'oro. Il tipo normale era un contatto interessante.';},
         tipo:'bene', fn:()=>{if(Math.random()<0.6){G.oro+=130;G.rum+=20;}else{G.ricerca.punti+=40;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+10);}}},
-      {etich:'Sospetto',testo:'Rifiutate e rispedite indietro',colore:'rosso',
-        esito:'Il barcaiolo riprende le casse senza una parola. Forse era una trappola. Forse un\'opportunità.',
+      {etich:'Sospetto',testo:'Rispedite tutto. I regali senza firma puzzano.',colore:'rosso',
+        esito:'Il barcaiolo riprende le casse con aria offesa. Forse era una trappola. Forse no. Non lo saprete mai. Il barcaiolo nemmeno.',
         tipo:'male', fn:()=>{}},
     ]
   },
@@ -3146,17 +3276,72 @@ const EVENTI_NARRATIVI=[
     id:'contrabbando', tag:'Commercio', peso:2,
     icona:'🧪', sfondo:'#0a1810',
     titolo:'L\'Offerta del Contrabbandiere',
-    testo:'Un individuo dall\'aria losca vi avvicina al porto. "Ho cinquanta barili di rum delle Indie... non dichiarati. Li vendo a metà prezzo. Nessuna domanda." Vi mostra un campione. E\' il migliore che abbiate mai assaggiato.',
+    testo:'Un individuo dall\'aria losca — cappello calato sugli occhi, mantello per tre stagioni di troppo — vi avvicina. "Cinquanta barili di rum delle Indie. Non dichiarati. Metà prezzo." Vi mostra un campione. È il migliore rum che abbiate mai assaggiato in vita vostra, il che è molto preoccupante.',
     scelte:[
-      {etich:'Affare',testo:'Comprate l\'intero lotto (80 oro)',colore:'verde',
-        esito:'Il rum è straordinario. La ciurma festeggia. Per una settimana, l\'umore sull\'isola è alle stelle.',
-        tipo:'bene', fn:()=>{if(G.oro>=80){G.oro-=80;G.rum+=80;for(const p of G.pirati)p.umore=Math.min(100,p.umore+20);}else aggMsg('Oro insufficiente per l\'affare.','male');}},
-      {etich:'Trattativa',testo:'Offrite 50 oro e parte delle scorte',colore:'',
-        esito:'L\'uomo borbotta ma accetta. Affari fatti.',
+      {etich:'Affare',testo:'Comprate il lotto. Tutte le domande sono sospese.',colore:'verde',
+        esito:'Il rum è straordinario. Per una settimana l\'isola è avvolta in un alone di felicità diffusa. Il navigatore traccia rotte migliori. Il cuoco cucina meglio. Nessuno capisce perché.',
+        tipo:'bene', fn:()=>{if(G.oro>=80){G.oro-=80;G.rum+=80;for(const p of G.pirati)p.umore=Math.min(100,p.umore+20);}else aggMsg('Oro insufficiente. Il contrabbandiere scuote la testa deluso.','male');}},
+      {etich:'Trattativa',testo:'50 oro e delle scorte. È pirateria, non carità.',colore:'',
+        esito:'L\'uomo borbotta ma accetta. Stretta di mano sotto il cappello. Non vedete la sua faccia. Meglio così, probabilmente.',
         tipo:'bene', fn:()=>{if(G.oro>=50){G.oro-=50;G.cibo=Math.max(0,G.cibo-20);G.rum+=60;for(const p of G.pirati)p.umore=Math.min(100,p.umore+12);}}},
-      {etich:'Delazione',testo:'Denunciate il contrabbandiere alla Marina',colore:'rosso',
-        esito:'La Marina vi ringrazia con un lasciapassare temporaneo. Che voi usiate o meno.',
-        tipo:'bene', fn:()=>{G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+15);G.fazioni.corsaro.rep=Math.max(-100,G.fazioni.corsaro.rep-10);}},
+      {etich:'Delazione',testo:'Denunciate l\'uomo alla Marina. Buona cittadinanza.',colore:'rosso',
+        esito:'La Marina vi ringrazia con un lasciapassare. I corsari vengono a sapere che avete denunciato un contrabbandiere. Si chiedono se siete ancora pirati o qualcos\'altro.',
+        tipo:'bene', fn:()=>{G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+15);G.fazioni.corsaro.rep=Math.max(-100,G.fazioni.corsaro.rep-12);}},
+    ]
+  },
+
+  {
+    id:'mercante_falso', tag:'Commercio', peso:2,
+    icona:'🤥', sfondo:'#181008',
+    titolo:'Il Mercante Troppo Gentile',
+    testo:'Un mercante si presenta con prezzi straordinariamente bassi. Spezie a un terzo del valore, seta quasi gratis, cannoni a prezzo di costo. Sorride molto. Troppo. Il vostro secondo ufficiale vi sussurra: "Capitano, quest\'uomo sorride come chi sta per venderci qualcosa che non esiste."',
+    scelte:[
+      {etich:'Ottimismo',testo:'Comprate tutto. Gli affari sono affari.',colore:'rosso',
+        esito:()=>{if(Math.random()<.4)return 'Era tutto vero! Un mercante rovinato che liquidava tutto. Affare della vita.';return 'Le spezie erano segatura profumata. La seta era lino umido. I cannoni erano di legno dipinto. Il sorriso era reale, però.';},
+        tipo:'', fn:()=>{if(Math.random()<.4){G.oro+=100;G.cibo+=40;G.rum+=20;}else{G.oro=Math.max(0,G.oro-90);aggMsg('Truffati dal mercante sorridente!','male');}}},
+      {etich:'Prudenza',testo:'Fate ispezionare la merce prima di pagare.',colore:'verde',
+        esito:'Il mercante sparisce durante l\'ispezione. Il che risponde alla domanda. La ciurma trova la sua barca nascosta tra le rocce.',
+        tipo:'bene', fn:()=>{G.oro+=30;for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);}},
+      {etich:'Contrattacco',testo:'Lo ingannate a vostra volta. Pirata contro pirata.',colore:'',
+        esito:'Una trattativa elaborata in cui nessuno dei due dice la verità. Alla fine entrambi pareggiate le perdite e vi rispettate professionalmente.',
+        tipo:'bene', fn:()=>{G.oro+=20;G.rum+=15;G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+8);}},
+    ]
+  },
+
+  // ── NATURA ──
+  {
+    id:'tempesta_imminente', tag:'Natura', peso:2,
+    icona:'⛈', sfondo:'#0a0a18',
+    titolo:'La Tempesta in Arrivo',
+    testo:'Il cielo a ovest è verde. I gabbiani fuggono. Il navigatore anziano annuisce grave: "Capitano, quella non è una burrasca normale." Pausa drammatica. "Quella è una burrasca molto molto normale, ma enorme." La distinzione è importante.',
+    scelte:[
+      {etich:'Preparazione',testo:'Mettete tutto al sicuro. Aspettate.',colore:'verde',
+        esito:'La tempesta è violenta ma breve. L\'isola regge. Qualche albero caduto. Il cuoco ha usato il tempo per preparare una zuppa. La chiama "Zuppa della Tempesta". È la migliore di sempre.',
+        tipo:'bene', fn:()=>{G.cibo=Math.max(0,G.cibo-10);for(const p of G.pirati)p.umore=Math.min(100,p.umore+12);}},
+      {etich:'Avventura',testo:'Mandate una nave. I relitti valgono oro.',colore:'rosso',
+        esito:()=>{if(Math.random()<.45)return 'La nave torna con un carico di relitti preziosi. Rischio calcolato, risultato ottimo.';return 'La nave torna quasi affondata. Il capitano giura che ne è valsa la pena. Nessuno gli crede. La nave nemmeno.';},
+        tipo:'', fn:()=>{const nave=G.navi.find(n=>!n.inMare);if(nave){if(Math.random()<.45){G.oro+=180;G.rum+=30;}else nave.hp=Math.max(10,Math.floor(nave.hpMax*.2));}}},
+      {etich:'Rassegnazione',testo:'Portate le navi al riparo. Il resto si vede.',colore:'',
+        esito:'La flotta è salva. Qualche struttura in meno. Il magazzino della legna è esploso in maniera spettacolare. Nessuno era dentro. Fortuna.',
+        tipo:'bene', fn:()=>{G.legno=Math.max(0,G.legno-40);for(const p of G.pirati)p.umore=Math.max(10,p.umore-5);}},
+    ]
+  },
+
+  {
+    id:'vulcano_minore', tag:'Natura', peso:1,
+    icona:'🌋', sfondo:'#1a0500',
+    titolo:'Il Vulcano si Sveglia',
+    testo:'Il piccolo vulcano al centro dell\'isola — che tutti chiamavano "quella collina calda" — ha iniziato a fumare. Non in modo preoccupante, dice il geologo che non avete (quindi nessuno lo dice). I pirati sono divisi tra "è normale" e "non è normale". Il vulcano non partecipa al dibattito.',
+    scelte:[
+      {etich:'Indifferenza',testo:'"È fumo. I vulcani fumano. Avanti."',colore:'',
+        esito:'Il vulcano sbuffa per tre giorni poi si calma. Era normale. I pirati un po\' delusi dall\'esito banale della faccenda.',
+        tipo:'bene', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+5);}},
+      {etich:'Evacuazione',testo:'Portate tutto a bordo. Per precauzione.',colore:'verde',
+        esito:'L\'operazione dura dodici ore caotiche. Il vulcano non fa niente. Ma trovate delle gemme vulcaniche nella lava raffreddata. Un rimborso.',
+        tipo:'bene', fn:()=>{G.oro+=60;G.ricerca.punti+=15;for(const p of G.pirati)p.umore=Math.max(10,p.umore-8);}},
+      {etich:'Opportunismo',testo:'Scalate il vulcano. Ci sono minerali preziosi.',colore:'rosso',
+        esito:()=>{if(Math.random()<.5)return 'Trovate gemme e minerali rari. Il vulcano collabora. Buon vulcano.';return 'Il vulcano emette un singolo sbuffo di gas sulfureo proprio mentre salite. Tutti tornano con le sopracciglia ridotte.';},
+        tipo:'', fn:()=>{if(Math.random()<.5){G.oro+=80;G.ricerca.punti+=25;}else{for(const p of G.pirati)p.umore=Math.max(5,p.umore-15);aggMsg('Sopracciglia perse sull\'avventura vulcanica.','male');}}},
     ]
   },
 
@@ -3165,44 +3350,120 @@ const EVENTI_NARRATIVI=[
     id:'fantasma', tag:'Mistero', peso:1,
     icona:'👻', sfondo:'#080818',
     titolo:'Il Fantasma del Porto',
-    testo:'Da tre notti, le guardie riferiscono di vedere una figura luminosa camminare sulle acque del porto. Stamane, sul molo, hanno trovato incise le lettere: "CERCATE IL BAULE ROSSO".',
+    testo:'Da tre notti, le guardie vedono una figura luminosa camminare sulle acque. Stamane, sul molo, le lettere incise: "CERCATE IL BAULE ROSSO". Sotto, in grafia più piccola e meno decisa: "per favore".',
     scelte:[
-      {etich:'Cercate',testo:'Fate dragare il fondale del porto',colore:'verde',
-        esito:()=>{const g=80+Math.floor(Math.random()*150);return 'Sul fondo, tra alghe e fanghiglia, emerge un baule rosso marcio. Dentro: '+g+' monete d\'oro antico e un orologio che non si è fermato.';},
+      {etich:'Cercate',testo:'Dragate il fondale. Il fantasma è educato.',colore:'verde',
+        esito:()=>{const g=80+Math.floor(Math.random()*150);return 'Sul fondo emerge un baule rosso marcio. '+g+' monete d\'oro antico e un orologio che non si è fermato. Il fantasma non si vede più. Sembra soddisfatto.';},
         tipo:'bene', fn:()=>{G.oro+=80+Math.floor(Math.random()*150);G.ricerca.punti+=20;}},
-      {etich:'Ignorate',testo:'"Superstizioni da marinaio ubriaco."',colore:'rosso',
-        esito:'La figura smette di apparire. Ma qualcuno giura di averla vista indicare il largo, triste.',
+      {etich:'Ignorate',testo:'"Marinaio ubriaco che incide cose." ',colore:'rosso',
+        esito:'La figura smette di apparire. Ma qualcuno giura di averla vista scuotere la testa. Triste. La ciurma si sente vagamente in colpa.',
+        tipo:'male', fn:()=>{for(const p of G.pirati)p.umore=Math.max(10,p.umore-8);}},
+    ]
+  },
+
+  {
+    id:'straniero_sapiente', tag:'Mistero', peso:2,
+    icona:'🧙', sfondo:'#0a1020',
+    titolo:'Il Cartografo Misterioso',
+    testo:'Un vecchio dall\'aspetto stanco si presenta al molo con una mappa enorme sotto il braccio. "Ho mappato ogni rotta commerciale del Mediterraneo per trent\'anni," dice. "Ora voglio un posto dove stare e rum a volontà." Non chiede altro. È o un genio o un pazzo. Probabilmente entrambi.',
+    scelte:[
+      {etich:'Ospitalità',testo:'Ha una casa e rum illimitato. Le mappe sono vostre.',colore:'verde',
+        esito:'Le mappe sono straordinarie. Ogni rotta commerciale, ogni pattuglia reale, ogni corrente. Il vecchio beve il vostro rum con la serena dignità di chi sa di valere ogni goccia.',
+        tipo:'bene', fn:()=>{G.rum=Math.max(0,G.rum-20);G.ricerca.punti+=50;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+15);}},
+      {etich:'Trattativa',testo:'Una casa e rum ragionevole. Le mappe vanno copiate.',colore:'',
+        esito:'Accetta. Beve con moderazione ostentata. Le copie delle mappe sono quasi altrettanto buone degli originali.',
+        tipo:'bene', fn:()=>{G.ricerca.punti+=30;G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+8);}},
+      {etich:'Scetticismo',testo:'Chiunque può disegnare una mappa e chiamarla rara.',colore:'rosso',
+        esito:'Il vecchio annuisce, arrotola le mappe e se ne va. Una settimana dopo, un vostro rivale lo trova. Le mappe erano reali.',
         tipo:'male', fn:()=>{}},
     ]
   },
 
   {
-    id:'tempesta_imminente', tag:'Natura', peso:2,
-    icona:'⛈', sfondo:'#0a0a18',
-    titolo:'La Tempesta in Arrivo',
-    testo:'Il cielo a ovest è verde. I gabbiani fuggono verso terra. Il vostro navigatore più anziano annuisce grave: "Capitano, quella non è una burrasca normale. Abbiamo forse sei ore."',
+    id:'maledizione_rum', tag:'Mistero', peso:1,
+    icona:'🍺', sfondo:'#180808',
+    titolo:'Il Rum Maledetto',
+    testo:'Il cuoco riferisce che tre barili di rum hanno cambiato colore da ieri sera: da ambrato a viola. Odore normale, sapore identico. Il primo pirata che ha assaggiato giura di aver visto i pesci parlare per un\'ora. Li ha descritti come "interessanti conversatori". Non ricorda i dettagli.',
     scelte:[
-      {etich:'Preparazione',testo:'Mettete tutto al sicuro e aspettate',colore:'verde',
-        esito:'La tempesta è violenta ma breve. L\'isola regge. Qualche albero caduto, nessuna vittima.',
-        tipo:'bene', fn:()=>{G.cibo=Math.max(0,G.cibo-10);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
-      {etich:'Avventura',testo:'Mandate una nave a circumnavigarla per bottino',colore:'rosso',
-        esito:()=>{if(Math.random()<.45)return 'La nave torna con un carico di relitti preziosi. Rischio calcolato.';return 'La nave subisce danni gravi. Torna zoppicando, quasi affondata.';},
-        tipo:'', fn:()=>{const nave=G.navi.find(n=>!n.inMare);if(nave){if(Math.random()<.45){G.oro+=180;G.rum+=30;}else{nave.hp=Math.max(10,Math.floor(nave.hpMax*.2));}}}},
-      {etich:'Fuga',testo:'Portate le navi in una cala riparata',colore:'',
-        esito:'Le navi sono al sicuro. L\'isola perde qualche struttura, ma la flotta è intatta.',
-        tipo:'bene', fn:()=>{G.legno=Math.max(0,G.legno-30);for(const p of G.pirati)p.umore=Math.max(10,p.umore-5);}},
+      {etich:'Consumo',testo:'Rum viola è ancora rum. Distribuitelo.',colore:'rosso',
+        esito:()=>{if(Math.random()<.5)return 'La ciurma passa una notte molto strana. Nessuno si fa male. Al mattino il rum è tornato ambrato. I pesci non commentano.';return 'Effetti collaterali: tre pirati si rifiutano di dormire, uno costruisce qualcosa di inspiegabile con del legno, il navigatore tracia le rotte migliori della sua vita. Un successo.';},
+        tipo:'', fn:()=>{if(Math.random()<.5){for(const p of G.pirati)p.umore=Math.max(15,p.umore-10);}else{for(const p of G.pirati)p.umore=Math.min(100,p.umore+15);G.ricerca.punti+=20;}}},
+      {etich:'Prudenza',testo:'Gettate i barili. Viola non è un colore del rum.',colore:'verde',
+        esito:'I barili finiscono in mare. I pesci nei paraggi si comportano in modo insolito per tre giorni. Nessuno ne parla apertamente.',
+        tipo:'bene', fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);}},
+      {etich:'Scienza',testo:'Studiatelo. Potrebbero esserci applicazioni pratiche.',colore:'',
+        esito:'Tre settimane di esperimenti. Scoperta: il rum viola è rum normale con alghe violacee cadute accidentalmente. Risultato scientifico: deludente. Rum recuperato: moderatamente.',
+        tipo:'bene', fn:()=>{G.rum+=15;G.ricerca.punti+=18;}},
+    ]
+  },
+
+  {
+    id:'diplomatico_corsaro', tag:'Politica', peso:2,
+    icona:'☠', sfondo:'#1a0808',
+    titolo:'Il Consiglio dei Corsari',
+    testo:'Un messaggero corsaro porta un invito al "Gran Consiglio dei Liberi Mari", raduno annuale di capitani pirati. Si tiene su un\'isola neutrale. Ogni capitano porta rum, oro e una storia da raccontare. Niente armi. Niente tradimenti. Per tradizione.',
+    scelte:[
+      {etich:'Partecipazione',testo:'Andate. Con rum, oro e la storia migliore.',colore:'verde',
+        esito:'Tre giorni di accordi, alleanze e storie sempre più improbabili. Tornate con contatti preziosi, una reputazione migliore e i postumi di una festa epica.',
+        tipo:'bene', fn:()=>{G.oro=Math.max(0,G.oro-60);G.rum=Math.max(0,G.rum-30);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+35);for(const p of G.pirati)p.umore=Math.min(100,p.umore+20);}},
+      {etich:'Prudenza',testo:'Non vi fidate dei tradimenti "per tradizione".',colore:'',
+        esito:'Non andate. Il consiglio va bene per gli altri. Vi perdete un accordo vantaggioso ma anche un potenziale tranello.',
+        tipo:'bene', fn:()=>{G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+5);}},
+      {etich:'Ambizione',testo:'Andate. Portate armi. Non per la tradizione.',colore:'rosso',
+        esito:'Venite scoperti all\'ingresso. La guardia corsara vi fissa. "Tutti portano armi. La regola è non parlarne." Enorme disagio. Superato con rum supplementare.',
+        tipo:'bene', fn:()=>{G.oro=Math.max(0,G.oro-40);G.rum=Math.max(0,G.rum-20);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+18);for(const p of G.pirati)p.umore=Math.min(100,p.umore+12);}},
+    ]
+  },
+
+  {
+    id:'burocrazia_marina', tag:'Politica', peso:2,
+    icona:'📋', sfondo:'#0a0e1a',
+    titolo:'Il Funzionario della Corona',
+    testo:'Un funzionario reale — magro, inchiostro sulle dita, espressione di chi non ha dormito bene dal 1689 — vi porta una notifica ufficiale. La pirateria nella vostra zona è "non autorizzata". Dovete compilare il "Modulo di Richiesta di Licenza per Attività Maritime Non Convenzionali". È in triplice copia.',
+    scelte:[
+      {etich:'Conformità',testo:'Compilate il modulo. Triplice copia inclusa.',colore:'verde',
+        esito:'Il funzionario esamina i moduli per quarantadue minuti. "Manca il timbro nella casella D." Trenta minuti dopo: "Approvato provvisoriamente." Non capite cosa voglia dire. Lui nemmeno.',
+        tipo:'bene', fn:()=>{G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+20);G.oro=Math.max(0,G.oro-30);}},
+      {etich:'Corruzione',testo:'Il modulo vale meno di 50 oro. Diretti.',colore:'',
+        esito:'Il funzionario guarda l\'oro. Guarda il modulo. Guarda l\'oro. Piega il modulo. "Consideratevi autorizzati." Parte soddisfatto di entrambi.',
+        tipo:'bene', fn:()=>{G.oro=Math.max(0,G.oro-50);G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+10);}},
+      {etich:'Rifiuto',testo:'"Non siamo il tipo di pirati che compila moduli."',colore:'rosso',
+        esito:'Il funzionario annota qualcosa su un altro modulo. Salpa. Le conseguenze arriveranno via posta ufficiale, probabilmente in triplice copia.',
+        tipo:'male', fn:()=>{G.fazioni.reale.rep=Math.max(-100,G.fazioni.reale.rep-20);}},
+    ]
+  },
+
+  {
+    id:'concorrente_pirata', tag:'Politica', peso:2,
+    icona:'🏴', sfondo:'#1a0a00',
+    titolo:'Il Capitano Rivale',
+    testo:()=>{
+      const nomi=['Ferro Gonzalez','La Vedova Nera','Capitan Zampone','Il Magnifico Errore','Dente d\'Arrugine'];
+      const nome=nomi[Math.floor(Math.random()*nomi.length)];
+      return nome+' ha stabilito una base sull\'isolotto vicino. Vi manda un messaggio: "Questo mare è abbastanza grande per due capitani." Poi ne manda un secondo: "Ma sarebbe più comodo per uno solo." Poi un terzo: "Pace?"';
+    },
+    scelte:[
+      {etich:'Alleanza',testo:'Pace. Il mare è grande per tutti.',colore:'verde',
+        esito:'Strette di mano, rum condiviso, accordo di non interferenza. Il rivale è affidabile quanto può esserlo un pirata. Cioè abbastanza.',
+        tipo:'bene', fn:()=>{G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+20);G.oro+=50;}},
+      {etich:'Pressione',testo:'Il mare è grande, ma l\'isolotto vicino è vostro.',colore:'rosso',
+        esito:'Il rivale se ne va dopo una settimana di tensione. Lascia una nota: "La prossima volta mando tre messaggi meno educati." Minaccia, probabilmente.',
+        tipo:'male', fn:()=>{G.oro+=30;G.fazioni.corsaro.rep=Math.max(-100,G.fazioni.corsaro.rep-10);}},
+      {etich:'Curiosità',testo:'Invitatelo a cena prima di decidere.',colore:'',
+        esito:'È simpatico. Storie straordinarie. Ordina rum come se fosse la sua ultima notte. Accordo raggiunto a metà cena, tra risate e qualcosa che sembrava una promessa.',
+        tipo:'bene', fn:()=>{G.rum=Math.max(0,G.rum-20);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+15);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
     ]
   },
 
 ];
 
 // cooldown minimo tra eventi narrativi (in tick)
-const COOLDOWN_EVENTO_MIN=12;
+const COOLDOWN_EVENTO_MIN=8;
 
 function eventoRandom(){
-  // ogni 7 tick: 40% narrativo, 60% silenzioso
+  // ogni 7 tick: 55% narrativo, 45% silenzioso
   if(G.cooldownEvento>0){ G.cooldownEvento--; eventoSilenzioso(); return; }
-  if(Math.random()<0.4 && !G.eventoAttivo){
+  if(Math.random()<0.55 && !G.eventoAttivo){
     const disponibili=EVENTI_NARRATIVI.filter(e=>e.peso>0);
     const tot=disponibili.reduce((a,e)=>a+e.peso,0);
     let r=Math.random()*tot;
@@ -3213,14 +3474,20 @@ function eventoRandom(){
 
 function eventoSilenzioso(){
   const eventi=[
-    {p:2,fn:()=>{const g=20+Math.floor(Math.random()*40);G.oro+=g;aggMsg('Un tributo silenzioso arriva al porto. +'+g+' oro','bene');}},
-    {p:2,fn:()=>{const f=15+Math.floor(Math.random()*30);G.cibo+=f;aggMsg('Una buona giornata di pesca. +'+f+' cibo','bene');}},
-    {p:1,fn:()=>{G.rum+=20;aggMsg('Un barilotto di rum galleggia verso la riva. +20 rum','bene');}},
-    {p:1,fn:()=>{G.ricerca.punti+=12;aggMsg('Un libro di navigazione trovato tra i rottami. +12 ricerca','bene');}},
-    {p:1,fn:()=>{const g=15+Math.floor(Math.random()*35);G.oro=Math.max(0,G.oro-g);aggMsg('Furto notturno nei magazzini: -'+g+' oro','male');}},
-    {p:1,fn:()=>{const f=10+Math.floor(Math.random()*20);G.cibo=Math.max(0,G.cibo-f);aggMsg('I topi hanno razziato le dispense! -'+f+' cibo','male');}},
-    {p:2,fn:()=>{const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];if(p){p.combattimento=Math.min(100,p.combattimento+6);aggMsg(p.nome+' si allena all\'alba. +6 combattimento','bene');}}},
-    {p:1,fn:()=>{const k=['reale','mercante','corsaro'][Math.floor(Math.random()*3)];const v=(Math.random()<.5?1:-1)*(4+Math.floor(Math.random()*8));G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));aggMsg(G.fazioni[k].nome+': rep '+(v>0?'+':'')+v,'info');}},
+    {p:2,fn:()=>{const g=20+Math.floor(Math.random()*40);G.oro+=g;aggMsg('💰 Un tributo anonimo arriva al porto. Nessuno firma. +'+g+' oro','bene');}},
+    {p:2,fn:()=>{const f=15+Math.floor(Math.random()*30);G.cibo+=f;const frasi=['Pesca miracolosa. Il cuoco è sospettosamente soddisfatto.','Qualcuno ha pescato qualcosa di enorme. Non chiedete cosa fosse.','Rete piena. Persino il navigatore ha aiutato. Malvolentieri.'];aggMsg('🐟 '+frasi[Math.floor(Math.random()*frasi.length)]+' +'+f+' cibo','bene');}},
+    {p:2,fn:()=>{G.rum+=20+Math.floor(Math.random()*15);const frasi=['Un barilotto di rum galleggia verso riva. Qualcuno lo ha perso. Loro: perdita. Voi: guadagno.','Ritrovato rum nascosto da un pirata che non ricorda di averlo nascosto.','Il cuoco aveva rum "di riserva personale". Non più.'];aggMsg('🍺 '+frasi[Math.floor(Math.random()*frasi.length)]+' +rum','bene');}},
+    {p:1,fn:()=>{G.ricerca.punti+=12;const frasi=['Trovato un libro di navigazione tra i rottami. Qualcuno lo aveva letto e sottolineato tutto.','Un vecchio marinaio lascia i suoi appunti prima di andarsene. Scrittura illeggibile ma illuminante.','I rottami dell\'ultima tempesta contenevano schizzi tecnici. Rarissimi.'];aggMsg('📚 '+frasi[Math.floor(Math.random()*frasi.length)],'info');}},
+    {p:2,fn:()=>{const g=15+Math.floor(Math.random()*35);G.oro=Math.max(0,G.oro-g);const frasi=['Furto notturno nei magazzini. Professionista. Non ha lasciato tracce.','Qualcuno ha "prestato" oro dalla cassa comune. Non ha lasciato nota.','Il tesoriere giura di aver contato bene ieri. I numeri dissentono.'];aggMsg('🔓 '+frasi[Math.floor(Math.random()*frasi.length)]+' -'+g+' oro','male');}},
+    {p:1,fn:()=>{const f=10+Math.floor(Math.random()*20);G.cibo=Math.max(0,G.cibo-f);const frasi=['I topi hanno razziato le dispense. Organizzati, efficienti, impuniti.','Il cuoco giura di non aver lasciato il magazzino aperto. Il cibo la pensa diversamente.','Un nido di topi scoperto nelle scorte. Il cuoco li ha descritti come "grossi come gatti". Nessuno lo contraddice.'];aggMsg('🐀 '+frasi[Math.floor(Math.random()*frasi.length)]+' -'+f+' cibo','male');}},
+    {p:2,fn:()=>{const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];if(p){p.combattimento=Math.min(100,p.combattimento+6);const frasi=['si allena all\'alba con serietà inquietante.','ha sfidato a duello un albero. Ha vinto.','ha trascorso la notte ad affilare la spada. Per precauzione, dice.'];aggMsg('⚔ '+p.nome+' '+frasi[Math.floor(Math.random()*frasi.length)]+' +6 combattimento','bene');}}},
+    {p:1,fn:()=>{const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];if(p){p.navigazione=Math.min(100,p.navigazione+5);aggMsg('🧭 '+p.nome+' ha studiato le stelle tutta la notte. Le stelle lo ignorano ma lui sa navigare meglio. +5 navigazione','bene');}}},
+    {p:1,fn:()=>{const k=['reale','mercante','corsaro'][Math.floor(Math.random()*3)];const v=(Math.random()<.5?1:-1)*(4+Math.floor(Math.random()*8));G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));const nome=G.fazioni[k].nome;aggMsg('🌐 '+nome+': qualcuno ha detto qualcosa da qualche parte. Rep '+(v>0?'+':'')+v,'info');}},
+    {p:1,fn:()=>{G.legno+=20+Math.floor(Math.random()*20);aggMsg('🪵 Trovato un relitto ricco di legname sulla spiaggia nord. Il mare è generoso quando vuole.','bene');}},
+    {p:1,fn:()=>{G.legno=Math.max(0,G.legno-15);aggMsg('🔥 Il falegname ha bruciato del legname per sbaglio. Stava "testando la resistenza al fuoco". Risultato: basso.','male');}},
+    {p:1,fn:()=>{for(const p of G.pirati)p.umore=Math.min(100,p.umore+8);aggMsg('🌅 Alba insolitamente bella. Persino i pirati più cinici si fermano a guardarla. Un momento di pace.','bene');}},
+    {p:1,fn:()=>{const g=10+Math.floor(Math.random()*25);G.oro+=g;aggMsg('💸 Un debitore di vecchia data ha pagato. Nessuno ricordava il debito. Lui sì.','bene');}},
+    {p:1,fn:()=>{for(const p of G.pirati)p.umore=Math.max(10,p.umore-8);aggMsg('😡 La ciurma ha litigato sul chi prende il letto migliore nella nuova capanna. Nessun ferito, ma l\'atmosfera è pesante.','male');}},
   ];
   const tot=eventi.reduce((a,e)=>a+e.p,0);
   let r=Math.random()*tot;
