@@ -2,9 +2,110 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Isla del Diablo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pirate Island</title>
+
 <style>
+body { font-family: sans-serif; background:#111; color:#eee; text-align:center; }
+button { padding:10px; margin:5px; font-size:16px; }
+#log { margin-top:20px; max-height:200px; overflow:auto; }
+</style>
+</head>
+
+<body>
+
+<h1>🏴‍☠️ Pirate Island</h1>
+
+<div id="stats"></div>
+
+<button onclick="raid()">⚔️ Raid</button>
+<button onclick="costruisci('distilleria')">🏭 Costruisci Distilleria</button>
+
+<div id="log"></div>
+
+<script>
+let G = {
+  oro: 100,
+  equipaggio: 10,
+  reputazione: 0
+};
+
+function aggMsg(msg){
+  const log = document.getElementById("log");
+  log.innerHTML = msg + "<br>" + log.innerHTML;
+}
+
+function aggiornaUI(){
+  document.getElementById("stats").innerHTML =
+    "Oro: " + G.oro +
+    " | Equipaggio: " + G.equipaggio +
+    " | Zucchero: " + (G.risorse?.zucchero || 0) +
+    " | Rum: " + (G.risorse?.rum || 0);
+}
+
+function raid(){
+  let guadagno = Math.floor(Math.random()*50);
+  G.oro += guadagno;
+  G.reputazione += 5;
+  aggMsg("Raid riuscito! +" + guadagno + " oro");
+  aggiornaUI();
+}
+
+// === SISTEMA GESTIONALE MOBILE SAFE ===
+function initGestionale(){
+
+  G.risorse = { legno: 20, zucchero: 10, rum: 0 };
+  G.edifici = { piantagione: 1, distilleria: 0 };
+
+  G.classi = {
+    pirati: { felicita: 60 },
+    schiavi: { felicita: 40 }
+  };
+
+  function tickProduzione(){
+    G.risorse.zucchero += G.edifici.piantagione * 2;
+
+    let prod = Math.min(G.risorse.zucchero, G.edifici.distilleria * 2);
+    G.risorse.zucchero -= prod;
+    G.risorse.rum += prod;
+
+    aggiornaUI();
+  }
+
+  function controllaRivolte(){
+    if(G.classi.schiavi.felicita < 20){
+      aggMsg("🔥 Rivolta degli schiavi!");
+      G.equipaggio -= 2;
+      G.oro -= 20;
+    }
+  }
+
+  window.costruisci = function(tipo){
+    if(tipo==="distilleria" && G.risorse.legno >= 10){
+      G.risorse.legno -= 10;
+      G.edifici.distilleria += 1;
+      aggMsg("Distilleria costruita!");
+    } else {
+      aggMsg("Non hai abbastanza legno!");
+    }
+  }
+
+  setInterval(()=>{
+    tickProduzione();
+    controllaRivolte();
+  }, 5000);
+
+  aggiornaUI();
+}
+
+// FIX IPHONE
+setTimeout(initGestionale, 500);
+
+aggiornaUI();
+</script>
+
+</body>
+</html>
 @import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;700&display=swap');
 :root{
   --oro:#f0c040;--oro-scuro:#b8860b;--sabbia:#c8a96e;--inchiostro:#1a0a00;
@@ -4602,49 +4703,6 @@ function cicloGioco(ts=0){
   const intervallo=G.tickMs/G.velocita;
   if(ts-ultimoTick>=intervallo){ultimoTick=ts;tick();}
 }
-
-
-// === SISTEMA GESTIONALE ===
-G.risorse = { legno: 20, zucchero: 10, rum: 0 };
-
-G.edifici = { taverna: 1, piantagione: 1, distilleria: 0 };
-
-G.classi = {
-  pirati: { felicita: 60 },
-  schiavi: { felicita: 40 }
-};
-
-function tickProduzione(){
-  if(G.edifici.piantagione > 0){
-    G.risorse.zucchero += G.edifici.piantagione * 2;
-  }
-  if(G.edifici.distilleria > 0){
-    let prod = Math.min(G.risorse.zucchero, G.edifici.distilleria * 2);
-    G.risorse.zucchero -= prod;
-    G.risorse.rum += prod;
-  }
-}
-
-function controllaRivolte(){
-  if(G.classi.schiavi.felicita < 20){
-    aggMsg("RIVOLTA DEGLI SCHIAVI!");
-    G.equipaggio -= 2;
-    G.oro -= 20;
-  }
-}
-
-function costruisci(tipo){
-  if(tipo==="distilleria" && G.risorse.legno >= 10){
-    G.risorse.legno -= 10;
-    G.edifici.distilleria += 1;
-    aggMsg("Distilleria costruita!");
-  }
-}
-
-setInterval(()=>{
-  tickProduzione();
-  controllaRivolte();
-}, 5000);
 
 </script>
 </body>
