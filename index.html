@@ -4603,6 +4603,49 @@ function cicloGioco(ts=0){
   if(ts-ultimoTick>=intervallo){ultimoTick=ts;tick();}
 }
 
+
+// === SISTEMA GESTIONALE ===
+G.risorse = { legno: 20, zucchero: 10, rum: 0 };
+
+G.edifici = { taverna: 1, piantagione: 1, distilleria: 0 };
+
+G.classi = {
+  pirati: { felicita: 60 },
+  schiavi: { felicita: 40 }
+};
+
+function tickProduzione(){
+  if(G.edifici.piantagione > 0){
+    G.risorse.zucchero += G.edifici.piantagione * 2;
+  }
+  if(G.edifici.distilleria > 0){
+    let prod = Math.min(G.risorse.zucchero, G.edifici.distilleria * 2);
+    G.risorse.zucchero -= prod;
+    G.risorse.rum += prod;
+  }
+}
+
+function controllaRivolte(){
+  if(G.classi.schiavi.felicita < 20){
+    aggMsg("RIVOLTA DEGLI SCHIAVI!");
+    G.equipaggio -= 2;
+    G.oro -= 20;
+  }
+}
+
+function costruisci(tipo){
+  if(tipo==="distilleria" && G.risorse.legno >= 10){
+    G.risorse.legno -= 10;
+    G.edifici.distilleria += 1;
+    aggMsg("Distilleria costruita!");
+  }
+}
+
+setInterval(()=>{
+  tickProduzione();
+  controllaRivolte();
+}, 5000);
+
 </script>
 </body>
 </html>
