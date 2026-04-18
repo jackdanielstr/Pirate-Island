@@ -1478,761 +1478,809 @@ function disegnaRoccia(rx,ry,scala){
   ctx.stroke();
 }
 
-// ── disegna edificio — sprite procedurali top-down ──
+// ══════════════════════════════════════════════════════
+// HELPER ISOMETRICO — prospettiva stile Tropico 2
+// Luce da nord-ovest (alto-sinistra)
+// Facciata SUD = più chiara, lato EST = in ombra
+// ══════════════════════════════════════════════════════
+
+// Disegna un parallelepipedo isometrico (base + facciata sud + lato est)
+// bx,by = angolo in basso al centro del tile (punto di ancoraggio)
+// w = larghezza, d = profondità, h = altezza (in pixel)
+// colTop, colFront, colSide = colori delle tre facce
+function isoBox(bx,by,w,d,h,colTop,colFront,colSide){
+  // Proiezione isometrica semplificata (2:1)
+  // angolo base in basso-centro
+  const ox=w/2, oz=d/2;
+  // 4 vertici della base
+  const pts={
+    //      x                    y
+    nw:[bx-ox,          by-oz*.5-h],   // angolo nord-ovest in alto
+    ne:[bx+ox,          by-oz*.5-h],   // angolo nord-est in alto
+    se:[bx+ox,          by+oz*.5-h],   // angolo sud-est in alto
+    sw:[bx-ox,          by+oz*.5-h],   // angolo sud-ovest in alto
+    // basso (y += h)
+    bnw:[bx-ox,         by-oz*.5],
+    bne:[bx+ox,         by-oz*.5],
+    bse:[bx+ox,         by+oz*.5],
+    bsw:[bx-ox,         by+oz*.5],
+  };
+
+  // Tetto (top)
+  ctx.fillStyle=colTop;
+  ctx.beginPath();
+  ctx.moveTo(pts.nw[0],pts.nw[1]);
+  ctx.lineTo(pts.ne[0],pts.ne[1]);
+  ctx.lineTo(pts.se[0],pts.se[1]);
+  ctx.lineTo(pts.sw[0],pts.sw[1]);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=.6;ctx.stroke();
+
+  // Facciata sud (fronte — più chiara)
+  ctx.fillStyle=colFront;
+  ctx.beginPath();
+  ctx.moveTo(pts.sw[0],pts.sw[1]);
+  ctx.lineTo(pts.se[0],pts.se[1]);
+  ctx.lineTo(pts.bse[0],pts.bse[1]);
+  ctx.lineTo(pts.bsw[0],pts.bsw[1]);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=.7;ctx.stroke();
+
+  // Lato est (in ombra — più scuro)
+  ctx.fillStyle=colSide;
+  ctx.beginPath();
+  ctx.moveTo(pts.ne[0],pts.ne[1]);
+  ctx.lineTo(pts.se[0],pts.se[1]);
+  ctx.lineTo(pts.bse[0],pts.bse[1]);
+  ctx.lineTo(pts.bne[0],pts.bne[1]);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.28)';ctx.lineWidth=.7;ctx.stroke();
+}
+
+// Ombra proiettata a terra verso sud-est
+function isoShadow(bx,by,w,d){
+  ctx.save();
+  ctx.globalAlpha=.18;
+  ctx.fillStyle='#000';
+  ctx.beginPath();
+  ctx.ellipse(bx+w*.18,by+d*.28,w*.45,d*.22,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Tetto a spiovente isometrico (triangolare)
+function isoRoof(bx,by,w,d,hBase,hPeak,colLeft,colRight,colFront){
+  const ox=w/2, oz=d/2;
+  const baseY=by-hBase;
+  // Ridge (cresta) al centro
+  const rx=bx, ry=baseY-hPeak;
+  // Falda sinistra (nord-ovest → ridge)
+  ctx.fillStyle=colLeft;
+  ctx.beginPath();
+  ctx.moveTo(bx-ox,baseY-oz*.5);
+  ctx.lineTo(bx+ox,baseY-oz*.5);
+  ctx.lineTo(rx,ry-oz*.5);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.15)';ctx.lineWidth=.6;ctx.stroke();
+  // Falda destra (sud-est → ridge)
+  ctx.fillStyle=colRight;
+  ctx.beginPath();
+  ctx.moveTo(bx-ox,baseY+oz*.5);
+  ctx.lineTo(bx+ox,baseY+oz*.5);
+  ctx.lineTo(rx,ry+oz*.5);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=.6;ctx.stroke();
+  // Frontone sud
+  ctx.fillStyle=colFront;
+  ctx.beginPath();
+  ctx.moveTo(bx-ox,baseY+oz*.5);
+  ctx.lineTo(bx+ox,baseY+oz*.5);
+  ctx.lineTo(rx,ry+oz*.5);
+  ctx.closePath();ctx.fill();
+}
+
+// Finestra isometrica su facciata sud
+function isoWindow(bx,by,lit){
+  ctx.fillStyle=lit?'rgba(255,220,100,.9)':'rgba(80,100,120,.6)';
+  ctx.fillRect(bx-4,by-8,8,7);
+  ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=.8;ctx.strokeRect(bx-4,by-8,8,7);
+  if(lit){
+    // bagliore finestra illuminata
+    ctx.fillStyle='rgba(255,200,60,.15)';
+    ctx.fillRect(bx-6,by-10,12,11);
+    // croce vetri
+    ctx.strokeStyle='rgba(100,60,0,.5)';ctx.lineWidth=.7;
+    ctx.beginPath();ctx.moveTo(bx,by-8);ctx.lineTo(bx,by-1);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(bx-4,by-4);ctx.lineTo(bx+4,by-4);ctx.stroke();
+  }
+}
+
+// ── disegna edificio — isometrico stile Tropico 2 ──
 function disegnaEdificio(tipo,ex,ey){
   const S=G.TILE;
-  const cx=ex+S/2, cy=ey+S/2;
+  // Punto di ancoraggio: centro-basso del tile
+  const bx=ex+S*.5, by=ey+S*.82;
   ctx.save();
-
-  // ombra a terra comune
-  ctx.globalAlpha=.28;
-  ctx.fillStyle='#000';
-  ctx.beginPath();ctx.ellipse(cx+S*.08,cy+S*.35,S*.38,S*.12,0,0,Math.PI*2);ctx.fill();
-  ctx.globalAlpha=1;
+  isoShadow(bx,by,S*.55,S*.28);
 
   switch(tipo){
 
     case 'taverna':{
-      // corpo principale — casa larga con tetto a spiovente
-      // pavimento
-      ctx.fillStyle='#7a4e28';
-      ctx.fillRect(ex+S*.08,ey+S*.38,S*.84,S*.48);
-      // facciata (lato verso player)
-      const gFac=ctx.createLinearGradient(ex,ey+S*.38,ex,ey+S*.86);
-      gFac.addColorStop(0,'#a0652a');gFac.addColorStop(1,'#6b3f18');
-      ctx.fillStyle=gFac;
-      ctx.fillRect(ex+S*.08,ey+S*.42,S*.84,S*.44);
-      // tetto spiovente
-      ctx.fillStyle='#4a2a0a';
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.04,ey+S*.44);
-      ctx.lineTo(cx,ey+S*.1);
-      ctx.lineTo(ex+S*.96,ey+S*.44);
-      ctx.closePath();ctx.fill();
-      ctx.strokeStyle='#2a1400';ctx.lineWidth=1;ctx.stroke();
-      // tegole tetto
-      ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=.8;
-      for(let i=0;i<4;i++){
-        ctx.beginPath();
-        ctx.moveTo(ex+S*.04+i*S*.23,ey+S*.44);
-        ctx.lineTo(cx,ey+S*.1);ctx.stroke();
-      }
-      // insegna
-      ctx.fillStyle='#c8820a';
-      ctx.fillRect(ex+S*.25,ey+S*.28,S*.5,S*.13);
-      ctx.strokeStyle='#8b5a00';ctx.lineWidth=1;ctx.strokeRect(ex+S*.25,ey+S*.28,S*.5,S*.13);
-      // finestre
-      ctx.fillStyle='rgba(255,220,120,.85)';
-      ctx.fillRect(ex+S*.15,ey+S*.52,S*.2,S*.18);
-      ctx.fillRect(ex+S*.65,ey+S*.52,S*.2,S*.18);
+      const w=S*.56,d=S*.32,h=S*.28;
+      // corpo
+      isoBox(bx,by,w,d,h,'#7a4a1a','#b87030','#7a4218');
+      // tetto spiovente rosso mattone
+      isoRoof(bx,by-h,w,d,0,S*.22,'#8a3010','#6a2008','#9a3818');
+      // finestre sulla facciata
+      isoWindow(bx-S*.1,by-h-S*.02,true);
+      isoWindow(bx+S*.1,by-h-S*.02,true);
       // porta
-      ctx.fillStyle='#3a1e08';
-      ctx.fillRect(ex+S*.38,ey+S*.62,S*.24,S*.24);
-      // boccale sul tetto (segno della taverna)
-      ctx.fillStyle='#c8a020';
-      ctx.beginPath();ctx.arc(cx,ey+S*.22,S*.07,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#2a1008';
+      ctx.fillRect(bx-S*.07,by-h+1,S*.14,S*.12);
+      ctx.beginPath();ctx.arc(bx,by-h+1,S*.07,Math.PI,0,false);ctx.fill();
+      // insegna
+      ctx.fillStyle='#c87820';
+      ctx.fillRect(bx-S*.12,by-h-S*.18,S*.24,S*.08);
+      ctx.strokeStyle='#8a4a00';ctx.lineWidth=1;ctx.strokeRect(bx-S*.12,by-h-S*.18,S*.24,S*.08);
+      ctx.fillStyle='var(--oro)';ctx.font=`bold ${S*.1}px serif`;
+      ctx.textAlign='center';ctx.fillText('🍺',bx,by-h-S*.12);
       break;
     }
 
     case 'cantiere':{
-      // bacino — forma a U vista dall\'alto con nave dentro
-      ctx.fillStyle='#1a4a6e';
-      ctx.fillRect(ex+S*.06,ey+S*.3,S*.88,S*.6);
-      // moli laterali
-      ctx.fillStyle='#7a5a2a';
-      ctx.fillRect(ex+S*.06,ey+S*.2,S*.14,S*.7);
-      ctx.fillRect(ex+S*.8,ey+S*.2,S*.14,S*.7);
-      // molo superiore
-      ctx.fillRect(ex+S*.06,ey+S*.2,S*.88,S*.12);
-      // acqua interna animata
-      ctx.fillStyle=`rgba(30,100,160,${.6+Math.sin(frame*.04)*.1})`;
-      ctx.fillRect(ex+S*.2,ey+S*.32,S*.6,S*.5);
-      // scafo nave nel bacino
+      // molo in legno
+      ctx.fillStyle='#6a4a1a';
+      ctx.beginPath();
+      ctx.moveTo(bx-S*.4,by);ctx.lineTo(bx+S*.4,by);
+      ctx.lineTo(bx+S*.4,by-S*.08);ctx.lineTo(bx-S*.4,by-S*.08);
+      ctx.closePath();ctx.fill();
+      // acqua nel bacino
+      ctx.fillStyle=`hsl(195,65%,${30+Math.sin(frame*.04)*3}%)`;
+      ctx.fillRect(bx-S*.3,by-S*.32,S*.6,S*.26);
+      // scafo nave nel bacino (vista iso)
       ctx.fillStyle='#5c3a1a';
-      ctx.beginPath();ctx.ellipse(cx,ey+S*.58,S*.25,S*.1,0,0,Math.PI*2);ctx.fill();
-      // albero nave
-      ctx.strokeStyle='#7a5020';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(cx,ey+S*.58);ctx.lineTo(cx,ey+S*.28);ctx.stroke();
-      // pennone
-      ctx.beginPath();ctx.moveTo(cx-S*.15,ey+S*.35);ctx.lineTo(cx+S*.15,ey+S*.35);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(bx,by-S*.22,S*.22,S*.07,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#3a2008';ctx.lineWidth=1.5;ctx.stroke();
+      // albero maestro
+      ctx.strokeStyle='#8a6020';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(bx,by-S*.22);ctx.lineTo(bx,by-S*.62);ctx.stroke();
+      // vela ammainata
+      ctx.fillStyle='rgba(240,220,170,.8)';
+      ctx.beginPath();ctx.moveTo(bx,by-S*.58);ctx.lineTo(bx+S*.18,by-S*.42);ctx.lineTo(bx,by-S*.28);ctx.fill();
       // gru/argano
-      ctx.strokeStyle='#8a6a2a';ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.moveTo(ex+S*.15,ey+S*.2);ctx.lineTo(ex+S*.15,ey+S*.55);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(ex+S*.15,ey+S*.3);ctx.lineTo(ex+S*.42,ey+S*.42);ctx.stroke();
+      isoBox(bx+S*.3,by-S*.06,S*.12,S*.1,S*.36,'#9a7030','#c89040','#7a5018');
+      ctx.strokeStyle='#6a4010';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(bx+S*.3,by-S*.42);ctx.lineTo(bx+S*.05,by-S*.25);ctx.stroke();
       break;
     }
 
     case 'fortezza':{
-      // torre centrale quadrata
-      ctx.fillStyle='#5a5040';
-      ctx.fillRect(ex+S*.2,ey+S*.15,S*.6,S*.65);
-      // gradiente pietra
-      const gFort=ctx.createLinearGradient(ex+S*.2,ey+S*.15,ex+S*.8,ey+S*.8);
-      gFort.addColorStop(0,'#7a6a50');gFort.addColorStop(1,'#4a3e2e');
-      ctx.fillStyle=gFort;
-      ctx.fillRect(ex+S*.2,ey+S*.15,S*.6,S*.65);
-      // merlature top
-      ctx.fillStyle='#5a4e3a';
-      for(let i=0;i<4;i++){
-        ctx.fillRect(ex+S*.2+i*S*.15,ey+S*.1,S*.1,S*.1);
+      // torre centrale
+      isoBox(bx,by,S*.42,S*.28,S*.52,'#8a7a5a','#a09060','#6a5a3a');
+      // merlature
+      for(let i=-1;i<=1;i++){
+        isoBox(bx+i*S*.12,by-S*.52,S*.09,S*.08,S*.1,'#9a8a68','#b0a078','#7a6a48');
       }
       // torri angolari
-      ctx.fillStyle='#6a5a42';
-      ctx.fillRect(ex+S*.06,ey+S*.28,S*.18,S*.5);
-      ctx.fillRect(ex+S*.76,ey+S*.28,S*.18,S*.5);
-      // merlature torri
-      ctx.fillStyle='#5a4e3a';
-      for(let i=0;i<2;i++){
-        ctx.fillRect(ex+S*.07+i*S*.09,ey+S*.24,S*.07,S*.07);
-        ctx.fillRect(ex+S*.77+i*S*.09,ey+S*.24,S*.07,S*.07);
-      }
+      isoBox(bx-S*.28,by-S*.04,S*.18,S*.14,S*.4,'#7a6a4a','#948a5a','#6a5a38');
+      isoBox(bx+S*.28,by-S*.04,S*.18,S*.14,S*.4,'#7a6a4a','#948a5a','#6a5a38');
       // portone ad arco
       ctx.fillStyle='#1a0e06';
-      ctx.beginPath();
-      ctx.arc(cx,ey+S*.7,S*.12,Math.PI,0,false);
-      ctx.lineTo(cx+S*.12,ey+S*.82);
-      ctx.lineTo(cx-S*.12,ey+S*.82);
-      ctx.closePath();ctx.fill();
-      // feritoie
-      ctx.fillStyle='rgba(0,0,0,.7)';
-      ctx.fillRect(cx-S*.04,ey+S*.28,S*.08,S*.2);
-      ctx.fillRect(cx-S*.14,ey+S*.38,S*.2,S*.07);
+      ctx.beginPath();ctx.arc(bx,by-S*.18,S*.09,Math.PI,0,false);
+      ctx.lineTo(bx+S*.09,by+2);ctx.lineTo(bx-S*.09,by+2);ctx.closePath();ctx.fill();
       // bandiera
-      ctx.strokeStyle='#4a2a0a';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(cx,ey+S*.1);ctx.lineTo(cx,ey+S*.02);ctx.stroke();
-      ctx.fillStyle='#c0392b';
-      ctx.fillRect(cx,ey+S*.02,S*.16,S*.1);
+      ctx.strokeStyle='#8a6020';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(bx,by-S*.62);ctx.lineTo(bx,by-S*.52);ctx.stroke();
+      ctx.fillStyle='var(--rum-chiaro)';
+      ctx.beginPath();ctx.moveTo(bx,by-S*.62);ctx.lineTo(bx+S*.12,by-S*.58);ctx.lineTo(bx,by-S*.54);ctx.fill();
       break;
     }
 
     case 'fattoria':{
-      // campi coltivati a righe visti dall\'alto
-      const colori=['#4a7a20','#3a6a18','#5a8a28','#426020'];
-      for(let r=0;r<5;r++){
-        ctx.fillStyle=colori[r%colori.length];
-        ctx.fillRect(ex+S*.06,ey+S*.1+r*S*.14,S*.6,S*.11);
-      }
-      // recinzione
-      ctx.strokeStyle='#8a6030';ctx.lineWidth=1.5;
-      ctx.strokeRect(ex+S*.04,ey+S*.08,S*.64,S*.76);
-      // pali recinzione
+      // campi coltivati (base verde rigata)
       for(let i=0;i<4;i++){
-        ctx.beginPath();
-        ctx.moveTo(ex+S*.04+i*S*.22,ey+S*.08);
-        ctx.lineTo(ex+S*.04+i*S*.22,ey+S*.84);ctx.stroke();
+        ctx.fillStyle=i%2===0?'#5a8a28':'#4a7a1e';
+        ctx.fillRect(ex+S*.04+i*S*.22,ey+S*.5,S*.21,S*.35);
       }
-      // fienile piccolo
-      ctx.fillStyle='#c8780a';
-      ctx.fillRect(ex+S*.7,ey+S*.15,S*.24,S*.32);
-      ctx.fillStyle='#8a4a08';
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.68,ey+S*.17);
-      ctx.lineTo(ex+S*.82,ey+S*.06);
-      ctx.lineTo(ex+S*.96,ey+S*.17);
-      ctx.closePath();ctx.fill();
-      // pozzo
-      ctx.fillStyle='#6a4a2a';
-      ctx.beginPath();ctx.arc(ex+S*.82,ey+S*.62,S*.09,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#4a2a0a';ctx.lineWidth=1.5;ctx.stroke();
+      // capanna
+      isoBox(bx-S*.12,by-S*.28,S*.32,S*.2,S*.2,'#8a6a2a','#a07e36','#6a4e18');
+      isoRoof(bx-S*.12,by-S*.28-S*.2,S*.32,S*.2,0,S*.15,'#a04a10','#7a3208','#b05018');
+      // spaventapasseri
+      ctx.strokeStyle='#7a5020';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(bx+S*.2,by-S*.12);ctx.lineTo(bx+S*.2,by-S*.38);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx+S*.08,by-S*.3);ctx.lineTo(bx+S*.32,by-S*.3);ctx.stroke();
+      ctx.fillStyle='#c8a060';ctx.beginPath();ctx.arc(bx+S*.2,by-S*.42,S*.06,0,Math.PI*2);ctx.fill();
       break;
     }
 
     case 'distilleria':{
-      // edificio con ciminiera e botti
-      ctx.fillStyle='#5a3a1a';
-      ctx.fillRect(ex+S*.1,ey+S*.3,S*.65,S*.55);
-      const gDist=ctx.createLinearGradient(ex+S*.1,ey+S*.3,ex+S*.75,ey+S*.85);
-      gDist.addColorStop(0,'#7a5028');gDist.addColorStop(1,'#4a2e12');
-      ctx.fillStyle=gDist;
-      ctx.fillRect(ex+S*.1,ey+S*.3,S*.65,S*.55);
-      // tetto
-      ctx.fillStyle='#3a2008';
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.08,ey+S*.32);
-      ctx.lineTo(ex+S*.42,ey+S*.1);
-      ctx.lineTo(ex+S*.77,ey+S*.32);
-      ctx.closePath();ctx.fill();
-      // ciminiera
-      ctx.fillStyle='#3a3028';
-      ctx.fillRect(ex+S*.62,ey+S*.04,S*.16,S*.3);
-      // fumo ciminiera
+      isoBox(bx,by,S*.44,S*.28,S*.32,'#6a5838','#8a7248','#5a4828');
+      // ciminiera fumante
+      isoBox(bx+S*.12,by-S*.32,S*.1,S*.08,S*.28,'#3a3028','#4a4038','#2a2820');
       for(let i=0;i<3;i++){
-        const fy=ey+S*.04-i*S*.08-Math.sin(frame*.05+i)*S*.03;
-        ctx.globalAlpha=.35-i*.1;
-        ctx.fillStyle='#aaa';
-        ctx.beginPath();ctx.arc(ex+S*.7,fy,S*(.04+i*.02),0,Math.PI*2);ctx.fill();
+        const fy=by-S*.62-i*S*.08-Math.sin(frame*.05+i*1.2)*S*.03;
+        ctx.globalAlpha=.3-i*.08;
+        ctx.fillStyle='#c8c0b0';
+        ctx.beginPath();ctx.arc(bx+S*.12,fy,S*(.04+i*.025),0,Math.PI*2);ctx.fill();
       }
       ctx.globalAlpha=1;
-      // botti allineate
+      isoRoof(bx,by-S*.32,S*.44,S*.28,0,S*.16,'#4a3820','#3a2810','#5a4828');
+      // botti ISO
       for(let i=0;i<3;i++){
-        ctx.fillStyle='#6a3a10';
-        ctx.beginPath();ctx.arc(ex+S*(.18+i*.22),ey+S*.72,S*.09,0,Math.PI*2);ctx.fill();
-        ctx.strokeStyle='#3a1a00';ctx.lineWidth=1;ctx.stroke();
-        ctx.strokeStyle='#8a5a20';ctx.lineWidth=.7;
-        ctx.beginPath();ctx.moveTo(ex+S*(.09+i*.22),ey+S*.72);ctx.lineTo(ex+S*(.27+i*.22),ey+S*.72);ctx.stroke();
+        isoBox(bx-S*.28+i*S*.18,by+S*.02,S*.14,S*.1,S*.14,'#7a4a18','#9a6228','#5a3210');
+        ctx.strokeStyle='#4a2808';ctx.lineWidth=1;
+        ctx.strokeRect(bx-S*.28+i*S*.18-S*.07,by-S*.14+S*.02,S*.14,S*.04);
       }
       break;
     }
 
     case 'segheria':{
-      // tronchi impilati + capannone aperto
-      // piazzale tronchi
-      ctx.fillStyle='#8a6030';
-      ctx.fillRect(ex+S*.04,ey+S*.5,S*.55,S*.4);
-      // tronchi sovrapposti
-      const logColors=['#8a5a20','#6a4218','#9a6828'];
-      for(let row=0;row<3;row++){
-        for(let col=0;col<3;col++){
-          ctx.fillStyle=logColors[(row+col)%3];
-          ctx.beginPath();
-          ctx.ellipse(ex+S*(.12+col*.17),ey+S*(.9-row*.12),S*.07,S*.04,0,0,Math.PI*2);
-          ctx.fill();
-          ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=.8;ctx.stroke();
-          // anelli tronco
-          ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=.5;
-          ctx.beginPath();ctx.arc(ex+S*(.12+col*.17),ey+S*(.9-row*.12),S*.04,0,Math.PI*2);ctx.stroke();
-        }
+      // tronchi impilati (ISO)
+      for(let i=0;i<3;i++){
+        const logX=bx-S*.22+i*S*.18;
+        isoBox(logX,by-i*S*.06,S*.16,S*.12,S*.1+i*.02,'#9a6828','#b07e38','#7a4e18');
+        // anello tronco
+        ctx.strokeStyle='#5a3010';ctx.lineWidth=.8;
+        ctx.beginPath();ctx.ellipse(logX-S*.08,by-i*S*.06-S*.05,S*.04,S*.04*.5,0,0,Math.PI*2);ctx.stroke();
       }
       // capannone
-      ctx.fillStyle='#a07040';
-      ctx.fillRect(ex+S*.58,ey+S*.22,S*.36,S*.6);
-      ctx.fillStyle='#6a4018';
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.55,ey+S*.24);
-      ctx.lineTo(ex+S*.76,ey+S*.08);
-      ctx.lineTo(ex+S*.97,ey+S*.24);
-      ctx.closePath();ctx.fill();
-      // lama sega (vista dall\'alto)
-      ctx.fillStyle='#c8c8c8';
-      ctx.fillRect(ex+S*.62,ey+S*.44,S*.24,S*.06);
-      ctx.fillStyle='#a0a0a0';
-      for(let i=0;i<6;i++) ctx.fillRect(ex+S*(.62+i*.04),ey+S*.44,S*.02,S*.03);
+      isoBox(bx+S*.14,by-S*.06,S*.28,S*.2,S*.3,'#a07840','#c09050','#7a5828');
+      isoRoof(bx+S*.14,by-S*.06-S*.3,S*.28,S*.2,0,S*.16,'#6a4820','#4a3010','#7a5828');
+      // lama sega (lucida)
+      ctx.fillStyle='#d0d0d8';
+      ctx.fillRect(bx-S*.02,by-S*.18,S*.22,S*.04);
+      ctx.fillStyle='rgba(200,220,255,.4)';
+      ctx.fillRect(bx-S*.02,by-S*.18,S*.22,S*.02);
       break;
     }
 
     case 'caserma':{
-      // edificio militare con cortile
-      // cortile
-      ctx.fillStyle='#8a7a50';
-      ctx.fillRect(ex+S*.12,ey+S*.38,S*.76,S*.5);
-      // edificio principale
-      const gCas=ctx.createLinearGradient(ex+S*.12,ey+S*.15,ex+S*.88,ey+S*.5);
-      gCas.addColorStop(0,'#6a6040');gCas.addColorStop(1,'#4a4428');
-      ctx.fillStyle=gCas;
-      ctx.fillRect(ex+S*.12,ey+S*.15,S*.76,S*.3);
+      // edificio militare
+      isoBox(bx,by,S*.5,S*.3,S*.34,'#7a7050','#9a9068','#5a5038');
       // tetto piatto con parapetto
-      ctx.fillStyle='#3a3422';
-      ctx.fillRect(ex+S*.1,ey+S*.12,S*.8,S*.07);
+      isoBox(bx,by-S*.34,S*.52,S*.32,S*.06,'#5a5438','#6a6448','#4a4428');
       // merlature
-      for(let i=0;i<5;i++) ctx.fillRect(ex+S*(.12+i*.16),ey+S*.06,S*.1,S*.09);
-      // porta
+      for(let i=-2;i<=2;i++){
+        isoBox(bx+i*S*.1,by-S*.4,S*.07,S*.05,S*.07,'#6a6448','#7a7458','#5a5438');
+      }
+      // portone
       ctx.fillStyle='#1a1208';
-      ctx.fillRect(ex+S*.4,ey+S*.27,S*.2,S*.18);
+      ctx.fillRect(bx-S*.09,by-S*.18,S*.18,S*.19);
+      ctx.beginPath();ctx.arc(bx,by-S*.18,S*.09,Math.PI,0,false);ctx.fill();
       // finestre con sbarre
-      ctx.fillStyle='rgba(200,180,100,.6)';
-      ctx.fillRect(ex+S*.16,ey+S*.19,S*.14,S*.1);
-      ctx.fillRect(ex+S*.7,ey+S*.19,S*.14,S*.1);
-      ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1;
+      isoWindow(bx-S*.18,by-S*.26,false);
+      isoWindow(bx+S*.18,by-S*.26,false);
+      ctx.strokeStyle='#888';ctx.lineWidth=.8;
       for(let b=0;b<3;b++){
-        ctx.beginPath();ctx.moveTo(ex+S*(.19+b*.04),ey+S*.19);ctx.lineTo(ex+S*(.19+b*.04),ey+S*.29);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(ex+S*(.73+b*.04),ey+S*.19);ctx.lineTo(ex+S*(.73+b*.04),ey+S*.29);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(bx-S*.22+b*S*.04,by-S*.32);ctx.lineTo(bx-S*.22+b*S*.04,by-S*.2);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(bx+S*.14+b*S*.04,by-S*.32);ctx.lineTo(bx+S*.14+b*S*.04,by-S*.2);ctx.stroke();
       }
-      // soldati nel cortile (puntini)
-      ctx.fillStyle='#c8a040';
-      for(let i=0;i<4;i++){
-        ctx.beginPath();ctx.arc(ex+S*(.22+i*.19),ey+S*.58,S*.04,0,Math.PI*2);ctx.fill();
-      }
+      // bandiera militare
+      ctx.strokeStyle='#6a5020';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(bx,by-S*.48);ctx.lineTo(bx,by-S*.4);ctx.stroke();
+      ctx.fillStyle='#c83020';
+      ctx.beginPath();ctx.moveTo(bx,by-S*.48);ctx.lineTo(bx+S*.1,by-S*.44);ctx.lineTo(bx,by-S*.4);ctx.fill();
       break;
     }
 
     case 'osservatorio':{
-      // torre rotonda con cupola
-      // base torre
-      ctx.fillStyle='#7a6a50';
-      ctx.beginPath();ctx.arc(cx,cy+S*.12,S*.3,0,Math.PI*2);ctx.fill();
-      const gOss=ctx.createRadialGradient(cx-S*.08,cy,0,cx,cy+S*.12,S*.3);
-      gOss.addColorStop(0,'#9a8860');gOss.addColorStop(1,'#5a4a30');
-      ctx.fillStyle=gOss;
-      ctx.beginPath();ctx.arc(cx,cy+S*.12,S*.28,0,Math.PI*2);ctx.fill();
-      // cupola
+      // base cilindrica
+      ctx.fillStyle='#8a7858';
+      ctx.beginPath();ctx.ellipse(bx,by-S*.06,S*.22,S*.1,0,0,Math.PI*2);ctx.fill();
+      // torre rotonda (iso approssimata)
+      isoBox(bx,by-S*.06,S*.3,S*.22,S*.44,'#9a8868','#b8a478','#7a6848');
+      // cupola blu
       ctx.fillStyle='#2a5080';
-      ctx.beginPath();ctx.arc(cx,cy-S*.08,S*.22,Math.PI,0,false);ctx.fill();
-      ctx.strokeStyle='#1a3a60';ctx.lineWidth=1.5;ctx.stroke();
-      // striscia cupola
-      ctx.strokeStyle='rgba(255,255,255,.2)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.arc(cx,cy-S*.08,S*.22,-Math.PI*.7,-Math.PI*.3,false);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(bx,by-S*.5,S*.18,S*.09,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(bx-S*.04,by-S*.56,S*.16,S*.14,0,Math.PI,Math.PI*2,true);ctx.fill();
+      ctx.strokeStyle='#1a3a60';ctx.lineWidth=1.2;ctx.stroke();
+      // riflesso cupola
+      ctx.fillStyle='rgba(180,220,255,.2)';
+      ctx.beginPath();ctx.ellipse(bx-S*.06,by-S*.6,S*.06,S*.08,-.3,0,Math.PI);ctx.fill();
       // cannocchiale
-      ctx.strokeStyle='#8a7a50';ctx.lineWidth=3;
-      ctx.beginPath();
-      ctx.moveTo(cx-S*.1,cy-S*.08);
-      ctx.lineTo(cx+S*.2,cy-S*.22);ctx.stroke();
-      ctx.fillStyle='#6a5a38';
-      ctx.beginPath();ctx.arc(cx+S*.2,cy-S*.22,S*.04,0,Math.PI*2);ctx.fill();
-      // stella (lente)
-      ctx.fillStyle='rgba(200,220,255,.8)';
-      ctx.beginPath();ctx.arc(cx-S*.18,ey+S*.1,S*.03,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#8a7050';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(bx-S*.06,by-S*.5);ctx.lineTo(bx+S*.24,by-S*.62);ctx.stroke();
+      ctx.fillStyle='#6a5038';ctx.beginPath();ctx.arc(bx+S*.24,by-S*.62,S*.04,0,Math.PI*2);ctx.fill();
+      // stelle animate
+      const starA=.5+Math.sin(frame*.06)*.4;
+      ctx.fillStyle=`rgba(200,220,255,${starA})`;
+      ctx.beginPath();ctx.arc(bx-S*.14,by-S*.08,S*.025,0,Math.PI*2);ctx.fill();
       break;
     }
 
     case 'prigione':{
-      // edificio basso con sbarre visibili
-      ctx.fillStyle='#4a4038';
-      ctx.fillRect(ex+S*.08,ey+S*.25,S*.84,S*.6);
-      const gPrig=ctx.createLinearGradient(ex,ey+S*.25,ex,ey+S*.85);
-      gPrig.addColorStop(0,'#5a5040');gPrig.addColorStop(1,'#323028');
-      ctx.fillStyle=gPrig;
-      ctx.fillRect(ex+S*.08,ey+S*.25,S*.84,S*.6);
-      // tetto
-      ctx.fillStyle='#282420';
-      ctx.fillRect(ex+S*.06,ey+S*.2,S*.88,S*.1);
-      // celle con sbarre (3 celle)
-      for(let c=0;c<3;c++){
-        const cx2=ex+S*(.14+c*.28);
-        // cella
-        ctx.fillStyle='rgba(0,0,0,.5)';
-        ctx.fillRect(cx2,ey+S*.35,S*.22,S*.35);
-        // sbarre verticali
-        ctx.strokeStyle='#8a8878';ctx.lineWidth=1.5;
-        for(let b=0;b<4;b++){
+      // edificio basso oppressivo
+      isoBox(bx,by,S*.48,S*.3,S*.28,'#4a4438','#5e5848','#3a3428');
+      isoBox(bx,by-S*.28,S*.5,S*.32,S*.05,'#3a3428','#4a4438','#2a2820');
+      // celle con sbarre (3)
+      for(let c=-1;c<=1;c++){
+        const cx2=bx+c*S*.14;
+        ctx.fillStyle='rgba(0,0,0,.6)';
+        ctx.fillRect(cx2-S*.04,by-S*.28,S*.08,S*.22);
+        ctx.strokeStyle='#9a9888';ctx.lineWidth=1.5;
+        for(let b=0;b<3;b++){
           ctx.beginPath();
-          ctx.moveTo(cx2+S*(.03+b*.05),ey+S*.35);
-          ctx.lineTo(cx2+S*(.03+b*.05),ey+S*.7);ctx.stroke();
+          ctx.moveTo(cx2-S*.04+b*S*.04,by-S*.28);
+          ctx.lineTo(cx2-S*.04+b*S*.04,by-S*.06);ctx.stroke();
         }
-        // sbarra orizzontale
-        ctx.beginPath();
-        ctx.moveTo(cx2,ey+S*.52);ctx.lineTo(cx2+S*.22,ey+S*.52);ctx.stroke();
       }
-      // porta principale
+      // portone pesante
       ctx.fillStyle='#1a1510';
-      ctx.fillRect(ex+S*.4,ey+S*.58,S*.2,S*.27);
+      ctx.fillRect(bx-S*.09,by-S*.22,S*.18,S*.23);
       // catena
-      ctx.strokeStyle='#888';ctx.lineWidth=2;
-      ctx.beginPath();ctx.arc(ex+S*.5,ey+S*.64,S*.04,0,Math.PI*2);ctx.stroke();
+      ctx.strokeStyle='#888878';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(bx,by-S*.14,S*.04,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx-S*.04,by-S*.1);ctx.lineTo(bx+S*.04,by-S*.1);ctx.stroke();
       break;
     }
 
     case 'mercatonero':{
-      // bancarelle e tende colorate, aspetto caotico
-      // tenda principale
-      ctx.fillStyle='#8a1a1a';
+      // tenda principale colorata
+      ctx.fillStyle='#8a1818';
       ctx.beginPath();
-      ctx.moveTo(ex+S*.05,ey+S*.45);
-      ctx.lineTo(ex+S*.5,ey+S*.1);
-      ctx.lineTo(ex+S*.95,ey+S*.45);
+      ctx.moveTo(bx-S*.3,by-S*.04);
+      ctx.lineTo(bx,by-S*.44);
+      ctx.lineTo(bx+S*.3,by-S*.04);
       ctx.closePath();ctx.fill();
-      ctx.fillStyle='#6a0e0e';
+      ctx.strokeStyle='#c02020';ctx.lineWidth=1;ctx.stroke();
+      // ombra tenda sinistra
+      ctx.fillStyle='#6a0808';
       ctx.beginPath();
-      ctx.moveTo(ex+S*.05,ey+S*.45);
-      ctx.lineTo(ex+S*.5,ey+S*.1);
-      ctx.lineTo(ex+S*.5,ey+S*.45);
+      ctx.moveTo(bx-S*.3,by-S*.04);
+      ctx.lineTo(bx,by-S*.44);
+      ctx.lineTo(bx,by-S*.04);
       ctx.closePath();ctx.fill();
-      // bordi tenda a strisce
-      ctx.strokeStyle='#c83030';ctx.lineWidth=1.5;
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.05,ey+S*.45);
-      ctx.lineTo(ex+S*.5,ey+S*.1);
-      ctx.lineTo(ex+S*.95,ey+S*.45);ctx.stroke();
-      // casse e merci sotto
-      ctx.fillStyle='#7a5a20';
-      ctx.fillRect(ex+S*.08,ey+S*.45,S*.24,S*.18);
-      ctx.fillRect(ex+S*.38,ey+S*.48,S*.2,S*.15);
-      ctx.fillRect(ex+S*.65,ey+S*.45,S*.26,S*.18);
-      // dettagli casse
-      ctx.strokeStyle='#5a3a10';ctx.lineWidth=1;
-      ctx.strokeRect(ex+S*.08,ey+S*.45,S*.24,S*.18);
-      ctx.strokeRect(ex+S*.65,ey+S*.45,S*.26,S*.18);
-      // monete/oggetti
-      ctx.fillStyle='#f0c040';
-      ctx.beginPath();ctx.arc(ex+S*.2,ey+S*.54,S*.04,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(ex+S*.72,ey+S*.52,S*.04,0,Math.PI*2);ctx.fill();
-      // bandierine decorative
+      // bandierine
       ctx.strokeStyle='#f0c040';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(ex+S*.1,ey+S*.28);ctx.lineTo(ex+S*.9,ey+S*.28);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.12);ctx.lineTo(bx+S*.26,by-S*.12);ctx.stroke();
       for(let i=0;i<5;i++){
-        ctx.fillStyle=i%2===0?'#f0c040':'#c0392b';
+        ctx.fillStyle=i%2===0?'#f0c040':'#c03030';
         ctx.beginPath();
-        ctx.moveTo(ex+S*(.1+i*.2),ey+S*.28);
-        ctx.lineTo(ex+S*(.1+i*.2)+S*.06,ey+S*.36);
-        ctx.lineTo(ex+S*(.1+i*.2)+S*.12,ey+S*.28);
+        ctx.moveTo(bx-S*.26+i*S*.13,by-S*.12);
+        ctx.lineTo(bx-S*.2+i*S*.13,by-S*.04);
+        ctx.lineTo(bx-S*.14+i*S*.13,by-S*.12);
         ctx.closePath();ctx.fill();
       }
+      // bancarelle sotto
+      isoBox(bx-S*.2,by+S*.02,S*.2,S*.14,S*.1,'#9a7228','#b88a38','#7a5218');
+      isoBox(bx+S*.2,by+S*.02,S*.2,S*.14,S*.1,'#7a5a18','#9a7028','#5a3e10');
+      // monete
+      ctx.fillStyle='#f0c040';ctx.beginPath();ctx.arc(bx-S*.2,by-S*.1,S*.04,0,Math.PI*2);ctx.fill();
       break;
     }
 
     case 'casapirata':{
-      // casetta umile con tetto rosso, amaca fuori, casse
-      // base casa
-      const gCasa=ctx.createLinearGradient(ex+S*.15,ey+S*.3,ex+S*.85,ey+S*.82);
-      gCasa.addColorStop(0,'#9a7040');gCasa.addColorStop(1,'#6a4a20');
-      ctx.fillStyle=gCasa;
-      ctx.fillRect(ex+S*.15,ey+S*.32,S*.7,S*.5);
-      // tetto a spiovente basso
-      ctx.fillStyle='#8a2020';
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.1,ey+S*.34);
-      ctx.lineTo(cx,ey+S*.1);
-      ctx.lineTo(ex+S*.9,ey+S*.34);
-      ctx.closePath();ctx.fill();
-      ctx.strokeStyle='#5a1010';ctx.lineWidth=1;ctx.stroke();
-      // linea colmo tetto
-      ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=.8;
-      ctx.beginPath();ctx.moveTo(cx,ey+S*.1);ctx.lineTo(cx,ey+S*.34);ctx.stroke();
+      isoBox(bx,by,S*.38,S*.24,S*.22,'#9a7040','#c09050','#7a5020');
+      isoRoof(bx,by-S*.22,S*.38,S*.24,0,S*.18,'#8a2020','#6a1010','#9a2828');
+      isoWindow(bx-S*.1,by-S*.18,true);
       // porta
-      ctx.fillStyle='#3a2008';
-      ctx.fillRect(ex+S*.41,ey+S*.58,S*.18,S*.24);
-      ctx.beginPath();ctx.arc(ex+S*.5,ey+S*.58,S*.09,Math.PI,0,false);ctx.fill();
-      // finestra con croce
-      ctx.fillStyle='rgba(255,220,140,.7)';
-      ctx.fillRect(ex+S*.19,ey+S*.42,S*.16,S*.14);
-      ctx.fillRect(ex+S*.65,ey+S*.42,S*.16,S*.14);
-      ctx.strokeStyle='rgba(80,40,0,.6)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(ex+S*.27,ey+S*.42);ctx.lineTo(ex+S*.27,ey+S*.56);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(ex+S*.19,ey+S*.49);ctx.lineTo(ex+S*.35,ey+S*.49);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(ex+S*.73,ey+S*.42);ctx.lineTo(ex+S*.73,ey+S*.56);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(ex+S*.65,ey+S*.49);ctx.lineTo(ex+S*.81,ey+S*.49);ctx.stroke();
-      // amaca (simbolo della vita del pirata)
-      ctx.strokeStyle='#8a6030';ctx.lineWidth=1.5;
+      ctx.fillStyle='#3a1e08';
+      ctx.fillRect(bx-S*.06,by-S*.12,S*.12,S*.13);
+      ctx.beginPath();ctx.arc(bx,by-S*.12,S*.06,Math.PI,0,false);ctx.fill();
+      // amaca fuori
+      ctx.strokeStyle='#c8a060';ctx.lineWidth=1.5;
       ctx.beginPath();
-      ctx.moveTo(ex+S*.04,ey+S*.55);
-      ctx.quadraticCurveTo(ex+S*.12,ey+S*.72,ex+S*.2,ey+S*.55);
+      ctx.moveTo(bx+S*.18,by-S*.12);
+      ctx.quadraticCurveTo(bx+S*.28,by-S*.04,bx+S*.36,by-S*.12);
       ctx.stroke();
-      ctx.fillStyle='rgba(180,140,60,.5)';
-      ctx.beginPath();
-      ctx.moveTo(ex+S*.04,ey+S*.55);
-      ctx.quadraticCurveTo(ex+S*.12,ey+S*.72,ex+S*.2,ey+S*.55);
-      ctx.closePath();ctx.fill();
-      // cassa con monete fuori
-      ctx.fillStyle='#7a5020';
-      ctx.fillRect(ex+S*.72,ey+S*.6,S*.2,S*.14);
-      ctx.strokeStyle='#4a2a00';ctx.lineWidth=1;ctx.strokeRect(ex+S*.72,ey+S*.6,S*.2,S*.14);
-      ctx.fillStyle='#f0c040';
-      ctx.beginPath();ctx.arc(ex+S*.82,ey+S*.59,S*.04,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(ex+S*.76,ey+S*.62,S*.03,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(200,160,80,.6)';ctx.fill();
       break;
     }
 
     case 'bordello':{
-      // casa lussuosa con luci rosse e tende vistose
-      ctx.fillStyle='#5a1a2a';
-      ctx.fillRect(ex+S*.08,ey+S*.3,S*.84,S*.56);
-      const gB=ctx.createLinearGradient(ex+S*.08,ey+S*.3,ex+S*.92,ey+S*.86);
-      gB.addColorStop(0,'#8a2a3a');gB.addColorStop(1,'#4a0e18');
-      ctx.fillStyle=gB;ctx.fillRect(ex+S*.08,ey+S*.3,S*.84,S*.56);
-      // tetto con frange
-      ctx.fillStyle='#3a0a0e';
-      ctx.beginPath();ctx.moveTo(ex+S*.04,ey+S*.32);ctx.lineTo(cx,ey+S*.06);ctx.lineTo(ex+S*.96,ey+S*.32);ctx.closePath();ctx.fill();
-      // frange tetto
-      ctx.strokeStyle='#f0c040';ctx.lineWidth=1.5;
-      for(let i=0;i<6;i++){
-        const fx=ex+S*(.08+i*.15);
-        ctx.beginPath();ctx.moveTo(fx,ey+S*.32);ctx.lineTo(fx+S*.04,ey+S*.42);ctx.stroke();
-      }
-      // finestre illuminate in rosso
-      for(let i=0;i<2;i++){
-        const wx=ex+S*(.14+i*.5);
-        const g2=ctx.createRadialGradient(wx+S*.1,ey+S*.5,0,wx+S*.1,ey+S*.5,S*.12);
-        g2.addColorStop(0,'rgba(255,80,80,.9)');g2.addColorStop(1,'rgba(180,20,20,.4)');
-        ctx.fillStyle=g2;ctx.fillRect(wx,ey+S*.44,S*.2,S*.2);
-        ctx.strokeStyle='#8a2a2a';ctx.lineWidth=1;ctx.strokeRect(wx,ey+S*.44,S*.2,S*.2);
-      }
-      // porta con tenda rossa
-      ctx.fillStyle='#c03050';
-      ctx.fillRect(ex+S*.4,ey+S*.6,S*.2,S*.26);
-      ctx.fillStyle='rgba(255,100,120,.4)';
-      ctx.beginPath();ctx.arc(ex+S*.5,ey+S*.6,S*.1,Math.PI,0,false);ctx.fill();
+      isoBox(bx,by,S*.44,S*.28,S*.28,'#6a1a3a','#9a2858','#4a1028');
+      isoRoof(bx,by-S*.28,S*.44,S*.28,0,S*.18,'#8a1848','#6a1030','#a82060');
+      // finestre illuminate rosa
+      isoWindow(bx-S*.12,by-S*.24,true);
+      isoWindow(bx+S*.12,by-S*.24,true);
+      // tendaggi colorati
+      ctx.fillStyle='rgba(200,80,140,.5)';
+      ctx.fillRect(bx-S*.16,by-S*.28,S*.1,S*.08);
+      ctx.fillRect(bx+S*.06,by-S*.28,S*.1,S*.08);
       // insegna cuore
-      ctx.fillStyle='#ff4060';
-      ctx.font=`${S*.28}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText('♥',cx,ey+S*.22);
+      ctx.fillStyle='#ff4488';ctx.font=`${S*.18}px serif`;
+      ctx.textAlign='center';ctx.fillText('♥',bx,by-S*.38);
+      // porta
+      ctx.fillStyle='#2a0818';
+      ctx.fillRect(bx-S*.07,by-S*.14,S*.14,S*.15);
+      ctx.beginPath();ctx.arc(bx,by-S*.14,S*.07,Math.PI,0,false);ctx.fill();
       break;
     }
 
     case 'arena':{
-      // cerchio arena sabbiosa con palizzata
-      ctx.fillStyle='#c4a05e';
-      ctx.beginPath();ctx.ellipse(cx,cy,S*.42,S*.38,0,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#a8803e';
-      ctx.beginPath();ctx.ellipse(cx,cy,S*.32,S*.28,0,0,Math.PI*2);ctx.fill();
-      // palizzata
-      ctx.strokeStyle='#5c3a1a';ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.ellipse(cx,cy,S*.42,S*.38,0,0,Math.PI*2);ctx.stroke();
-      for(let i=0;i<12;i++){
-        const ang=i/12*Math.PI*2;
-        const px=cx+Math.cos(ang)*S*.42, py=cy+Math.sin(ang)*S*.38;
-        ctx.fillStyle='#5c3a1a';
-        ctx.fillRect(px-2,py-6,4,8);
+      // struttura circolare/ovale
+      ctx.fillStyle='#8a7a50';
+      ctx.beginPath();ctx.ellipse(bx,by-S*.06,S*.36,S*.2,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#6a5a38';ctx.lineWidth=2;ctx.stroke();
+      // sabbia interna
+      ctx.fillStyle='#c8a060';
+      ctx.beginPath();ctx.ellipse(bx,by-S*.08,S*.26,S*.14,0,0,Math.PI*2);ctx.fill();
+      // gradinate (anelli)
+      for(let i=1;i<=3;i++){
+        ctx.strokeStyle=`rgba(100,80,40,${.3+i*.1})`;ctx.lineWidth=2;
+        ctx.beginPath();ctx.ellipse(bx,by-S*.06,S*(.28+i*.04),S*(.15+i*.02),0,0,Math.PI*2);ctx.stroke();
       }
-      // due omini che combattono (simbolici)
-      ctx.fillStyle='#2a1a0a';
-      ctx.beginPath();ctx.arc(cx-S*.1,cy+S*.05,S*.06,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.arc(cx+S*.1,cy+S*.05,S*.06,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#c0c0c0';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(cx-S*.06,cy+S*.05);ctx.lineTo(cx+S*.04,cy+S*.05);ctx.stroke();
-      // sangue nel terreno
-      ctx.fillStyle='rgba(180,20,20,.25)';
-      ctx.beginPath();ctx.ellipse(cx,cy+S*.08,S*.08,S*.04,0,0,Math.PI*2);ctx.fill();
+      // spade incrociate al centro
+      ctx.strokeStyle='#c0c0c8';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(bx-S*.08,by-S*.16);ctx.lineTo(bx+S*.08,by-S*.0);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx+S*.08,by-S*.16);ctx.lineTo(bx-S*.08,by-S*.0);ctx.stroke();
+      // muri perimetrali (iso)
+      isoBox(bx,by-S*.18,S*.68,S*.04,S*.12,'#7a6a40','#9a8a58','#5a4e28');
       break;
     }
 
     case 'cantastorie':{
-      // palcoscenico con sipario e luci
-      // palco di legno
-      ctx.fillStyle='#7a5a20';
-      ctx.fillRect(ex+S*.1,ey+S*.5,S*.8,S*.36);
-      ctx.fillStyle='#a07a30';
-      ctx.fillRect(ex+S*.1,ey+S*.46,S*.8,S*.08);
-      // sipario sinistro
+      // palco con sipari
+      isoBox(bx,by+S*.02,S*.46,S*.28,S*.12,'#7a5a20','#9a7230','#5a4010');
+      // montanti sipario
+      isoBox(bx-S*.26,by-S*.1,S*.08,S*.06,S*.38,'#5a3a10','#7a5020','#3a2008');
+      isoBox(bx+S*.26,by-S*.1,S*.08,S*.06,S*.38,'#5a3a10','#7a5020','#3a2008');
+      // sipari rossi
       ctx.fillStyle='#8a1a1a';
-      ctx.fillRect(ex+S*.08,ey+S*.12,S*.22,S*.44);
-      ctx.fillStyle='#6a0e0e';
-      ctx.beginPath();ctx.moveTo(ex+S*.08,ey+S*.12);ctx.lineTo(ex+S*.3,ey+S*.12);
-      ctx.lineTo(ex+S*.24,ey+S*.56);ctx.lineTo(ex+S*.08,ey+S*.56);ctx.closePath();ctx.fill();
-      // sipario destro
+      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.48);ctx.lineTo(bx-S*.04,by-S*.48);ctx.lineTo(bx-S*.1,by-S*.1);ctx.lineTo(bx-S*.26,by-S*.1);ctx.closePath();ctx.fill();
       ctx.fillStyle='#8a1a1a';
-      ctx.fillRect(ex+S*.7,ey+S*.12,S*.22,S*.44);
-      ctx.fillStyle='#6a0e0e';
-      ctx.beginPath();ctx.moveTo(ex+S*.92,ey+S*.12);ctx.lineTo(ex+S*.7,ey+S*.12);
-      ctx.lineTo(ex+S*.76,ey+S*.56);ctx.lineTo(ex+S*.92,ey+S*.56);ctx.closePath();ctx.fill();
-      // frange oro sipario
-      ctx.strokeStyle='#f0c040';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(ex+S*.08,ey+S*.12);ctx.lineTo(ex+S*.92,ey+S*.12);ctx.stroke();
-      // figurina sul palco
-      ctx.fillStyle='#c8a06e';
-      ctx.beginPath();ctx.arc(cx,ey+S*.44,S*.06,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#2a1a0a';
-      ctx.beginPath();ctx.ellipse(cx,ey+S*.52,S*.04,S*.07,0,0,Math.PI*2);ctx.fill();
-      // note musicali
-      ctx.fillStyle='rgba(240,192,64,.7)';
-      ctx.font=`${S*.2}px serif`;ctx.textAlign='center';
-      ctx.fillText('♪',ex+S*.38,ey+S*.3);
-      ctx.fillText('♫',ex+S*.62,ey+S*.26);
+      ctx.beginPath();ctx.moveTo(bx+S*.26,by-S*.48);ctx.lineTo(bx+S*.04,by-S*.48);ctx.lineTo(bx+S*.1,by-S*.1);ctx.lineTo(bx+S*.26,by-S*.1);ctx.closePath();ctx.fill();
+      // frange oro
+      ctx.strokeStyle='#f0c040';ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.moveTo(bx-S*.28,by-S*.48);ctx.lineTo(bx+S*.28,by-S*.48);ctx.stroke();
+      // figurina
+      ctx.fillStyle='#c8a06e';ctx.beginPath();ctx.arc(bx,by-S*.22,S*.07,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#2a1a0a';ctx.beginPath();ctx.ellipse(bx,by-S*.12,S*.05,S*.08,0,0,Math.PI*2);ctx.fill();
+      // note musicali flottanti
+      ctx.fillStyle='rgba(240,192,64,.75)';ctx.font=`${S*.18}px serif`;
+      ctx.textAlign='center';
+      ctx.fillText('♪',bx-S*.18,by-S*.32+Math.sin(frame*.06)*3);
+      ctx.fillText('♫',bx+S*.18,by-S*.38+Math.sin(frame*.06+1)*3);
       break;
     }
 
     case 'cappella':{
-      // piccola chiesa con croce
-      ctx.fillStyle='#e8e0d0';
-      const gCp=ctx.createLinearGradient(ex+S*.2,ey+S*.25,ex+S*.8,ey+S*.82);
-      gCp.addColorStop(0,'#f0e8d8');gCp.addColorStop(1,'#c8c0b0');
-      ctx.fillStyle=gCp;ctx.fillRect(ex+S*.2,ey+S*.28,S*.6,S*.56);
-      // tetto a triangolo
-      ctx.fillStyle='#7a6a50';
-      ctx.beginPath();ctx.moveTo(ex+S*.14,ey+S*.3);ctx.lineTo(cx,ey+S*.06);ctx.lineTo(ex+S*.86,ey+S*.3);ctx.closePath();ctx.fill();
+      // corpo bianco
+      isoBox(bx,by,S*.34,S*.22,S*.3,'#e0d8c8','#f0e8d8','#c0b8a8');
+      // tetto triangolare
+      isoRoof(bx,by-S*.3,S*.34,S*.22,0,S*.22,'#9a8a60','#7a6a48','#b09870');
       // campanile
-      ctx.fillStyle='#d0c8b8';ctx.fillRect(cx-S*.08,ey+S*.04,S*.16,S*.3);
-      ctx.fillStyle='#7a6a50';
-      ctx.beginPath();ctx.moveTo(cx-S*.1,ey+S*.06);ctx.lineTo(cx,ey-S*.06);ctx.lineTo(cx+S*.1,ey+S*.06);ctx.closePath();ctx.fill();
-      // croce
-      ctx.strokeStyle='#c8a040';ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.moveTo(cx,ey-S*.02);ctx.lineTo(cx,ey+S*.18);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(cx-S*.07,ey+S*.06);ctx.lineTo(cx+S*.07,ey+S*.06);ctx.stroke();
+      isoBox(bx,by-S*.3,S*.14,S*.1,S*.26,'#d8d0c0','#e8e0d0','#b8b0a0');
+      isoRoof(bx,by-S*.56,S*.14,S*.1,0,S*.16,'#9a8a60','#7a6a48','#b09870');
+      // croce dorata
+      ctx.strokeStyle='#c8a020';ctx.lineWidth=2.5;
+      ctx.beginPath();ctx.moveTo(bx,by-S*.72);ctx.lineTo(bx,by-S*.56);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx-S*.06,by-S*.66);ctx.lineTo(bx+S*.06,by-S*.66);ctx.stroke();
       // vetrata
-      ctx.fillStyle='rgba(100,150,255,.5)';
-      ctx.beginPath();ctx.arc(cx,ey+S*.48,S*.1,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='rgba(255,220,100,.6)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(cx,ey+S*.38);ctx.lineTo(cx,ey+S*.58);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(cx-S*.1,ey+S*.48);ctx.lineTo(cx+S*.1,ey+S*.48);ctx.stroke();
-      // porta
+      ctx.fillStyle='rgba(100,150,255,.55)';
+      ctx.beginPath();ctx.arc(bx,by-S*.18,S*.07,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(255,220,80,.7)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(bx,by-S*.25);ctx.lineTo(bx,by-S*.11);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx-S*.07,by-S*.18);ctx.lineTo(bx+S*.07,by-S*.18);ctx.stroke();
+      // porta ad arco
       ctx.fillStyle='#5c3a1a';
-      ctx.fillRect(ex+S*.4,ey+S*.62,S*.2,S*.22);
-      ctx.beginPath();ctx.arc(cx,ey+S*.62,S*.1,Math.PI,0,false);ctx.fill();
+      ctx.fillRect(bx-S*.06,by-S*.12,S*.12,S*.13);
+      ctx.beginPath();ctx.arc(bx,by-S*.12,S*.06,Math.PI,0,false);ctx.fill();
       break;
     }
 
     case 'infermeria':{
-      // edificio bianco con croce rossa
-      ctx.fillStyle='#e8e8e8';
-      const gI=ctx.createLinearGradient(ex+S*.1,ey+S*.25,ex+S*.9,ey+S*.85);
-      gI.addColorStop(0,'#f5f5f5');gI.addColorStop(1,'#d0d0d0');
-      ctx.fillStyle=gI;ctx.fillRect(ex+S*.1,ey+S*.25,S*.8,S*.6);
-      // tetto piatto
-      ctx.fillStyle='#5a6a7a';ctx.fillRect(ex+S*.08,ey+S*.22,S*.84,S*.08);
+      isoBox(bx,by,S*.42,S*.26,S*.28,'#e8e8e8','#f5f5f5','#d0d0d0');
+      isoBox(bx,by-S*.28,S*.44,S*.28,S*.06,'#5a6a7a','#6a7a8a','#4a5a6a');
       // croce rossa grande
       ctx.fillStyle='#cc2222';
-      ctx.fillRect(cx-S*.06,ey+S*.35,S*.12,S*.28);
-      ctx.fillRect(cx-S*.14,ey+S*.43,S*.28,S*.12);
+      ctx.fillRect(bx-S*.05,by-S*.34,S*.1,S*.24);
+      ctx.fillRect(bx-S*.14,by-S*.28,S*.28,S*.1);
       // finestre
-      ctx.fillStyle='rgba(180,220,255,.7)';
-      ctx.fillRect(ex+S*.14,ey+S*.35,S*.14,S*.14);
-      ctx.fillRect(ex+S*.72,ey+S*.35,S*.14,S*.14);
-      // croce sulle finestre
-      ctx.strokeStyle='#9ab0c0';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(ex+S*.21,ey+S*.35);ctx.lineTo(ex+S*.21,ey+S*.49);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(ex+S*.14,ey+S*.42);ctx.lineTo(ex+S*.28,ey+S*.42);ctx.stroke();
+      isoWindow(bx-S*.14,by-S*.2,true);
+      isoWindow(bx+S*.14,by-S*.2,true);
       // porta
-      ctx.fillStyle='#4a3a2a';ctx.fillRect(cx-S*.1,ey+S*.64,S*.2,S*.21);
+      ctx.fillStyle='#4a3a2a';ctx.fillRect(bx-S*.07,by-S*.14,S*.14,S*.15);
       // barella fuori
-      ctx.strokeStyle='#8a7a60';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(ex+S*.02,ey+S*.7);ctx.lineTo(ex+S*.16,ey+S*.7);ctx.stroke();
-      ctx.fillStyle='#e8d8b8';ctx.fillRect(ex+S*.04,ey+S*.66,S*.12,S*.08);
+      ctx.strokeStyle='#9a8a60';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.06);ctx.lineTo(bx-S*.12,by-S*.06);ctx.stroke();
+      ctx.fillStyle='#e8d8b8';ctx.fillRect(bx-S*.25,by-S*.1,S*.13,S*.07);
       break;
     }
 
     case 'bagni':{
-      // edificio con vasche e vapore
-      ctx.fillStyle='#4a6a8a';
-      const gBa=ctx.createLinearGradient(ex+S*.1,ey+S*.28,ex+S*.9,ey+S*.84);
-      gBa.addColorStop(0,'#5a7a9a');gBa.addColorStop(1,'#3a5a7a');
-      ctx.fillStyle=gBa;ctx.fillRect(ex+S*.1,ey+S*.28,S*.8,S*.56);
-      ctx.fillStyle='#2a3a5a';ctx.fillRect(ex+S*.08,ey+S*.24,S*.84,S*.08);
-      // vasche (due ellissi azzurre)
-      ctx.fillStyle='rgba(100,200,240,.7)';
-      ctx.beginPath();ctx.ellipse(ex+S*.3,ey+S*.54,S*.16,S*.1,0,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(ex+S*.7,ey+S*.54,S*.16,S*.1,0,0,Math.PI*2);ctx.fill();
+      isoBox(bx,by,S*.4,S*.26,S*.24,'#4a6a8a','#5a7a9a','#3a5a7a');
+      isoRoof(bx,by-S*.24,S*.4,S*.26,0,S*.1,'#3a4a6a','#2a3a5a','#4a5a7a');
+      // vasche (2 ellissi azzurre in prospettiva)
+      ctx.fillStyle=`rgba(80,180,220,${.7+Math.sin(frame*.04)*.08})`;
+      ctx.beginPath();ctx.ellipse(bx-S*.1,by-S*.1,S*.12,S*.06,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(bx+S*.1,by-S*.1,S*.12,S*.06,0,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle='rgba(200,240,255,.8)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.ellipse(ex+S*.3,ey+S*.54,S*.12,S*.07,0,0,Math.PI*2);ctx.stroke();
-      ctx.beginPath();ctx.ellipse(ex+S*.7,ey+S*.54,S*.12,S*.07,0,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(bx-S*.1,by-S*.1,S*.08,S*.04,0,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(bx+S*.1,by-S*.1,S*.08,S*.04,0,0,Math.PI*2);ctx.stroke();
       // vapore animato
-      for(let i=0;i<4;i++){
-        const vx=ex+S*(.2+i*.18);
-        const vy=ey+S*.44-Math.sin(frame*.04+i)*3;
-        ctx.fillStyle=`rgba(200,240,255,${.15+Math.sin(frame*.03+i)*.05})`;
-        ctx.beginPath();ctx.arc(vx,vy,S*.04+i*.01,0,Math.PI*2);ctx.fill();
+      for(let i=0;i<3;i++){
+        const vx=bx-S*.15+i*S*.15;
+        const vy=by-S*.18-Math.sin(frame*.05+i)*S*.04;
+        ctx.fillStyle=`rgba(200,240,255,${.15+Math.sin(frame*.04+i)*.05})`;
+        ctx.beginPath();ctx.arc(vx,vy,S*.04,0,Math.PI*2);ctx.fill();
       }
-      // porta
-      ctx.fillStyle='#2a3a5a';ctx.fillRect(cx-S*.1,ey+S*.64,S*.2,S*.2);
       break;
     }
 
     case 'guardia':{
-      // torre alta con faro
-      ctx.fillStyle='#6a6050';
-      ctx.fillRect(cx-S*.2,ey+S*.15,S*.4,S*.7);
-      const gG=ctx.createLinearGradient(cx-S*.2,ey+S*.15,cx+S*.2,ey+S*.85);
-      gG.addColorStop(0,'#8a7a60');gG.addColorStop(1,'#4a4030');
-      ctx.fillStyle=gG;ctx.fillRect(cx-S*.18,ey+S*.15,S*.36,S*.7);
-      // merlature
-      ctx.fillStyle='#5a5040';
-      for(let i=0;i<3;i++) ctx.fillRect(cx-S*.18+i*S*.13,ey+S*.1,S*.09,S*.1);
-      // ballatoio
-      ctx.fillStyle='#7a6a50';ctx.fillRect(cx-S*.24,ey+S*.34,S*.48,S*.06);
-      // faro/luce in cima
-      const luceA=.5+Math.sin(frame*.08)*.4;
-      ctx.fillStyle=`rgba(255,220,100,${luceA})`;
-      ctx.beginPath();ctx.arc(cx,ey+S*.18,S*.07,0,Math.PI*2);ctx.fill();
-      // raggio faro rotante
-      const ang=frame*.04;
-      ctx.strokeStyle=`rgba(255,220,100,${luceA*.3})`;ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(cx,ey+S*.18);
-      ctx.lineTo(cx+Math.cos(ang)*S*.7,ey+S*.18+Math.sin(ang)*S*.4);ctx.stroke();
-      // feritoie
-      ctx.fillStyle='rgba(0,0,0,.6)';
-      ctx.fillRect(cx-S*.04,ey+S*.44,S*.08,S*.14);
-      ctx.fillRect(cx-S*.12,ey+S*.52,S*.24,S*.06);
       // base larga
-      ctx.fillStyle='#5a5040';ctx.fillRect(cx-S*.3,ey+S*.78,S*.6,S*.1);
+      isoBox(bx,by,S*.28,S*.2,S*.14,'#6a6050','#8a7a60','#4a4838');
+      // torre alta
+      isoBox(bx,by-S*.14,S*.2,S*.14,S*.52,'#7a7060','#9a9078','#5a5848');
+      // merlature
+      for(let i=-1;i<=1;i++){
+        isoBox(bx+i*S*.07,by-S*.66,S*.05,S*.04,S*.08,'#8a8068','#a09880','#6a6858');
+      }
+      // ballatoio
+      isoBox(bx,by-S*.44,S*.26,S*.18,S*.04,'#7a7060','#8a8070','#5a5848');
+      // luce faro rotante
+      const luceA=.5+Math.sin(frame*.08)*.45;
+      ctx.fillStyle=`rgba(255,220,100,${luceA})`;
+      ctx.beginPath();ctx.arc(bx,by-S*.68,S*.07,0,Math.PI*2);ctx.fill();
+      // raggio faro
+      const ang=(frame*.03)%(Math.PI*2);
+      ctx.save();ctx.globalAlpha=luceA*.25;
+      ctx.strokeStyle='rgba(255,220,100,1)';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(bx,by-S*.68);
+      ctx.lineTo(bx+Math.cos(ang)*S*.9,by-S*.68+Math.sin(ang)*S*.4);ctx.stroke();
+      ctx.restore();
+      // feritoie
+      ctx.fillStyle='rgba(0,0,0,.7)';
+      ctx.fillRect(bx-S*.04,by-S*.4,S*.08,S*.12);
+      ctx.fillRect(bx-S*.1,by-S*.36,S*.2,S*.04);
       break;
     }
 
     case 'sarto':{
-      // negozietto elegante con manichino e stoffe
-      const gSa=ctx.createLinearGradient(ex+S*.1,ey+S*.28,ex+S*.9,ey+S*.84);
-      gSa.addColorStop(0,'#9a7a4a');gSa.addColorStop(1,'#6a5030');
-      ctx.fillStyle=gSa;ctx.fillRect(ex+S*.1,ey+S*.28,S*.8,S*.58);
-      // tetto a spiovente elegante
-      ctx.fillStyle='#3a2a10';
-      ctx.beginPath();ctx.moveTo(ex+S*.06,ey+S*.3);ctx.lineTo(cx,ey+S*.08);ctx.lineTo(ex+S*.94,ey+S*.3);ctx.closePath();ctx.fill();
-      ctx.strokeStyle='#f0c040';ctx.lineWidth=1;ctx.stroke();
+      isoBox(bx,by,S*.36,S*.22,S*.26,'#9a7a4a','#c09860','#7a5a28');
+      isoRoof(bx,by-S*.26,S*.36,S*.22,0,S*.18,'#3a2a10','#2a1a08','#4a3818');
+      ctx.strokeStyle='#f0c040';ctx.lineWidth=1;
       // vetrina con manichino
-      ctx.fillStyle='rgba(200,220,240,.4)';ctx.fillRect(ex+S*.14,ey+S*.35,S*.32,S*.34);
-      ctx.strokeStyle='#8a6a30';ctx.lineWidth=1.5;ctx.strokeRect(ex+S*.14,ey+S*.35,S*.32,S*.34);
+      ctx.fillStyle='rgba(200,220,240,.35)';
+      ctx.fillRect(bx-S*.16,by-S*.28,S*.14,S*.2);
+      ctx.strokeStyle='#8a6a30';ctx.lineWidth=1.2;ctx.strokeRect(bx-S*.16,by-S*.28,S*.14,S*.2);
       // manichino
-      ctx.fillStyle='#c8a060';
-      ctx.beginPath();ctx.arc(ex+S*.3,ey+S*.44,S*.06,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#1a3a8a';
-      ctx.beginPath();ctx.ellipse(ex+S*.3,ey+S*.54,S*.07,S*.1,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#c8a060';ctx.beginPath();ctx.arc(bx-S*.09,by-S*.28,S*.05,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#1a3a8a';ctx.beginPath();ctx.ellipse(bx-S*.09,by-S*.2,S*.06,S*.08,0,0,Math.PI*2);ctx.fill();
       // stoffe colorate
-      ctx.fillStyle='#c03050';ctx.fillRect(ex+S*.52,ey+S*.36,S*.08,S*.28);
-      ctx.fillStyle='#20608a';ctx.fillRect(ex+S*.62,ey+S*.36,S*.08,S*.28);
-      ctx.fillStyle='#40a040';ctx.fillRect(ex+S*.72,ey+S*.36,S*.08,S*.28);
+      ctx.fillStyle='#c03050';ctx.fillRect(bx+S*.02,by-S*.28,S*.06,S*.2);
+      ctx.fillStyle='#20608a';ctx.fillRect(bx+S*.1,by-S*.28,S*.06,S*.2);
       // porta
-      ctx.fillStyle='#2a1a08';ctx.fillRect(cx-S*.1,ey+S*.65,S*.2,S*.21);
-      ctx.beginPath();ctx.arc(cx,ey+S*.65,S*.1,Math.PI,0,false);ctx.fill();
-      // insegna
-      ctx.fillStyle='#f0c040';
-      ctx.font=`${S*.18}px serif`;ctx.textAlign='center';
-      ctx.fillText('✂',cx,ey+S*.2);
+      ctx.fillStyle='#2a1a08';ctx.fillRect(bx-S*.06,by-S*.12,S*.12,S*.13);
+      ctx.beginPath();ctx.arc(bx,by-S*.12,S*.06,Math.PI,0,false);ctx.fill();
+      // insegna forbici
+      ctx.fillStyle='#f0c040';ctx.font=`${S*.16}px serif`;
+      ctx.textAlign='center';ctx.fillText('✂',bx+S*.14,by-S*.36);
       break;
     }
 
+    case 'osservatorio': // già gestito sopra ma fallback
     default:{
-      ctx.fillStyle='#6b4520';
-      ctx.fillRect(ex+S*.1,ey+S*.1,S*.8,S*.8);
-      ctx.strokeStyle='rgba(240,192,64,.4)';ctx.lineWidth=1.5;
-      ctx.strokeRect(ex+S*.1,ey+S*.1,S*.8,S*.8);
+      // edificio generico iso
+      isoBox(bx,by,S*.36,S*.22,S*.22,'#6b5530','#8a7040','#4a3818');
+      isoRoof(bx,by-S*.22,S*.36,S*.22,0,S*.14,'#4a3010','#3a2008','#5a3c18');
+      isoWindow(bx,by-S*.18,true);
+      ctx.fillStyle='rgba(240,192,64,.5)';ctx.font=`${S*.22}px serif`;
+      ctx.textAlign='center';ctx.fillText(ED[tipo]?.icona||'🏠',bx,by-S*.36);
     }
   }
   ctx.restore();
 }
 
-// ── disegna nave in mare ──
+// ── disegna nave in mare — isometrica ──
 function disegnaNav(sx,sy,colore){
   ctx.save();
   ctx.translate(sx,sy);
-  // scafo
-  ctx.fillStyle=colore||'#5c3a1a';
+  const S=G.TILE;
+  const sc=S/52; // scala relativa al tile
+
+  // ombra a mare
+  ctx.globalAlpha=.18;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(sc*4,sc*16,sc*26,sc*7,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+
+  // scafo — vista isometrica (legno scuro)
+  const scG=ctx.createLinearGradient(-sc*22,0,sc*22,sc*14);
+  scG.addColorStop(0,colore||'#6a3e1a');
+  scG.addColorStop(1,'#3a1e08');
+  ctx.fillStyle=scG;
   ctx.beginPath();
-  ctx.ellipse(0,4,18,7,0,0,Math.PI*2);
-  ctx.fill();
-  ctx.strokeStyle='#3a2010';ctx.lineWidth=1.5;ctx.stroke();
-  // albero
-  ctx.strokeStyle='#7a5020';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(0,4);ctx.lineTo(0,-22);ctx.stroke();
-  // vela
-  ctx.fillStyle='rgba(244,228,188,.9)';
-  ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(14,-8);ctx.lineTo(0,2);ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.2)';ctx.lineWidth=1;ctx.stroke();
-  // bandiera nera
-  ctx.fillStyle='#111';
-  ctx.fillRect(0,-22,10,-6);
+  ctx.moveTo(-sc*22,sc*4);
+  ctx.quadraticCurveTo(-sc*8,sc*14,sc*8,sc*14);
+  ctx.quadraticCurveTo(sc*24,sc*14,sc*26,sc*6);
+  ctx.quadraticCurveTo(sc*20,-sc*2,0,-sc*4);
+  ctx.quadraticCurveTo(-sc*14,-sc*4,-sc*22,sc*4);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#2a1008';ctx.lineWidth=1.5;ctx.stroke();
+
+  // fascia dorata scafo
+  ctx.strokeStyle='rgba(200,160,60,.6)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(-sc*20,sc*5);ctx.quadraticCurveTo(sc*4,sc*11,sc*24,sc*4);ctx.stroke();
+
+  // cannoni laterali
+  ctx.fillStyle='#3a3028';
+  for(let i=0;i<3;i++){
+    ctx.fillRect(-sc*14+i*sc*10,sc*4,sc*5,sc*3);
+  }
+
+  // coperta
+  const deckG=ctx.createLinearGradient(-sc*18,0,sc*18,0);
+  deckG.addColorStop(0,'#8a6030');deckG.addColorStop(1,'#6a4820');
+  ctx.fillStyle=deckG;
+  ctx.beginPath();ctx.ellipse(sc*2,sc*1,sc*18,sc*8,0,0,Math.PI*2);ctx.fill();
+
+  // albero maestro
+  ctx.strokeStyle='#7a5020';ctx.lineWidth=sc*3;
+  ctx.beginPath();ctx.moveTo(sc*2,sc*2);ctx.lineTo(sc*2,-sc*38);ctx.stroke();
+  // pennone
+  ctx.lineWidth=sc*1.5;
+  ctx.beginPath();ctx.moveTo(-sc*16,-sc*28);ctx.lineTo(sc*20,-sc*28);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-sc*10,-sc*18);ctx.lineTo(sc*14,-sc*18);ctx.stroke();
+
+  // vela principale (color crema con patch)
+  const sailG=ctx.createLinearGradient(-sc*14,-sc*36,sc*18,-sc*10);
+  sailG.addColorStop(0,'rgba(248,235,195,.95)');
+  sailG.addColorStop(1,'rgba(210,190,140,.85)');
+  ctx.fillStyle=sailG;
+  ctx.beginPath();ctx.moveTo(sc*2,-sc*36);ctx.lineTo(sc*20,-sc*28);ctx.lineTo(sc*14,-sc*12);ctx.lineTo(-sc*10,-sc*18);ctx.lineTo(-sc*16,-sc*28);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.15)';ctx.lineWidth=.8;ctx.stroke();
+  // cucitura vela
+  ctx.strokeStyle='rgba(180,150,90,.4)';ctx.lineWidth=.8;
+  ctx.beginPath();ctx.moveTo(sc*2,-sc*36);ctx.lineTo(sc*2,-sc*10);ctx.stroke();
+
+  // vela di trinchetto (più piccola)
+  ctx.fillStyle='rgba(240,225,180,.8)';
+  ctx.beginPath();ctx.moveTo(-sc*14,-sc*14);ctx.lineTo(-sc*4,-sc*28);ctx.lineTo(sc*4,-sc*14);ctx.closePath();ctx.fill();
+
+  // bandiera jolly roger (animata)
+  const flagWave=Math.sin(frame*.08)*sc*3;
+  ctx.fillStyle='#0a0a0a';
+  ctx.beginPath();
+  ctx.moveTo(sc*2,-sc*38);
+  ctx.lineTo(sc*16,-sc*36+flagWave);
+  ctx.lineTo(sc*14,-sc*30+flagWave*.5);
+  ctx.lineTo(sc*2,-sc*34);
+  ctx.closePath();ctx.fill();
+  // teschio bandiera
+  ctx.fillStyle='rgba(255,255,255,.8)';ctx.font=`${sc*7}px serif`;
+  ctx.textAlign='center';ctx.fillText('☠',sc*10,-sc*32+flagWave*.7);
+
   ctx.restore();
 }
 
-// ── disegna pirata ──
-function disegnaPirata(px,py,selezionato,umore){
+// ── disegna pirata — isometrico stile Tropico 2 ──
+function disegnaPirata(px,py,selezionato,umore,ruolo){
   const mc=coloreUmore(umore);
+  const S=G.TILE;
+  const sc=S/52;
+
   if(selezionato){
-    ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);
-    ctx.fillStyle='rgba(240,192,64,.2)';ctx.fill();
-    ctx.strokeStyle='rgba(240,192,64,.7)';ctx.lineWidth=1.5;ctx.stroke();
+    // alone di selezione dorato
+    ctx.save();
+    ctx.globalAlpha=.25;
+    ctx.fillStyle='#f0c040';
+    ctx.beginPath();ctx.ellipse(px,py+sc*4,sc*16,sc*6,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle='rgba(240,192,64,.85)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(px,py+sc*4,sc*16,sc*6,0,0,Math.PI*2);ctx.stroke();
   }
-  // ombra a terra
-  ctx.save();ctx.globalAlpha=.3;ctx.fillStyle='#000';
-  ctx.beginPath();ctx.ellipse(px+2,py+9,7,2.5,0,0,Math.PI*2);ctx.fill();ctx.restore();
-  // gambe
+
+  // ombra isometrica a terra
+  ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#000';
+  ctx.beginPath();ctx.ellipse(px+sc*2,py+sc*6,sc*8,sc*3,0,0,Math.PI*2);ctx.fill();ctx.restore();
+
+  // STIVALI / GAMBE
   ctx.fillStyle='#2a1a08';
-  ctx.fillRect(px-4,py+2,3,7);
-  ctx.fillRect(px+1,py+2,3,7);
-  // corpo con gradiente
-  const gc=ctx.createLinearGradient(px-5,py-4,px+5,py+4);
-  gc.addColorStop(0,'#6a3e18');gc.addColorStop(1,'#3a1e08');
-  ctx.fillStyle=gc;
-  ctx.beginPath();ctx.ellipse(px,py-2,5,7,0,0,Math.PI*2);ctx.fill();
-  // cintura
-  ctx.fillStyle='#8a6020';
-  ctx.fillRect(px-5,py+1,10,2);
-  // testa
-  const gt=ctx.createRadialGradient(px-1,py-10,0,px,py-8,6);
-  gt.addColorStop(0,'#e0b888');gt.addColorStop(1,'#b87840');
-  ctx.fillStyle=gt;
-  ctx.beginPath();ctx.arc(px,py-8,5.5,0,Math.PI*2);ctx.fill();
-  // cappello tricorno
-  ctx.fillStyle='#0e0e0e';
+  // gamba sinistra
   ctx.beginPath();
-  ctx.moveTo(px-9,py-13);ctx.lineTo(px,py-20);ctx.lineTo(px+9,py-13);
+  ctx.moveTo(px-sc*3,py+sc*2);ctx.lineTo(px-sc*4,py+sc*8);
+  ctx.lineTo(px-sc*1,py+sc*8);ctx.lineTo(px-sc*1,py+sc*2);ctx.closePath();ctx.fill();
+  // gamba destra
+  ctx.beginPath();
+  ctx.moveTo(px+sc*1,py+sc*2);ctx.lineTo(px+sc*0,py+sc*8);
+  ctx.lineTo(px+sc*4,py+sc*8);ctx.lineTo(px+sc*3,py+sc*2);ctx.closePath();ctx.fill();
+  // risvolto stivali
+  ctx.fillStyle='#4a3018';
+  ctx.fillRect(px-sc*4,py+sc*6,sc*4,sc*2);
+  ctx.fillRect(px+sc*0,py+sc*6,sc*4,sc*2);
+
+  // CORPO con colore per ruolo
+  const bodyColors={
+    'Bucaniere':['#8a2818','#5a1808'],
+    'Navigatore':['#1a3a7a','#0e2252'],
+    'Cannoniere':['#3a3028','#1a1818'],
+    'Chirurgo':['#e8e8e0','#c0c0b8'],
+    'Cuoco':['#d8c090','#a89060'],
+    'Nostromo':['#3a6a28','#1e3e14'],
+    'Spia':['#282820','#141410'],
+    'Quartier Mastro':['#8a7020','#5a4a10'],
+  };
+  const bc=bodyColors[ruolo]||['#6a4a28','#3a2810'];
+  const bodyG=ctx.createLinearGradient(px-sc*6,py-sc*10,px+sc*6,py+sc*2);
+  bodyG.addColorStop(0,bc[0]);bodyG.addColorStop(1,bc[1]);
+  ctx.fillStyle=bodyG;
+  ctx.beginPath();
+  ctx.moveTo(px-sc*5,py+sc*2);
+  ctx.quadraticCurveTo(px-sc*7,py-sc*4,px-sc*4,py-sc*10);
+  ctx.lineTo(px+sc*4,py-sc*10);
+  ctx.quadraticCurveTo(px+sc*7,py-sc*4,px+sc*5,py+sc*2);
   ctx.closePath();ctx.fill();
-  ctx.fillRect(px-9,py-14,18,3);
-  ctx.strokeStyle='#f0c040';ctx.lineWidth=.8;
-  ctx.beginPath();ctx.moveTo(px-9,py-14);ctx.lineTo(px+9,py-14);ctx.stroke();
-  // spada al fianco
-  ctx.strokeStyle='#c0c0c0';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(px+4,py+2);ctx.lineTo(px+8,py+8);ctx.stroke();
-  ctx.fillStyle='#8a6020';
-  ctx.beginPath();ctx.arc(px+4,py+2,1.5,0,Math.PI*2);ctx.fill();
-  // indicatore umore
+  ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=.7;ctx.stroke();
+
+  // CINTURA con fibbia
+  ctx.fillStyle='#6a4820';
+  ctx.fillRect(px-sc*5,py-sc*2,sc*10,sc*2.5);
+  ctx.fillStyle='#c8a040';
+  ctx.fillRect(px-sc*1.5,py-sc*1.8,sc*3,sc*2);
+  ctx.strokeStyle='#8a6020';ctx.lineWidth=.8;ctx.strokeRect(px-sc*1.5,py-sc*1.8,sc*3,sc*2);
+
+  // BRACCIA
+  ctx.fillStyle=bc[0];
+  // braccio sinistro
+  ctx.beginPath();
+  ctx.moveTo(px-sc*5,py-sc*9);ctx.lineTo(px-sc*9,py-sc*4);
+  ctx.lineTo(px-sc*7,py-sc*3);ctx.lineTo(px-sc*4,py-sc*7);ctx.closePath();ctx.fill();
+  // braccio destro (con spada)
+  ctx.beginPath();
+  ctx.moveTo(px+sc*5,py-sc*9);ctx.lineTo(px+sc*9,py-sc*2);
+  ctx.lineTo(px+sc*7,py-sc*1);ctx.lineTo(px+sc*4,py-sc*7);ctx.closePath();ctx.fill();
+
+  // SPADA (braccio destro)
+  ctx.strokeStyle='#d0d0d8';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(px+sc*8,py-sc*1);ctx.lineTo(px+sc*14,py+sc*8);ctx.stroke();
+  ctx.fillStyle='#c8a040';ctx.beginPath();ctx.arc(px+sc*8,py-sc*1,sc*2,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#8a6020';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(px+sc*6,py+sc*1);ctx.lineTo(px+sc*10,py-sc*3);ctx.stroke();
+
+  // COLLO + TESTA
+  ctx.fillStyle='#c8a878';
+  ctx.beginPath();ctx.arc(px,py-sc*13,sc*5.5,0,Math.PI*2);ctx.fill();
+  // ombra viso
+  const faceG=ctx.createRadialGradient(px-sc*1.5,py-sc*14,0,px,py-sc*13,sc*5.5);
+  faceG.addColorStop(0,'rgba(220,180,120,.0)');
+  faceG.addColorStop(0.6,'rgba(180,130,70,.12)');
+  faceG.addColorStop(1,'rgba(100,60,20,.35)');
+  ctx.fillStyle=faceG;
+  ctx.beginPath();ctx.arc(px,py-sc*13,sc*5.5,0,Math.PI*2);ctx.fill();
+
+  // OCCHIO e bocca
+  ctx.fillStyle='#1a0a00';
+  ctx.beginPath();ctx.arc(px-sc*1.5,py-sc*13.5,sc*1,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(px+sc*1.5,py-sc*13.5,sc*1,0,Math.PI*2);ctx.fill();
+  // sorriso/espressione in base all'umore
+  ctx.strokeStyle='#5a2a10';ctx.lineWidth=.8;
+  ctx.beginPath();
+  if(umore>60){
+    ctx.arc(px,py-sc*12,sc*2,0.1,Math.PI-.1,false); // sorriso
+  } else if(umore>30){
+    ctx.moveTo(px-sc*1.8,py-sc*11.8);ctx.lineTo(px+sc*1.8,py-sc*11.8); // neutro
+  } else {
+    ctx.arc(px,py-sc*10.8,sc*2,Math.PI+0.1,-.1,false); // triste
+  }
+  ctx.stroke();
+
+  // CAPPELLO TRICORNO isometrico
+  ctx.fillStyle='#0e0e0e';
+  // tesa
+  ctx.beginPath();ctx.ellipse(px,py-sc*18,sc*10,sc*4,0,0,Math.PI*2);ctx.fill();
+  // cupola
+  const hatG=ctx.createLinearGradient(px-sc*6,py-sc*24,px+sc*4,py-sc*18);
+  hatG.addColorStop(0,'#2a2a2a');hatG.addColorStop(1,'#0a0a0a');
+  ctx.fillStyle=hatG;
+  ctx.beginPath();
+  ctx.moveTo(px-sc*6,py-sc*18);
+  ctx.lineTo(px-sc*4,py-sc*24);
+  ctx.lineTo(px+sc*4,py-sc*24);
+  ctx.lineTo(px+sc*6,py-sc*18);
+  ctx.closePath();ctx.fill();
+  // coccarda/piuma dorata sul cappello
+  ctx.strokeStyle='#c8a020';ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(px-sc*5,py-sc*18);ctx.lineTo(px+sc*5,py-sc*18);ctx.stroke();
+  ctx.fillStyle='#f0c040';
+  ctx.beginPath();ctx.arc(px-sc*4,py-sc*19,sc*1.5,0,Math.PI*2);ctx.fill();
+
+  // INDICATORE UMORE (bolla sopra la testa)
+  ctx.fillStyle='rgba(0,0,0,.5)';
+  ctx.beginPath();ctx.arc(px+sc*7,py-sc*26,sc*4,0,Math.PI*2);ctx.fill();
   ctx.fillStyle=mc;
-  ctx.beginPath();ctx.arc(px,py-24,3,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=.8;ctx.stroke();
+  ctx.beginPath();ctx.arc(px+sc*7,py-sc*26,sc*3,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=.6;ctx.stroke();
 }
 
 // ── DRAW PRINCIPALE ──
@@ -2302,7 +2350,7 @@ function disegnaScena(){
   for(const p of G.pirati){
     const x=G.camX+p.mc*G.TILE+G.TILE/2;
     const y=G.camY+p.mr*G.TILE+G.TILE/2;
-    disegnaPirata(x,y,G.pirataSelezionato===p.id,p.umore);
+    disegnaPirata(x,y,G.pirataSelezionato===p.id,p.umore,p.ruolo);
     if(!G.battagliaAttiva){
       p.mc+=(Math.random()-.5)*.05*G.velocita;
       p.mr+=(Math.random()-.5)*.05*G.velocita;
@@ -4990,6 +5038,211 @@ function cicloGioco(ts=0){
   const intervallo=G.tickMs/G.velocita;
   if(ts-ultimoTick>=intervallo){ultimoTick=ts;tick();}
 }
+
+
+// ===== MOBILE SAFE INIT =====
+function onReady(fn){
+  if(document.readyState !== 'loading'){ fn(); }
+  else document.addEventListener('DOMContentLoaded', fn);
+}
+
+onReady(function(){
+
+if(!window.G) return;
+
+// --- Fix reputazione Corsari ---
+if(!G.fazioni) G.fazioni = {};
+G.fazioni.corsari = G.fazioni.corsari || { rep: 0 };
+
+const oldRaid = window.raid;
+window.raid = function(){
+  if(oldRaid) oldRaid();
+  G.fazioni.corsari.rep += 2;
+  aggMsg("I Corsari apprezzano (+2 reputazione)");
+};
+
+// --- Economia ---
+G.risorse = G.risorse || { zucchero: 10, rum: 0 };
+G.edifici = G.edifici || { piantagione: 1, distilleria: 0 };
+G.classi = G.classi || { schiavi:{felicita:40} };
+
+function produzione(){
+  G.risorse.zucchero += G.edifici.piantagione * 2;
+  let prod = Math.min(G.risorse.zucchero, G.edifici.distilleria * 2);
+  G.risorse.zucchero -= prod;
+  G.risorse.rum += prod;
+}
+
+function consumo(){
+  if(G.risorse.rum > 0){
+    G.risorse.rum--;
+    G.classi.schiavi.felicita += 1;
+  } else {
+    G.classi.schiavi.felicita -= 2;
+  }
+}
+
+function rivolte(){
+  if(G.classi.schiavi.felicita < 20){
+    aggMsg("🔥 Rivolta!");
+    G.equipaggio -= 3;
+    G.oro -= 30;
+  }
+}
+
+// --- Eventi ---
+const eventi = [
+  {
+    txt: "Un pirata vuole sposare una capra sacra. Permetti?",
+    si: ()=>{ G.morale=(G.morale||0)+5; aggMsg("La capra è ora cittadina."); },
+    no: ()=>{ G.morale=(G.morale||0)-5; aggMsg("Il pirata è offeso."); }
+  },
+  {
+    txt: "Il governatore è ubriaco. Firmi un trattato?",
+    si: ()=>{ G.oro+=50; aggMsg("Affare fatto!"); },
+    no: ()=>{ aggMsg("Occasione persa."); }
+  },
+  {
+    txt: "Gli schiavi chiedono più rum.",
+    si: ()=>{ G.risorse.rum=Math.max(0,G.risorse.rum-5); G.classi.schiavi.felicita+=10; },
+    no: ()=>{ G.classi.schiavi.felicita-=10; }
+  }
+];
+
+function triggerEvento(){
+  let e = eventi[Math.floor(Math.random()*eventi.length)];
+  let scelta = confirm(e.txt);
+  if(scelta) e.si(); else e.no();
+}
+
+// --- Loop ---
+setInterval(()=>{
+  produzione();
+  consumo();
+  rivolte();
+  if(Math.random()<0.3) triggerEvento();
+}, 6000);
+
+// --- UI mobile ---
+document.body.style.fontSize = "18px";
+document.querySelectorAll("button").forEach(b=>{
+  b.style.padding="12px";
+  b.style.fontSize="18px";
+});
+
+});
+
+
+// ===== HARDCORE EXPANSION =====
+onReady(function(){
+
+// --- Mappa isola semplice ---
+const map = document.createElement("div");
+map.id="isola";
+map.style.margin="10px";
+map.innerHTML = `
+<button onclick="zona('porto')">⚓ Porto</button>
+<button onclick="zona('piantagione')">🌾 Piantagione</button>
+<button onclick="zona('taverna')">🍺 Taverna</button>
+`;
+document.body.insertBefore(map, document.body.firstChild);
+
+window.zona = function(z){
+  if(z==="porto"){
+    G.oro += 10;
+    aggMsg("Tasse del porto riscosse");
+  }
+  if(z==="piantagione"){
+    G.risorse.zucchero += 5;
+    aggMsg("Raccolto extra!");
+  }
+  if(z==="taverna"){
+    if(G.risorse.rum>0){
+      G.risorse.rum--;
+      G.equipaggio++;
+      aggMsg("Nuovo pirata reclutato");
+    }
+  }
+};
+
+// --- Fazioni vere ---
+G.fazioni.britannici = G.fazioni.britannici || {rep:0};
+G.fazioni.spagnoli = G.fazioni.spagnoli || {rep:0};
+
+setInterval(()=>{
+  if(G.fazioni.corsari.rep>20){
+    G.oro+=5;
+    aggMsg("Bonus Corsari");
+  }
+  if(G.fazioni.spagnoli.rep<-10){
+    aggMsg("⚠️ Attacco spagnolo!");
+    G.equipaggio-=2;
+  }
+},8000);
+
+// --- Salvataggio automatico ---
+setInterval(()=>{
+  localStorage.setItem("pirateSave", JSON.stringify(G));
+},5000);
+
+// --- Caricamento ---
+const save = localStorage.getItem("pirateSave");
+if(save){
+  Object.assign(G, JSON.parse(save));
+  aggMsg("Partita caricata");
+}
+
+});
+
+
+// ===== SISTEMA FLOTTE =====
+onReady(function(){
+
+G.flotte = G.flotte || [];
+
+window.creaNave = function(){
+  if(G.oro >= 50){
+    G.oro -= 50;
+    G.flotte.push({hp:100, att:10});
+    aggMsg("🚢 Nuova nave costruita!");
+  } else {
+    aggMsg("Oro insufficiente per nave");
+  }
+}
+
+window.missioneNavale = function(){
+  if(G.flotte.length === 0){
+    aggMsg("Nessuna nave disponibile!");
+    return;
+  }
+
+  let nave = G.flotte[0];
+  let esito = Math.random();
+
+  if(esito > 0.5){
+    let loot = Math.floor(Math.random()*100);
+    G.oro += loot;
+    aggMsg("⚓ Missione riuscita! +" + loot + " oro");
+  } else {
+    nave.hp -= 50;
+    aggMsg("💥 Nave danneggiata!");
+    if(nave.hp <= 0){
+      G.flotte.shift();
+      aggMsg("☠️ Nave distrutta!");
+    }
+  }
+}
+
+// UI flotte
+const fleetUI = document.createElement("div");
+fleetUI.innerHTML = `
+<br>
+<button onclick="creaNave()">🚢 Costruisci Nave (50 oro)</button>
+<button onclick="missioneNavale()">⚔️ Missione Navale</button>
+`;
+document.body.appendChild(fleetUI);
+
+});
 
 </script>
 </body>
