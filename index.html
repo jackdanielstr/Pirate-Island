@@ -354,40 +354,109 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 @keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
 @keyframes fadeOut{to{opacity:0;transform:translateX(30px)}}
 
-/* MOBILE ≤600px — mai sotto 13px, touch target ≥36px */
+
+/* ════════════════════════════════════════════════════════
+   MOBILE ≤ 600px — mappa full-screen, drawer a scomparsa
+   ════════════════════════════════════════════════════════ */
 @media(max-width:600px){
   html{font-size:14px;}
-  .res .etich{display:none;}
+
+  /* Barra sup: strip trasparente sovrapposta */
+  #barra-sup{
+    position:fixed;top:0;left:0;right:0;z-index:80;
+    padding:3px 8px;gap:4px;
+    background:rgba(4,8,18,.88);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--bordo);
+  }
+  .logo{display:none;}
   .barra-rep{display:none;}
-  .res .val{font-size:1rem;}
-  .res .icona{font-size:1.1rem;}
-  .res{padding:3px 7px;}
+  .res .etich{display:none;}
+  .res{padding:2px 6px;border-radius:4px;}
+  .res .icona{font-size:.95rem;}
+  .res .val{font-size:.9rem;min-width:22px;}
+  #info-giorno{font-size:.75rem;margin-left:auto;}
+
+  /* Main: mappa full-screen */
+  #principale{
+    position:fixed;inset:0;flex-direction:row;
+    padding-top:34px;padding-bottom:0;
+  }
+  #mappa-wrap{flex:1;overflow:hidden;}
+
+  /* Pannello: drawer dal basso */
+  #pannello-dx{
+    position:fixed;left:0;right:0;bottom:0;
+    width:100% !important;height:0;max-height:65vh;
+    border-left:none;border-top:2px solid var(--oro-scuro);
+    border-radius:14px 14px 0 0;
+    background:rgba(6,12,22,.97);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    z-index:70;flex-direction:column;overflow:hidden;
+    transition:height .32s cubic-bezier(.4,0,.2,1);
+    box-shadow:0 -4px 32px rgba(0,0,0,.5);
+  }
+  #pannello-dx.aperto{height:65vh;}
+
+  /* Maniglia drawer */
+  #tab-pannello{padding-top:8px;position:relative;}
+  #tab-pannello::before{
+    content:'';position:absolute;top:4px;left:50%;transform:translateX(-50%);
+    width:36px;height:4px;border-radius:2px;background:rgba(240,192,64,.4);
+  }
+  .ptab{font-size:1.1rem;padding:8px 3px;min-height:40px;}
+  #contenuto-pannello{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 10px;}
+  .btn-costruisci{font-size:var(--fs-sm);min-height:36px;}
+  .titolo-sez{font-size:.95rem;}
+
+  /* Barra inf: HUD sovrapposto */
+  #barra-inf{
+    position:fixed;bottom:0;left:0;right:0;z-index:75;
+    padding:6px 8px 10px;gap:5px;
+    background:rgba(4,8,18,.88);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    border-top:1px solid var(--bordo);
+    flex-wrap:nowrap;justify-content:space-around;
+    transition:transform .32s cubic-bezier(.4,0,.2,1);
+  }
+  body.pannello-aperto #barra-inf{transform:translateY(100%);}
+  .btn-azione{font-size:.72rem;padding:5px 8px;min-height:40px;flex:1;border-radius:6px;}
+  #btn-velocita{font-size:.72rem;padding:5px 8px;min-height:40px;}
+
+  /* Pulsante toggle pannello */
+  #btn-toggle-pannello{
+    position:fixed;right:10px;bottom:60px;z-index:76;
+    width:46px;height:46px;border-radius:50%;
+    background:linear-gradient(135deg,var(--oro-scuro),var(--oro));
+    border:none;color:var(--inchiostro);font-size:1.3rem;
+    cursor:pointer;box-shadow:0 3px 16px rgba(0,0,0,.45);
+    display:flex;align-items:center;justify-content:center;
+    transition:bottom .32s cubic-bezier(.4,0,.2,1),background .2s;
+  }
+  body.pannello-aperto #btn-toggle-pannello{
+    bottom:calc(65vh + 6px);
+    background:linear-gradient(135deg,#3a3a2a,#5a5a38);
+  }
+
+  /* Overlay scuro dietro drawer */
+  #drawer-overlay{
+    display:none;position:fixed;inset:0;z-index:65;
+    background:rgba(0,0,0,.5);
+  }
+  body.pannello-aperto #drawer-overlay{display:block;}
+
+  /* Log sopra HUD */
+  #log-msg{bottom:60px;left:6px;width:calc(100vw - 70px);max-height:80px;}
   .msg{font-size:var(--fs-sm);padding:4px 10px;}
-  #log-msg{bottom:4px;width:calc(100vw - 16px);}
-  #barra-inf{padding:5px 8px;gap:5px;}
-  .btn-azione{font-size:var(--fs-sm);padding:7px 10px;min-height:38px;}
-  #btn-velocita{font-size:var(--fs-sm);padding:7px 10px;}
-  #barra-sup{padding:4px 8px;gap:5px;}
-  .logo{font-size:1.1rem;}
-  #info-giorno{font-size:var(--fs-sm);}
-  .titolo-sez{font-size:1rem;}
-  .btn-costruisci{font-size:var(--fs-sm);padding:7px 8px;min-height:36px;}
-  .nome-p{font-size:var(--fs-sm);}
-  .btn-piccolo{font-size:var(--fs-xs);padding:5px 10px;}
-  .ptab{font-size:1.2rem;padding:9px 3px;}
-  #contenuto-pannello{padding:7px 9px;}
+
+  /* Testo eventi */
   .evento-testo{font-size:var(--fs-base);}
   .btn-scelta{font-size:var(--fs-base);padding:12px 14px;}
+  .nome-p{font-size:var(--fs-sm);}
+  .btn-piccolo{font-size:var(--fs-xs);padding:5px 10px;}
 }
 
-/* PORTRAIT MOBILE */
-@media(max-width:600px) and (orientation:portrait){
-  #principale{flex-direction:column;}
-  #pannello-dx{width:100% !important;height:230px;border-left:none;border-top:2px solid var(--oro-scuro);flex-direction:column;flex-shrink:0;}
-  #contenuto-pannello{overflow-y:auto;overflow-x:hidden;}
-  #contenuto-pannello .btn-costruisci{width:100%;}
-}
-\n</style>
+</style>
 </head>
 <body>
 
@@ -492,6 +561,11 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   <button id="btn-velocita" onclick="cambiaVelocita()">▶▶ Veloce</button>
 </div>
 
+<!-- DRAWER OVERLAY (mobile) -->
+<div id="drawer-overlay" onclick="chiudiPannelloMobile()"></div>
+<!-- TOGGLE PANNELLO (mobile) -->
+<button id="btn-toggle-pannello" onclick="togglePannelloMobile()" style="display:none">☰</button>
+
 <!-- MODALE -->
 <div id="overlay-modale">
   <div id="box-modale">
@@ -526,6 +600,7 @@ const G={
   pirati:[], navi:[], edifici:[], prigionieri:[],
   missioniAttive:[],
   mappa:[], COLS:26, RIGHE:20, TILE:52,
+  zoom:1, ZOOM_MIN:.45, ZOOM_MAX:2.2,
   camX:0, camY:0,
   velocita:1, tickMs:2800,
   modalitaCostruzione:null, pirataSelezionato:null,
@@ -855,13 +930,24 @@ let frame=0;
 // cache dei gradienti riutilizzabili
 let _tileCache=null;
 
+function applicaZoom(delta, pivotX, pivotY){
+  const oldZoom=G.zoom;
+  G.zoom=Math.max(G.ZOOM_MIN, Math.min(G.ZOOM_MAX, G.zoom*delta));
+  if(G.zoom===oldZoom) return;
+  // mantieni il punto pivot fermo
+  G.camX=pivotX-(pivotX-G.camX)*(G.zoom/oldZoom);
+  G.camY=pivotY-(pivotY-G.camY)*(G.zoom/oldZoom);
+  limiteCamera();
+}
+
 function ridimensionaCanvas(){
   const wrap=document.getElementById('mappa-wrap');
   canvas.width=wrap.clientWidth;
   canvas.height=wrap.clientHeight;
-  G.camX=Math.floor((canvas.width -G.COLS*G.TILE)/2);
-  G.camY=Math.floor((canvas.height-G.RIGHE*G.TILE)/2);
-  _tileCache=null; // invalida cache al resize
+  // centra la mappa tenendo conto dello zoom
+  G.camX=Math.floor((canvas.width -G.COLS*G.TILE*G.zoom)/2);
+  G.camY=Math.floor((canvas.height-G.RIGHE*G.TILE*G.zoom)/2);
+  _tileCache=null;
 }
 
 // hash deterministico per variazioni per-tile
@@ -1171,53 +1257,35 @@ function disegnaTile(t,x,y,r,c){
   ctx.fillRect(x,y,S,S);
 }
 
-// ── disegna transizioni bordo tra biomi ──
+// ── disegna transizioni bordo tra biomi (chiamata dentro ctx.save/scale) ──
 function disegnaTransizioni(){
   const S=G.TILE;
-  // passa sopra ai tile già disegnati aggiungendo sfumature ai bordi
   for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
     const t=G.mappa[r][c];
-    const x=G.camX+c*S, y=G.camY+r*S;
-    if(x+S<0||y+S<0||x>canvas.width||y>canvas.height) continue;
+    const x=c*S, y=r*S;
     if(t!==T.SABBIA&&t!==T.ERBA&&t!==T.FORESTA) continue;
-
-    // controlla vicini e aggiungi ombra sfumata
-    const vicini=[
-      [r-1,c,0,1,'top'],
-      [r+1,c,0,-1,'bot'],
-      [r,c-1,1,0,'lft'],
-      [r,c+1,-1,0,'rgt'],
-    ];
-    for(const vicino of vicini){ const nr=vicino[0],nc=vicino[1],dir=vicino[4];
+    const vicini=[[r-1,c,0,1,'top'],[r+1,c,0,-1,'bot'],[r,c-1,1,0,'lft'],[r,c+1,-1,0,'rgt']];
+    for(const vicino of vicini){
+      const nr=vicino[0],nc=vicino[1],dir=vicino[4];
       const nt=G.mappa[nr]&&G.mappa[nr][nc];
       if(nt===undefined) continue;
-      // bordo verso acqua: aggiungi ombra bagnata
       if((nt===T.OCEANO||nt===T.BASSO)&&t===T.SABBIA){
         let gx1=x,gy1=y,gx2=x,gy2=y;
         const d=S*.4;
-        if(dir==='top'){gy2=y+d;}
-        else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
-        else if(dir==='lft'){gx2=x+d;}
-        else{gx1=x+S;gx2=x+S-d;}
+        if(dir==='top'){gy2=y+d;}else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
+        else if(dir==='lft'){gx2=x+d;}else{gx1=x+S;gx2=x+S-d;}
         const gt=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
-        gt.addColorStop(0,'rgba(60,100,120,.35)');
-        gt.addColorStop(1,'rgba(60,100,120,0)');
-        ctx.fillStyle=gt;
-        ctx.fillRect(x,y,S,S);
+        gt.addColorStop(0,'rgba(60,100,120,.35)');gt.addColorStop(1,'rgba(60,100,120,0)');
+        ctx.fillStyle=gt;ctx.fillRect(x,y,S,S);
       }
-      // bordo foresta->erba: ombra vegetazione
       if(nt===T.FORESTA&&(t===T.ERBA||t===T.SABBIA)){
         let gx1=x,gy1=y,gx2=x,gy2=y;
         const d=S*.5;
-        if(dir==='top'){gy2=y+d;}
-        else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
-        else if(dir==='lft'){gx2=x+d;}
-        else{gx1=x+S;gx2=x+S-d;}
+        if(dir==='top'){gy2=y+d;}else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
+        else if(dir==='lft'){gx2=x+d;}else{gx1=x+S;gx2=x+S-d;}
         const gf=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
-        gf.addColorStop(0,'rgba(10,40,10,.28)');
-        gf.addColorStop(1,'rgba(10,40,10,0)');
-        ctx.fillStyle=gf;
-        ctx.fillRect(x,y,S,S);
+        gf.addColorStop(0,'rgba(10,40,10,.28)');gf.addColorStop(1,'rgba(10,40,10,0)');
+        ctx.fillStyle=gf;ctx.fillRect(x,y,S,S);
       }
     }
   }
@@ -2156,6 +2224,9 @@ function disegnaPirata(px,py,selezionato,umore,ruolo){
 // ── DRAW PRINCIPALE ──
 function disegnaScena(){
   frame++;
+  const Z=G.zoom;
+  const TS=G.TILE*Z; // tile size effettiva con zoom
+
   // sfondo oceano caraibico profondo
   const bgGrad=ctx.createRadialGradient(canvas.width*.5,canvas.height*.5,0,canvas.width*.5,canvas.height*.5,canvas.width*.7);
   bgGrad.addColorStop(0,'#0d3855');
@@ -2164,11 +2235,16 @@ function disegnaScena(){
   ctx.fillStyle=bgGrad;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // ── tile ──
+  // ── tile con zoom ──
+  ctx.save();
+  ctx.translate(G.camX, G.camY);
+  ctx.scale(Z, Z);
+
   for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
     const t=G.mappa[r][c];
-    const x=G.camX+c*G.TILE, y=G.camY+r*G.TILE;
-    if(x+G.TILE<0||y+G.TILE<0||x>canvas.width||y>canvas.height) continue;
+    const x=c*G.TILE, y=r*G.TILE;
+    const sx=G.camX+x*Z, sy=G.camY+y*Z;
+    if(sx+TS<0||sy+TS<0||sx>canvas.width||sy>canvas.height) continue;
     disegnaTile(t,x,y,r,c);
   }
 
@@ -2180,46 +2256,42 @@ function disegnaScena(){
     for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
       const t=G.mappa[r][c];
       if(t!==T.COLLINA&&t!==T.FORESTA&&t!==T.ERBA) continue;
-      const x=G.camX+c*G.TILE, y=G.camY+r*G.TILE;
-      if(x+G.TILE<0||y+G.TILE<0||x>canvas.width||y>canvas.height) continue;
-      // calcola gradiente dell\'altezza con i vicini
+      const x=c*G.TILE, y=r*G.TILE;
+      const sx=G.camX+x*Z, sy=G.camY+y*Z;
+      if(sx+TS<0||sy+TS<0||sx>canvas.width||sy>canvas.height) continue;
       const h=G.altezza[r][c];
       const hn=G.altezza[r-1]?G.altezza[r-1][c]:h;
       const hw=G.altezza[r][c-1]!==undefined?G.altezza[r][c-1]:h;
-      const slope=(h-hn)+(h-hw); // pendenza verso luce (sx-alto)
+      const slope=(h-hn)+(h-hw);
       const shade=Math.max(-1,Math.min(1,slope*.18));
-      if(shade<0){
-        ctx.fillStyle=`rgba(255,240,180,${Math.min(.18,-shade)})`;
-      } else {
-        ctx.fillStyle=`rgba(0,0,20,${Math.min(.22,shade)})`;
-      }
+      ctx.fillStyle=shade<0?`rgba(255,240,180,${Math.min(.18,-shade)})`:`rgba(0,0,20,${Math.min(.22,shade)})`;
       ctx.fillRect(x,y,G.TILE,G.TILE);
     }
   }
 
   // ── rocce ──
   for(const rc of G.rocce){
-    const x=G.camX+rc.c*G.TILE, y=G.camY+rc.r*G.TILE;
+    const x=rc.c*G.TILE, y=rc.r*G.TILE;
     disegnaRoccia(x,y,rc.scala);
   }
 
   // ── alberi ──
   for(const a of G.alberi){
-    const x=G.camX+a.c*G.TILE+a.ox*G.TILE;
-    const y=G.camY+a.r*G.TILE+a.oy*G.TILE;
+    const x=a.c*G.TILE+a.ox*G.TILE;
+    const y=a.r*G.TILE+a.oy*G.TILE;
     disegnaAlbero(x,y,a.scala,a.tinta,a.palude);
   }
 
   // ── edifici ──
   for(const b of G.edifici){
-    const x=G.camX+b.c*G.TILE, y=G.camY+b.r*G.TILE;
+    const x=b.c*G.TILE, y=b.r*G.TILE;
     disegnaEdificio(b.tipo,x,y);
   }
 
   // ── pirati ──
   for(const p of G.pirati){
-    const x=G.camX+p.mc*G.TILE+G.TILE/2;
-    const y=G.camY+p.mr*G.TILE+G.TILE/2;
+    const x=p.mc*G.TILE+G.TILE/2;
+    const y=p.mr*G.TILE+G.TILE/2;
     disegnaPirata(x,y,G.pirataSelezionato===p.id,p.umore,p.ruolo);
     if(!G.battagliaAttiva){
       p.mc+=(Math.random()-.5)*.05*G.velocita;
@@ -2232,16 +2304,16 @@ function disegnaScena(){
   // ── navi in mare ──
   for(const n of G.navi){
     if(n.inMare){
-      const ox=G.camX+(G.COLS+1)*G.TILE+Math.sin(frame*.015+n.id)*22;
-      const oy=G.camY+(3+n.id*2.8)*G.TILE+Math.cos(frame*.012+n.id)*12;
+      const ox=(G.COLS+1)*G.TILE+Math.sin(frame*.015+n.id)*22;
+      const oy=(3+n.id*2.8)*G.TILE+Math.cos(frame*.012+n.id)*12;
       disegnaNav(ox,oy,'#5c3a1a');
     }
   }
 
   // ── POI ──
   for(const p of G.pois||[]){
-    const x=G.camX+p.c*G.TILE+G.TILE/2;
-    const y=G.camY+p.r*G.TILE+G.TILE/2;
+    const x=p.c*G.TILE+G.TILE/2;
+    const y=p.r*G.TILE+G.TILE/2;
     const pulse=Math.sin(frame*.04)*3;
     ctx.beginPath();ctx.arc(x,y,9+pulse,0,Math.PI*2);
     ctx.fillStyle='rgba(240,192,64,.18)';ctx.fill();
@@ -2253,7 +2325,7 @@ function disegnaScena(){
 
   // ── hover costruzione ──
   if(G.modalitaCostruzione&&G.hoverC>=0&&G.hoverR>=0){
-    const x=G.camX+G.hoverC*G.TILE, y=G.camY+G.hoverR*G.TILE;
+    const x=G.hoverC*G.TILE, y=G.hoverR*G.TILE;
     const ok=puoCostruire(G.hoverR,G.hoverC);
     ctx.fillStyle=ok?'rgba(80,220,80,.28)':'rgba(220,60,60,.28)';
     ctx.fillRect(x,y,G.TILE,G.TILE);
@@ -2266,7 +2338,9 @@ function disegnaScena(){
     }
   }
 
-  // ── vignette caraibica — caldo sole tropicale ──
+  ctx.restore(); // fine blocco zoom
+
+  // ── vignette caraibica (non scalata) ──
   const vign=ctx.createRadialGradient(
     canvas.width*.5,canvas.height*.35,canvas.width*.25,
     canvas.width*.5,canvas.height*.5,canvas.width*.78
@@ -2292,13 +2366,12 @@ function avviaGioco(){
   ctx = canvas.getContext('2d');
   generaMappa();
   ridimensionaCanvas();
-  window.addEventListener('resize',ridimensionaCanvas);
-  window.addEventListener('orientationchange',()=>setTimeout(ridimensionaCanvas,100));
+  window.addEventListener('orientationchange',()=>setTimeout(()=>{ridimensionaCanvas();impostaMobile();},100));
   for(let i=0;i<4;i++) creaaPirata();
   G.navi.push(creaNave(0,'La Marea Maledetta'));
   assegnaMissioni();
   impostaInput();
-  mostraTab('costruisci');
+  impostaMobile();
   notifica('⚓ Benvenuto, Capitano!','La tua isola ti aspetta. Costruisci, saccheggia e forgia una leggenda!');
   aggiornaUI();
   cicloGioco();
@@ -4627,11 +4700,41 @@ function aggiornaUI(){
 // ── INPUT & PAN ──
 const pan={attivo:false,startX:0,startY:0,camStartX:0,camStartY:0,mosso:false};
 
+// ── MOBILE DRAWER ──
+function isMobile(){ return window.innerWidth<=600; }
+
+function togglePannelloMobile(){
+  const aperto=document.body.classList.toggle('pannello-aperto');
+  document.getElementById('pannello-dx').classList.toggle('aperto',aperto);
+  document.getElementById('btn-toggle-pannello').textContent=aperto?'✕':'☰';
+}
+function chiudiPannelloMobile(){
+  document.body.classList.remove('pannello-aperto');
+  document.getElementById('pannello-dx').classList.remove('aperto');
+  document.getElementById('btn-toggle-pannello').textContent='☰';
+}
+function impostaMobile(){
+  const btn=document.getElementById('btn-toggle-pannello');
+  if(isMobile()){
+    btn.style.display='flex';
+    // su mobile il pannello parte chiuso
+    document.getElementById('pannello-dx').classList.remove('aperto');
+  } else {
+    btn.style.display='none';
+    document.body.classList.remove('pannello-aperto');
+  }
+}
+
 function limiteCamera(){
-  const minX=-(G.COLS*G.TILE-canvas.width+40);
-  const maxX=40;
-  const minY=-(G.RIGHE*G.TILE-canvas.height+40);
-  const maxY=40;
+  const tileW=G.TILE*G.zoom;
+  const tileH=G.TILE*G.zoom;
+  const mapW=G.COLS*tileW;
+  const mapH=G.RIGHE*tileH;
+  const pad=40;
+  const minX=Math.min(0,canvas.width-mapW-pad);
+  const maxX=pad;
+  const minY=Math.min(0,canvas.height-mapH-pad);
+  const maxY=pad;
   G.camX=Math.max(minX,Math.min(maxX,G.camX));
   G.camY=Math.max(minY,Math.min(maxY,G.camY));
 }
@@ -4648,55 +4751,97 @@ function impostaInput(){
   canvas.addEventListener('mousemove',e=>{
     const rect=canvas.getBoundingClientRect();
     const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-    G.hoverR=Math.floor((my-G.camY)/G.TILE);
-    G.hoverC=Math.floor((mx-G.camX)/G.TILE);
+    const eff=G.TILE*G.zoom;
+    G.hoverR=Math.floor((my-G.camY)/eff);
+    G.hoverC=Math.floor((mx-G.camX)/eff);
     if(!pan.attivo) return;
     const dx=e.clientX-pan.startX, dy=e.clientY-pan.startY;
     if(Math.abs(dx)>4||Math.abs(dy)>4) pan.mosso=true;
-    if(pan.mosso){
-      G.camX=pan.camStartX+dx;
-      G.camY=pan.camStartY+dy;
-      limiteCamera();
-    }
+    if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
   });
   window.addEventListener('mouseup',e=>{
     if(pan.attivo){ pan.attivo=false; canvas.style.cursor=''; }
   });
   canvas.addEventListener('click',e=>{
-    if(pan.mosso) return; // era un drag, non un click
+    if(pan.mosso) return;
     cliccaMappa(e);
   });
+  // Scroll wheel zoom (desktop)
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const zoomDelta=e.deltaY<0?1.1:0.91;
+    applicaZoom(zoomDelta, mx, my);
+  },{passive:false});
 
-  // Touch pan + tap
-  let tocchiPrecedenti=[];
+  // ── TOUCH: pan + pinch-to-zoom ──
+  let pinch={attivo:false, dist0:0, zoom0:1, midX:0, midY:0, camX0:0, camY0:0};
+
+  function distTocchi(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+  function midTocchi(t,rect){ return {x:(t[0].clientX+t[1].clientX)/2-rect.left, y:(t[0].clientY+t[1].clientY)/2-rect.top}; }
+
   canvas.addEventListener('touchstart',e=>{
     e.preventDefault();
-    const t=e.touches[0];
-    pan.attivo=true; pan.mosso=false;
-    pan.startX=t.clientX; pan.startY=t.clientY;
-    pan.camStartX=G.camX; pan.camStartY=G.camY;
-    tocchiPrecedenti=[{x:t.clientX,y:t.clientY}];
+    if(e.touches.length===2){
+      // avvia pinch
+      pan.attivo=false;
+      const rect=canvas.getBoundingClientRect();
+      pinch.attivo=true;
+      pinch.dist0=distTocchi(e.touches);
+      pinch.zoom0=G.zoom;
+      const mid=midTocchi(e.touches,rect);
+      pinch.midX=mid.x; pinch.midY=mid.y;
+      pinch.camX0=G.camX; pinch.camY0=G.camY;
+    } else {
+      pinch.attivo=false;
+      const t=e.touches[0];
+      pan.attivo=true; pan.mosso=false;
+      pan.startX=t.clientX; pan.startY=t.clientY;
+      pan.camStartX=G.camX; pan.camStartY=G.camY;
+    }
   },{passive:false});
+
   canvas.addEventListener('touchmove',e=>{
     e.preventDefault();
-    const t=e.touches[0];
-    const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
-    if(Math.abs(dx)>6||Math.abs(dy)>6) pan.mosso=true;
-    if(pan.mosso){
-      G.camX=pan.camStartX+dx;
-      G.camY=pan.camStartY+dy;
+    if(pinch.attivo && e.touches.length===2){
+      const rect=canvas.getBoundingClientRect();
+      const dist=distTocchi(e.touches);
+      const scale=dist/pinch.dist0;
+      const newZoom=Math.max(G.ZOOM_MIN, Math.min(G.ZOOM_MAX, pinch.zoom0*scale));
+      // zoom centrato sul punto di pinch
+      const ratio=newZoom/G.zoom;
+      G.camX=pinch.midX-(pinch.midX-pinch.camX0)*ratio;
+      G.camY=pinch.midY-(pinch.midY-pinch.camY0)*ratio;
+      G.zoom=newZoom;
       limiteCamera();
+      // aggiorna punto di partenza continuo per pan durante pinch
+      const mid=midTocchi(e.touches,rect);
+      const dxPan=mid.x-pinch.midX, dyPan=mid.y-pinch.midY;
+      G.camX+=dxPan; G.camY+=dyPan;
+      pinch.midX=mid.x; pinch.midY=mid.y;
+      pinch.camX0=G.camX; pinch.camY0=G.camY;
+      pinch.dist0=dist;
+    } else if(pan.attivo && e.touches.length===1){
+      const t=e.touches[0];
+      const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
+      if(Math.abs(dx)>6||Math.abs(dy)>6) pan.mosso=true;
+      if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
+      const rect=canvas.getBoundingClientRect();
+      const eff=G.TILE*G.zoom;
+      G.hoverR=Math.floor(((t.clientY-rect.top)-G.camY)/eff);
+      G.hoverC=Math.floor(((t.clientX-rect.left)-G.camX)/eff);
     }
-    const rect=canvas.getBoundingClientRect();
-    G.hoverR=Math.floor(((t.clientY-rect.top)-G.camY)/G.TILE);
-    G.hoverC=Math.floor(((t.clientX-rect.left)-G.camX)/G.TILE);
   },{passive:false});
+
   canvas.addEventListener('touchend',e=>{
-    if(!pan.mosso){
+    if(pinch.attivo && e.touches.length<2){ pinch.attivo=false; }
+    if(!pinch.attivo && !pan.mosso && e.changedTouches.length>0){
       const t=e.changedTouches[0];
       const rect=canvas.getBoundingClientRect();
-      const r=Math.floor(((t.clientY-rect.top)-G.camY)/G.TILE);
-      const c=Math.floor(((t.clientX-rect.left)-G.camX)/G.TILE);
+      const eff=G.TILE*G.zoom;
+      const r=Math.floor(((t.clientY-rect.top)-G.camY)/eff);
+      const c=Math.floor(((t.clientX-rect.left)-G.camX)/eff);
       G.hoverR=r; G.hoverC=c;
       if(G.modalitaCostruzione) piazzaEdificio(r,c);
       else{
@@ -4708,14 +4853,17 @@ function impostaInput(){
         else aggMsg('📍 '+(nomi[tt]||'?'));
       }
     }
-    pan.attivo=false;
-  });
+    if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; }
+  },{passive:false});
+
+  window.addEventListener('resize', ()=>{ ridimensionaCanvas(); impostaMobile(); });
 }
 
 function getTile(e){
   const rect=canvas.getBoundingClientRect();
   const x=e.clientX-rect.left, y=e.clientY-rect.top;
-  return{r:Math.floor((y-G.camY)/G.TILE),c:Math.floor((x-G.camX)/G.TILE)};
+  const eff=G.TILE*G.zoom;
+  return{r:Math.floor((y-G.camY)/eff),c:Math.floor((x-G.camX)/eff)};
 }
 function cliccaMappa(e){
   const{r,c}=getTile(e);
