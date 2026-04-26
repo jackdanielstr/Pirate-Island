@@ -1,357 +1,609 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏝️ Pirate Island - Tropico 2 Style</title>
-    <link rel="stylesheet" href="css/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tropico 2: Pirate's Revenge</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Merriweather:wght@400;700&display=swap');
+
+:root {
+  --gold: #D4AF37;
+  --dark-gold: #8B7500;
+  --dark-bg: #1a1a2e;
+  --panel-bg: #16213e;
+  --accent-color: #0f3460;
+  --text-primary: #eaeaea;
+  --text-secondary: #b0b0b0;
+  --success: #4CAF50;
+  --danger: #FF6B6B;
+  --warning: #FFA500;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; width: 100%; overflow: hidden; font-family: 'Merriweather', serif; background: var(--dark-bg); color: var(--text-primary); }
+body { display: flex; flex-direction: column; user-select: none; }
+
+/* TITLE SCREEN */
+#title-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+  animation: titleFadeIn 0.8s ease;
+}
+
+#title-screen.hidden { display: none; }
+
+@keyframes titleFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bobbing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+
+.title-logo { font-size: 4rem; animation: bobbing 3s ease-in-out infinite; }
+.title-text h1 {
+  font-size: 3.5rem;
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(212, 175, 55, 0.8), 2px 2px 4px #000;
+  letter-spacing: 3px;
+  margin-bottom: 10px;
+}
+.title-text p {
+  font-size: 1.3rem;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+}
+.start-button {
+  margin-top: 40px;
+  padding: 15px 50px;
+  font-size: 1.3rem;
+  font-family: 'Cinzel', serif;
+  background: linear-gradient(135deg, var(--dark-gold), var(--gold));
+  color: #000;
+  border: 2px solid var(--gold);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+}
+.start-button:hover { transform: scale(1.05); box-shadow: 0 0 40px rgba(212, 175, 55, 0.8); }
+
+/* MAIN LAYOUT */
+#main-container {
+  display: none;
+  flex: 1;
+  flex-direction: row;
+  height: 100vh;
+}
+#main-container.visible { display: flex; }
+
+#game-canvas {
+  flex: 1;
+  background: linear-gradient(180deg, #1a4d6d 0%, #0d2a3d 100%);
+  cursor: default;
+  display: block;
+}
+
+/* RIGHT PANEL */
+#right-panel {
+  width: 350px;
+  background: linear-gradient(180deg, var(--panel-bg) 0%, #0f172a 100%);
+  border-left: 3px solid var(--dark-gold);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+#panel-header {
+  background: linear-gradient(180deg, var(--accent-color) 0%, rgba(15, 52, 96, 0.8) 100%);
+  padding: 15px;
+  border-bottom: 2px solid var(--dark-gold);
+  text-align: center;
+}
+
+#panel-header h2 {
+  color: var(--gold);
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+#day-display {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.resources-bar {
+  background: rgba(0, 0, 0, 0.4);
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.resource {
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid var(--dark-gold);
+  border-radius: 4px;
+  padding: 8px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.resource .value {
+  color: var(--gold);
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.resource .label {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+/* TABS */
+#panel-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--dark-gold);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.panel-tab {
+  flex: 1;
+  padding: 10px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+}
+
+.panel-tab:hover { color: var(--gold); background: rgba(212, 175, 55, 0.1); }
+.panel-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+/* PANEL CONTENT */
+#panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px;
+}
+
+#panel-content::-webkit-scrollbar { width: 8px; }
+#panel-content::-webkit-scrollbar-track { background: transparent; }
+#panel-content::-webkit-scrollbar-thumb { background: var(--dark-gold); border-radius: 4px; }
+
+.section-title {
+  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-top: 15px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--dark-gold);
+}
+
+.building-card {
+  background: rgba(15, 52, 96, 0.6);
+  border: 1px solid var(--dark-gold);
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.building-card:hover:not(:disabled) {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--gold);
+}
+
+.building-card.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.building-info {
+  flex: 1;
+}
+
+.building-name {
+  color: var(--text-primary);
+  font-weight: bold;
+  font-size: 0.95rem;
+}
+
+.building-cost {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-top: 3px;
+}
+
+.building-cost span {
+  color: var(--gold);
+  font-weight: bold;
+}
+
+.building-icon {
+  font-size: 2rem;
+  margin-right: 10px;
+}
+
+/* BOTTOM HUD */
+#bottom-hud {
+  background: linear-gradient(0deg, var(--panel-bg) 0%, rgba(22, 33, 62, 0.8) 100%);
+  border-top: 2px solid var(--dark-gold);
+  padding: 12px 15px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.hud-button {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--accent-color), rgba(15, 52, 96, 0.6));
+  border: 1px solid var(--dark-gold);
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  min-width: 100px;
+}
+
+.hud-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--dark-gold), var(--gold));
+  color: #000;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
+}
+
+.hud-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hud-button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.hud-button.danger:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.2);
+  box-shadow: 0 0 15px rgba(255, 107, 107, 0.4);
+}
+
+/* NOTIFICATIONS */
+#notifications {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 300px;
+  pointer-events: none;
+}
+
+.notification {
+  background: linear-gradient(135deg, var(--panel-bg), rgba(15, 52, 96, 0.8));
+  border: 1px solid var(--dark-gold);
+  border-radius: 5px;
+  padding: 15px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  animation: slideIn 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.notification.success { border-color: var(--success); color: var(--success); }
+.notification.danger { border-color: var(--danger); color: var(--danger); }
+.notification.warning { border-color: var(--warning); color: var(--warning); }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (max-width: 768px) {
+  #right-panel { width: 280px; }
+  .title-text h1 { font-size: 2.5rem; }
+}
+
+@media (max-width: 600px) {
+  #main-container { flex-direction: column; }
+  #right-panel { width: 100%; height: 40%; border-left: none; border-top: 3px solid var(--dark-gold); order: 2; }
+  #game-canvas { order: 1; }
+  #bottom-hud { order: 3; }
+  .title-text h1 { font-size: 2rem; }
+}
+</style>
 </head>
 <body>
 
-<!-- ===== HEADER ===== -->
-<header class="header">
-    <h1>🏴‍☠️ PIRATE ISLAND 🏴‍☠️</h1>
-    <p class="subtitle">Gestisci la tua isola paradisiaca nello stile di Tropico 2!</p>
-</header>
-
-<!-- ===== NAVBAR ===== -->
-<nav class="navbar">
-    <div class="container">
-        <div class="nav-links">
-            <a href="#dashboard" class="nav-link active">📊 Dashboard</a>
-            <a href="#buildings" class="nav-link">🏗️ Edifici</a>
-            <a href="#missions" class="nav-link">🎯 Missioni</a>
-            <a href="#info" class="nav-link">ℹ️ Guida</a>
-        </div>
-        <button class="btn-reset" onclick="resetGame()">🔄 Nuovo Gioco</button>
-    </div>
-</nav>
-
-<!-- ===== MAIN CONTENT ===== -->
-<div class="container">
-
-    <!-- ===== DASHBOARD SECTION ===== -->
-    <section id="dashboard" class="section">
-        <h2>📊 Dashboard - El Presidente's Command Center</h2>
-        <p class="section-description">Monitora lo stato della tua isola in tempo reale</p>
-
-        <!-- Main Stats -->
-        <div class="stats-grid">
-            <div class="stat-card gold">
-                <div class="stat-icon">💰</div>
-                <div class="stat-info">
-                    <h3>Tesoro</h3>
-                    <div class="stat-value" id="treasury">$50K</div>
-                    <small>Finanze personali</small>
-                </div>
-            </div>
-
-            <div class="stat-card blue">
-                <div class="stat-icon">👥</div>
-                <div class="stat-info">
-                    <h3>Popolazione</h3>
-                    <div class="stat-value" id="population">500</div>
-                    <small>Cittadini totali</small>
-                </div>
-            </div>
-
-            <div class="stat-card orange">
-                <div class="stat-icon">📅</div>
-                <div class="stat-info">
-                    <h3>Giorni Trascorsi</h3>
-                    <div class="stat-value" id="dayCount">0</div>
-                    <small>Giorni di governo</small>
-                </div>
-            </div>
-
-            <div class="stat-card green">
-                <div class="stat-icon">💵</div>
-                <div class="stat-info">
-                    <h3>Reddito Giornaliero</h3>
-                    <div class="stat-value" id="dailyIncome">$0</div>
-                    <small>Guadagni al giorno</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Indicators -->
-        <div class="indicators-grid">
-            <div class="indicator">
-                <h4>😊 Felicità</h4>
-                <div class="progress-bar">
-                    <div class="progress" id="happinessBar" style="width: 70%;">70%</div>
-                </div>
-                <p id="happiness">70%</p>
-            </div>
-
-            <div class="indicator">
-                <h4>⚔️ Stabilità Politica</h4>
-                <div class="progress-bar">
-                    <div class="progress" id="stabilityBar" style="width: 75%;">75%</div>
-                </div>
-                <p id="stability">75%</p>
-            </div>
-
-            <div class="indicator">
-                <h4>📚 Educazione</h4>
-                <div class="progress-bar">
-                    <div class="progress" id="educationBar" style="width: 50%;">50%</div>
-                </div>
-                <p id="education">50%</p>
-            </div>
-
-            <div class="indicator">
-                <h4>🏥 Salute</h4>
-                <div class="progress-bar">
-                    <div class="progress" id="healthBar" style="width: 60%;">60%</div>
-                </div>
-                <p id="health">60%</p>
-            </div>
-        </div>
-
-        <!-- Economy Info -->
-        <div style="background: #f9f9f9; padding: 1.5rem; border-radius: 8px; border-left: 4px solid #ff8c00;">
-            <h3>💼 Economia</h3>
-            <p><strong>Reddito Giornaliero:</strong> <span id="dailyIncome" style="color: #2ecc71;">$0</span></p>
-            <p><strong>Spese Giornaliere:</strong> <span id="dailyExpense" style="color: #e74c3c;">$0</span></p>
-            <p><strong>Saldo Netto:</strong> <span style="color: #1a7fb8; font-weight: bold;" id="netIncome">$0</span></p>
-        </div>
-    </section>
-
-    <!-- ===== BUILDINGS SECTION ===== -->
-    <section id="buildings" class="section">
-        <h2>🏗️ Costruisci e Gestisci Edifici</h2>
-        <p class="section-description">Investi nel tuo impero! Ogni edificio produce reddito e benefici</p>
-
-        <div class="buildings-grid">
-            <!-- Casa -->
-            <div class="building-card">
-                <div class="building-icon">🏠</div>
-                <h3>Casa</h3>
-                <p class="building-cost">Costo: $100</p>
-                <p class="building-benefit">+50$ reddito giornaliero</p>
-                <p class="building-benefit">+10 felicità</p>
-                <p class="building-count">Costruite: <span id="count-house">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('house')">Costruisci Casa 🏠</button>
-            </div>
-
-            <!-- Fabbrica Zucchero -->
-            <div class="building-card">
-                <div class="building-icon">🌾</div>
-                <h3>Fabbrica Zucchero</h3>
-                <p class="building-cost">Costo: $500</p>
-                <p class="building-benefit">+300$ reddito giornaliero</p>
-                <p class="building-benefit">+100 zucchero</p>
-                <p class="building-count">Costruite: <span id="count-sugarFactory">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('sugarFactory')">Costruisci Fabbrica 🌾</button>
-            </div>
-
-            <!-- Fabbrica Tabacco -->
-            <div class="building-card">
-                <div class="building-icon">🚬</div>
-                <h3>Fabbrica Tabacco</h3>
-                <p class="building-cost">Costo: $600</p>
-                <p class="building-benefit">+350$ reddito giornaliero</p>
-                <p class="building-benefit">+80 tabacco</p>
-                <p class="building-count">Costruite: <span id="count-tobaccoFactory">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('tobaccoFactory')">Costruisci Fabbrica 🚬</button>
-            </div>
-
-            <!-- Distilleria Rum -->
-            <div class="building-card">
-                <div class="building-icon">🥃</div>
-                <h3>Distilleria Rum</h3>
-                <p class="building-cost">Costo: $800</p>
-                <p class="building-benefit">+500$ reddito giornaliero</p>
-                <p class="building-benefit">+60 rum</p>
-                <p class="building-count">Costruite: <span id="count-rumDistillery">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('rumDistillery')">Costruisci Distilleria 🥃</button>
-            </div>
-
-            <!-- Resort Turistico -->
-            <div class="building-card">
-                <div class="building-icon">🏖️</div>
-                <h3>Resort Turistico</h3>
-                <p class="building-cost">Costo: $1000</p>
-                <p class="building-benefit">+600$ reddito giornaliero</p>
-                <p class="building-benefit">+20 felicità</p>
-                <p class="building-count">Costruite: <span id="count-resort">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('resort')">Costruisci Resort 🏖️</button>
-            </div>
-
-            <!-- Fortezza -->
-            <div class="building-card">
-                <div class="building-icon">🏰</div>
-                <h3>Fortezza</h3>
-                <p class="building-cost">Costo: $1200</p>
-                <p class="building-benefit">+100$ reddito giornaliero</p>
-                <p class="building-benefit">+30 stabilità</p>
-                <p class="building-count">Costruite: <span id="count-fortress">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('fortress')">Costruisci Fortezza 🏰</button>
-            </div>
-
-            <!-- Ospedale -->
-            <div class="building-card">
-                <div class="building-icon">🏥</div>
-                <h3>Ospedale</h3>
-                <p class="building-cost">Costo: $900</p>
-                <p class="building-benefit">+150$ reddito giornaliero</p>
-                <p class="building-benefit">+15 felicità, +40 salute</p>
-                <p class="building-count">Costruite: <span id="count-hospital">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('hospital')">Costruisci Ospedale 🏥</button>
-            </div>
-
-            <!-- Università -->
-            <div class="building-card">
-                <div class="building-icon">🎓</div>
-                <h3>Università</h3>
-                <p class="building-cost">Costo: $1100</p>
-                <p class="building-benefit">+200$ reddito giornaliero</p>
-                <p class="building-benefit">+50 educazione, +10 felicità</p>
-                <p class="building-count">Costruite: <span id="count-university">0</span></p>
-                <button class="btn-build" onclick="buildBuilding('university')">Costruisci Università 🎓</button>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== MISSIONS SECTION ===== -->
-    <section id="missions" class="section">
-        <h2>🎯 Missioni - Diventa un Eroe dell'Isola</h2>
-        <p class="section-description">Completa le missioni per diventare un vero El Presidente!</p>
-
-        <div class="missions-grid">
-            <!-- Mission 1: Economy -->
-            <div class="mission-card">
-                <h3>💰 Stabilizza l'Economia</h3>
-                <p class="mission-description">Accumula $100.000 nel tesoro</p>
-                <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress" id="missionEconomyBar" style="width: 0%;">0%</div>
-                    </div>
-                    <p class="progress-text" id="missionEconomyProgress">$0 / $100K</p>
-                </div>
-            </div>
-
-            <!-- Mission 2: Expansion -->
-            <div class="mission-card">
-                <h3>🏗️ Espandi il Regno</h3>
-                <p class="mission-description">Costruisci almeno 10 edifici</p>
-                <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress" id="missionExpansionBar" style="width: 0%;">0%</div>
-                    </div>
-                    <p class="progress-text" id="missionExpansionProgress">0 / 10</p>
-                </div>
-            </div>
-
-            <!-- Mission 3: Happiness -->
-            <div class="mission-card">
-                <h3>😊 Felicità Popolare</h3>
-                <p class="mission-description">Mantieni la felicità sopra l'80%</p>
-                <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress" id="missionHappinessBar" style="width: 0%;">0%</div>
-                    </div>
-                    <p class="progress-text" id="missionHappinessProgress">0% / 80%</p>
-                </div>
-            </div>
-
-            <!-- Mission 4: Hero -->
-            <div class="mission-card hero-mission">
-                <h3>👑 Eroe dell'Isola</h3>
-                <p class="mission-description">Completa tutte le altre 3 missioni!</p>
-                <div class="mission-progress">
-                    <div class="progress-bar">
-                        <div class="progress" id="missionHeroBar" style="width: 0%;">0%</div>
-                    </div>
-                    <p class="progress-text" id="missionHeroProgress">0 / 3</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ===== INFO SECTION ===== -->
-    <section id="info" class="section info-content">
-        <h2>ℹ️ Guida al Gioco</h2>
-
-        <h3>🎮 Come Giocare</h3>
-        <p>
-            Benvenuto su Pirate Island! Sei diventato El Presidente di una piccola isola tropicale.
-            Il tuo obiettivo è far prosperare l'isola, mantenere i cittadini felici, e completare le missioni per diventare un eroe!
-        </p>
-
-        <h3>💡 Strategie Vincenti</h3>
-        <ul>
-            <li><strong>Costruisci case all'inizio:</strong> Aumentano la felicità e la popolazione</li>
-            <li><strong>Bilancia economia e felicità:</strong> Costruisci fabbriche per soldi, ospedali per felicità</li>
-            <li><strong>Non spendere tutto:</strong> Mantieni una riserva per emergenze</li>
-            <li><strong>Costruisci fortezze:</strong> Aumentano la stabilità politica</li>
-            <li><strong>Università e ospedali:</strong> Migliorano educazione e salute</li>
-        </ul>
-
-        <h3>🏛️ Sistema Economico</h3>
-        <p>
-            Ogni edificio produce reddito giornaliero. Il gioco simula 1 giorno ogni 5 secondi.
-            Le spese aumentano con la popolazione, quindi bilancia bene le costruzioni!
-        </p>
-
-        <h3>📊 Indicatori Importanti</h3>
-        <ul>
-            <li><strong>Felicità:</strong> Se scende sotto il 50%, perdi popolazione</li>
-            <li><strong>Stabilità:</strong> Riflette il supporto politico. Importa per evitare colpi di stato</li>
-            <li><strong>Educazione:</strong> Migliorata da università. Non influenza molto il gioco ma è importante!</li>
-            <li><strong>Salute:</strong> Migliorata da ospedali. Mantiene i cittadini vivi e produttivi</li>
-        </ul>
-
-        <h3>🎯 Le 4 Missioni</h3>
-        <ul>
-            <li><strong>1. Stabilizza l'Economia:</strong> Accumula $100.000</li>
-            <li><strong>2. Espandi il Regno:</strong> Costruisci 10 edifici diversi</li>
-            <li><strong>3. Felicità Popolare:</strong> Mantieni felicità ≥ 80%</li>
-            <li><strong>4. Eroe dell'Isola:</strong> Completa le altre 3 missioni per il titolo supremo!</li>
-        </ul>
-
-        <h3>🎲 Eventi Casuali</h3>
-        <p>
-            Durante il gioco, potrebbero accadere eventi casuali come tempeste, festival, attacchi pirateschi, 
-            e arrivi di commercianti. Affrontali con saggia leadership!
-        </p>
-
-        <h3>💾 Salvataggio</h3>
-        <p>
-            Il gioco salva automaticamente il tuo progresso ogni 10 giorni usando il localStorage del browser.
-            Puoi giocare più sessioni senza perdere i progressi!
-        </p>
-
-        <h3>🔧 Comandi Utili (Console Browser)</h3>
-        <ul>
-            <li><code>gameState</code> - Visualizza lo stato completo del gioco</li>
-            <li><code>saveGame()</code> - Salva manualmente il progresso</li>
-            <li><code>resetGame()</code> - Resetta tutto (ti chiede conferma)</li>
-            <li><code>gameState.treasury += 10000</code> - Aggiungi soldi (solo test!)</li>
-        </ul>
-
-        <h3>🏴‍☠️ Massime di El Presidente</h3>
-        <ul>
-            <li>"Un'isola felice è un'isola leale"</li>
-            <li>"Il denaro è il sangue della nazione"</li>
-            <li>"La fortezza protegge, ma la felicità previene"</li>
-            <li>"I turisti sono i benvenuti... con le giuste tasse!"</li>
-            <li>"Viva la dittatura benevolente!"</li>
-        </ul>
-    </section>
-
+<!-- TITLE SCREEN -->
+<div id="title-screen">
+  <div class="title-logo">🏝️</div>
+  <div class="title-text">
+    <h1>TROPICO 2</h1>
+    <p>PIRATE'S REVENGE</p>
+  </div>
+  <button class="start-button" onclick="startGame()">SET SAIL!</button>
 </div>
 
-<!-- ===== FOOTER ===== -->
-<footer class="footer">
-    <p>🏝️ <strong>Pirate Island</strong> - Simulatore di Governo Tropicale</p>
-    <p>Ispirato a Tropico 2 | Creato con ❤️ per divertimento educativo</p>
-    <p>👑 "Viva El Presidente!" 👑</p>
-</footer>
+<!-- MAIN CONTAINER -->
+<div id="main-container">
+  <canvas id="game-canvas"></canvas>
+  
+  <div id="right-panel">
+    <div id="panel-header">
+      <h2>⚓ COMMAND CENTER</h2>
+      <div id="day-display">Day 1</div>
+    </div>
 
-<!-- Scripts -->
-<script src="js/game.js"></script>
+    <div class="resources-bar">
+      <div class="resource">
+        <div class="value" id="res-money">1000</div>
+        <div class="label">💰 Money</div>
+      </div>
+      <div class="resource">
+        <div class="value" id="res-workers">50</div>
+        <div class="label">👥 Workers</div>
+      </div>
+      <div class="resource">
+        <div class="value" id="res-food">100</div>
+        <div class="label">🍖 Food</div>
+      </div>
+    </div>
 
+    <div id="panel-tabs">
+      <button class="panel-tab active" onclick="switchTab('buildings')">🏗 BUILD</button>
+      <button class="panel-tab" onclick="switchTab('troops')">⚔ TROOPS</button>
+      <button class="panel-tab" onclick="switchTab('diplomacy')">🤝 RELATIONS</button>
+      <button class="panel-tab" onclick="switchTab('upgrades')">⚙ TECH</button>
+    </div>
+
+    <div id="panel-content"></div>
+  </div>
+</div>
+
+<!-- BOTTOM HUD -->
+<div id="bottom-hud">
+  <button class="hud-button" onclick="sendRaid()">⚔ SEND RAID</button>
+  <button class="hud-button" onclick="tradeRoute()">🚢 TRADE</button>
+  <button class="hud-button" onclick="diplomacy()">📜 DIPLOMACY</button>
+  <button class="hud-button" onclick="gameSpeed()">⏱ SPEED</button>
+  <button class="hud-button danger" onclick="pauseGame()">⏸ PAUSE</button>
+</div>
+
+<!-- NOTIFICATIONS -->
+<div id="notifications"></div>
+
+<script>
+const GAME = {
+  day: 1,
+  money: 1000,
+  workers: 50,
+  food: 100,
+  paused: false,
+  speed: 1,
+  buildings: [],
+  gameRunning: false,
+};
+
+const BUILDINGS = {
+  residence: { name: 'Residence', cost: 100, icon: '🏠', workers: 5 },
+  armory: { name: 'Armory', cost: 300, icon: '🔫', workers: 8 },
+  farm: { name: 'Farm', cost: 150, icon: '🌿', workers: 10 },
+  dock: { name: 'Dock', cost: 400, icon: '⚓', workers: 12 },
+  tavern: { name: 'Tavern', cost: 200, icon: '🍺', workers: 4 },
+  fortress: { name: 'Fortress', cost: 500, icon: '🏰', workers: 15 },
+};
+
+function startGame() {
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('main-container').classList.add('visible');
+  GAME.gameRunning = true;
+  
+  const canvas = document.getElementById('game-canvas');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  
+  initializeGameLoop();
+  renderBuildingsTab();
+  updateUI();
+}
+
+function initializeGameLoop() {
+  setInterval(() => {
+    if (!GAME.paused && GAME.gameRunning) {
+      GAME.day++;
+      GAME.food += 10;
+      GAME.money += 50;
+      GAME.workers = Math.max(20, GAME.workers);
+      GAME.food -= GAME.workers * 0.5;
+      
+      if (GAME.food < 0) {
+        showNotification('⚠ Starvation! Workers are leaving!', 'danger');
+        GAME.workers -= 10;
+        GAME.food = 0;
+      }
+      
+      if (GAME.workers <= 0) {
+        showNotification('💀 Your colony has been abandoned!', 'danger');
+        GAME.gameRunning = false;
+      }
+      
+      drawMap();
+      updateUI();
+    }
+  }, 2000 / GAME.speed);
+}
+
+function drawMap() {
+  const canvas = document.getElementById('game-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  ctx.fillStyle = 'linear-gradient(180deg, #1a4d6d 0%, #0d2a3d 100%)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  ctx.fillStyle = '#8B7355';
+  ctx.beginPath();
+  ctx.ellipse(canvas.width / 2, canvas.height / 2, 200, 150, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#D2B48C';
+  ctx.beginPath();
+  ctx.ellipse(canvas.width / 2, canvas.height / 2, 180, 130, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#228B22';
+  ctx.beginPath();
+  ctx.ellipse(canvas.width / 2, canvas.height / 2, 150, 100, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  GAME.buildings.forEach((building, index) => {
+    const x = canvas.width / 2 + (Math.sin(index) * 150);
+    const y = canvas.height / 2 + (Math.cos(index) * 100);
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(x - 15, y + 25, 30, 10);
+    
+    ctx.font = '30px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(building.icon, x, y);
+  });
+  
+  const shipX = canvas.width / 2 + 250;
+  const shipY = canvas.height / 2 - 150;
+  ctx.font = '40px Arial';
+  ctx.fillText('🚢', shipX, shipY);
+  ctx.fillText('⛵', shipX - 100, shipY + 100);
+}
+
+function updateUI() {
+  document.getElementById('res-money').textContent = Math.floor(GAME.money);
+  document.getElementById('res-workers').textContent = GAME.workers;
+  document.getElementById('res-food').textContent = Math.floor(GAME.food);
+  document.getElementById('day-display').textContent = `Day ${GAME.day}`;
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  const content = document.getElementById('panel-content');
+  content.innerHTML = '';
+  
+  if (tab === 'buildings') renderBuildingsTab();
+  else if (tab === 'troops') renderTroopsTab();
+  else if (tab === 'diplomacy') renderDiplomacyTab();
+  else if (tab === 'upgrades') renderUpgradesTab();
+}
+
+function renderBuildingsTab() {
+  const content = document.getElementById('panel-content');
+  content.innerHTML = '<div class="section-title">Available Buildings</div>';
+  
+  Object.entries(BUILDINGS).forEach(([key, building]) => {
+    const canAfford = GAME.money >= building.cost;
+    const card = document.createElement('div');
+    card.className = `building-card ${!canAfford ? 'disabled' : ''}`;
+    card.innerHTML = `
+      <div class="building-icon">${building.icon}</div>
+      <div class="building-info">
+        <div class="building-name">${building.name}</div>
+        <div class="building-cost">Cost: <span>$${building.cost}</span> | Workers: <span>${building.workers}</span></div>
+      </div>
+    `;
+    card.onclick = () => !canAfford || buildBuilding(key, building);
+    content.appendChild(card);
+  });
+}
+
+function renderTroopsTab() {
+  const content = document.getElementById('panel-content');
+  content.innerHTML = '<div class="section-title">Military Units</div><p style="color: var(--text-secondary);">Deploy troops to raid neighboring colonies.</p>';
+}
+
+function renderDiplomacyTab() {
+  const content = document.getElementById('panel-content');
+  content.innerHTML = '<div class="section-title">Relations</div><p style="color: var(--text-secondary);">Manage alliances and treaties.</p>';
+}
+
+function renderUpgradesTab() {
+  const content = document.getElementById('panel-content');
+  content.innerHTML = '<div class="section-title">Technology</div><p style="color: var(--text-secondary);">Research new technologies to improve your colony.</p>';
+}
+
+function buildBuilding(key, building) {
+  if (GAME.money >= building.cost) {
+    GAME.money -= building.cost;
+    GAME.buildings.push(building);
+    showNotification(`✓ ${building.name} built!`, 'success');
+    updateUI();
+    renderBuildingsTab();
+    drawMap();
+  }
+}
+
+function sendRaid() {
+  showNotification('⚔ Sending raid fleet...', 'warning');
+  setTimeout(() => {
+    const loot = Math.floor(Math.random() * 500) + 200;
+    GAME.money += loot;
+    showNotification(`✓ Raid successful! Looted $${loot}!`, 'success');
+    updateUI();
+  }, 2000);
+}
+
+function tradeRoute() {
+  showNotification('🚢 Establishing trade route...', 'warning');
+}
+
+function diplomacy() {
+  showNotification('📜 Opening diplomacy options...', 'warning');
+}
+
+function gameSpeed() {
+  GAME.speed = GAME.speed === 1 ? 2 : 1;
+  showNotification(`⏱ Speed: ${GAME.speed}x`, 'warning');
+}
+
+function pauseGame() {
+  GAME.paused = !GAME.paused;
+  showNotification(`${GAME.paused ? '⏸ PAUSED' : '▶ RESUMED'}`, 'warning');
+}
+
+function showNotification(message, type = 'info') {
+  const container = document.getElementById('notifications');
+  const notif = document.createElement('div');
+  notif.className = `notification ${type}`;
+  notif.textContent = message;
+  container.appendChild(notif);
+  
+  setTimeout(() => notif.remove(), 3000);
+}
+
+window.addEventListener('load', () => {
+  console.log('Tropico 2: Pirate\'s Revenge loaded!');
+});
+</script>
 </body>
 </html>
