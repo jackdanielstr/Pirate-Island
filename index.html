@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Isla del Diablo</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Pirata+One&family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
 
 /* ── SISTEMA TIPOGRAFICO ──
    Titoli decorativi : Pirata One
@@ -286,6 +285,26 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   #portrait-hud{bottom:4px;width:175px;}
   #portrait-hud .ph-canvas-wrap{height:85px;}
 }
+
+/* ── OVERLAY CAMPANA RAID ── */
+#overlay-campana{
+  position:fixed;inset:0;z-index:120;
+  background:rgba(0,0,0,.75);
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:10px;
+}
+#overlay-campana.aperto{display:flex;}
+#campana-icona{font-size:clamp(4rem,12vw,6rem);animation:campanaDondola .35s ease-in-out infinite alternate;}
+@keyframes campanaDondola{from{transform:rotate(-18deg)}to{transform:rotate(18deg)}}
+#campana-titolo{font-family:'Pirata One',cursive;font-size:clamp(1.4rem,5vw,2.2rem);
+  color:var(--oro);text-shadow:0 0 20px rgba(240,192,64,.5);text-align:center;}
+#campana-msg{font-size:clamp(.85rem,2.5vw,.98rem);color:var(--sabbia);text-align:center;
+  max-width:340px;line-height:1.6;font-family:var(--font-body);}
+#campana-barra-wrap{width:min(280px,80vw);height:6px;background:rgba(255,255,255,.1);
+  border-radius:3px;overflow:hidden;margin-top:4px;}
+#campana-barra{height:100%;background:linear-gradient(90deg,var(--oro-scuro),var(--oro));
+  border-radius:3px;width:0%;transition:width .15s linear;}
 
 /* NOTIFICHE */
 #area-notifiche{position:fixed;top:56px;right:8px;z-index:300;display:flex;flex-direction:column;gap:5px;pointer-events:none;}
@@ -609,6 +628,7 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   #log-msg{bottom:4px;width:calc(100vw - 195px);}
 }
 
+
 </style>
 </head>
 <body>
@@ -741,6 +761,14 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   </div>
 </div>
 
+<!-- OVERLAY CAMPANA RAID -->
+<div id="overlay-campana">
+  <div id="campana-icona">🔔</div>
+  <div id="campana-titolo">Raid in Partenza!</div>
+  <div id="campana-msg"></div>
+  <div id="campana-barra-wrap"><div id="campana-barra"></div></div>
+</div>
+
 <!-- PORTRAIT PIRATA HUD -->
 <div id="portrait-hud">
   <div class="ph-canvas-wrap">
@@ -776,6 +804,10 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 <div id="area-notifiche"></div>
 
 <script>
+
+// ═══════════════════════════════════════
+// MODULO: STATE
+// ═══════════════════════════════════════
 // ═══════════════════════════════════════════════════
 // STATO
 // ═══════════════════════════════════════════════════
@@ -946,6 +978,11 @@ const NOMI_PRIGIONIERI=['Ten. Belfair','Cap. Sterling','Gov. Blackwell','Amm. Gr
 // ═══════════════════════════════════════════════════
 
 // heightmap semplice con noise
+
+
+// ═══════════════════════════════════════
+// MODULO: MAP
+// ═══════════════════════════════════════
 function generaHeightmap(rows, cols, cx, cy){
   const h=[];
   for(let r=0;r<rows;r++){
@@ -1108,6 +1145,11 @@ function generaMappa(){
 // ═══════════════════════════════════════════════════
 // CANVAS RENDERER  —  top-down dettagliato
 // ═══════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════
+// MODULO: RENDERER
+// ═══════════════════════════════════════
 let canvas, ctx;
 let frame=0;
 
@@ -2515,13 +2557,23 @@ function disegnaScena(){
   }
 
   // ── hover costruzione ──
-  if(G.modalitaCostruzione&&G.hoverC>=0&&G.hoverR>=0){
+  if(G.modalitaCostruzione&&G.modalitaCostruzione!=='sentiero'&&G.hoverC>=0&&G.hoverR>=0){
     const x=G.hoverC*G.TILE, y=G.hoverR*G.TILE;
     const ok=puoCostruire(G.hoverR,G.hoverC);
     ctx.fillStyle=ok?'rgba(80,220,80,.28)':'rgba(220,60,60,.28)';
     ctx.fillRect(x,y,G.TILE,G.TILE);
     ctx.strokeStyle=ok?'#4f4':'#f44';ctx.lineWidth=2;
     ctx.strokeRect(x,y,G.TILE,G.TILE);
+    // Cantiere: evidenzia spiagge vicine come suggerimento
+    if(!ok&&G.modalitaCostruzione==='cantiere'){
+      const dirs=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1],[-2,0],[2,0],[0,-2],[0,2]];
+      ctx.fillStyle='rgba(80,180,255,.2)';
+      for(const[dr,dc] of dirs){
+        const nr=G.hoverR+dr,nc=G.hoverC+dc;
+        if(nr>=0&&nc>=0&&nr<G.RIGHE&&nc<G.COLS&&(G.mappa[nr][nc]===T.SABBIA||G.mappa[nr][nc]===T.BASSO))
+          ctx.fillRect(nc*G.TILE,nr*G.TILE,G.TILE,G.TILE);
+      }
+    }
     if(ok){
       ctx.globalAlpha=.5;
       disegnaEdificio(G.modalitaCostruzione,x,y);
@@ -2603,6 +2655,11 @@ function coloreUmore(u){return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b';}
 // ═══════════════════════════════════════════════════
 // AVVIO
 // ═══════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════
+// MODULO: GAME
+// ═══════════════════════════════════════
 function avviaGioco(){
   document.getElementById('schermata-titolo').style.display='none';
   document.getElementById('barra-sup').style.display='flex';
@@ -2646,6 +2703,10 @@ function creaaPirata(override={}){
     titolo:override.titolo||null,
     icona:override.icona||null,
     abilita:override.abilita||null,
+    // stato movimento pirati
+    _stato:'vaga', _vagaTimer:Math.floor(Math.random()*40),
+    _vagaDx:0, _vagaDy:0, _pausaTimer:0,
+    dest:null, percorso:null, percorsoIdx:0,
   };
   G.pirati.push(p);
   controllaMissione('pirati',G.pirati.length);
@@ -2715,7 +2776,16 @@ function puoCostruire(r,c){
   const t=G.mappa[r][c];
   if(t!==T.SABBIA&&t!==T.ERBA&&t!==T.COLLINA&&t!==T.SENTIERO) return false;
   if(G.edifici.find(b=>b.r===r&&b.c===c)) return false;
-  // non sopra alberi o rocce
+  // cantiere navale: deve essere adiacente (anche diagonale) a spiaggia o acque basse
+  if(G.modalitaCostruzione==='cantiere'){
+    const vicini=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1],[-2,0],[2,0],[0,-2],[0,2]];
+    const hasSpiaggia=vicini.some(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(nr<0||nc<0||nr>=G.RIGHE||nc>=G.COLS) return false;
+      return G.mappa[nr][nc]===T.SABBIA||G.mappa[nr][nc]===T.BASSO;
+    });
+    if(!hasSpiaggia) return false;
+  }
   return true;
 }
 function piazzaEdificio(r,c){
@@ -2986,348 +3056,270 @@ function lanciaRaidTattico(){
   const {nave, bersaglio, tattica}=statoPianificazione;
   if(!nave||!bersaglio||!tattica) return;
 
-  // Controlla costo rum tattica
   if(tattica.cost_rum>0&&G.rum<tattica.cost_rum){
     aggMsg(`Servono ${tattica.cost_rum} rum per questa tattica!`,'male'); return;
   }
   if(tattica.cost_rum>0) G.rum-=tattica.cost_rum;
 
   chiudiModale();
+  avviaSequenzaRaid(nave, bersaglio, tattica);
+}
 
-  // Tattica diplomazia — tenta evasione
-  if(tattica.bonus.evasion){
-    const mediaNav=G.pirati.reduce((a,p)=>a+p.navigazione,0)/Math.max(G.pirati.length,1);
-    const chEvasione=Math.min(70,Math.max(20, mediaNav*.6 + (nave.livVelocita||0)*10));
-    if(Math.random()*100<chEvasione){
-      // successo: raid silenzioso
-      const bottino=Math.floor(Math.random()*(bersaglio.bottino.oro?.[1]||100)*0.6+20);
-      G.oro+=bottino;
-      nave.inMare=true; nave.timerRaid=bersaglio.durataBase;
-      G.cooldownRaid=4; G.contatori.raid++;
-      notifica('🏳 Bandiera Falsa!','Infiltrazione riuscita! +'+bottino+' oro senza combattere.');
-      for(const[k,v] of Object.entries(bersaglio.rep)) if(v&&G.fazioni[k]) G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+Math.floor(v*0.4)));
-      controllaMissione('raid',G.contatori.raid);
-      aggiornaUI(); return;
+// ═══════════════════════════════════════════════════
+// SEQUENZA RAID CINEMATICA — stile Tropico 2
+// ═══════════════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════
+// MODULO: RAID
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// SEQUENZA RAID — stile Tropico 2
+//
+// Flusso:
+//   1. Pianifica (modale) → lanciaRaidTattico()
+//   2. Chiudi modale → campana appare
+//   3. Pirati marciano verso il cantiere (3 sec)
+//   4. Fine marcia → campana sparisce, nave parte (inMare=true)
+//      I dati del raid vengono salvati su nave.raidData
+//   5. Il tick fa scorrere i giorni normalmente
+//   6. Al rientro (timerRaid === 0) si calcola l'esito
+//      e si mostra la notifica con il risultato
+// ═══════════════════════════════════════════════════
+
+function avviaSequenzaRaid(nave, bersaglio, tattica){
+  // 1. Trova punto di imbarco (cantiere o spiaggia vicina all'oceano)
+  const cantiere=G.edifici.find(b=>b.tipo==='cantiere');
+  let destR, destC;
+  if(cantiere){
+    destR=cantiere.r; destC=cantiere.c;
+  } else {
+    // Fallback: trova qualsiasi tile di sabbia
+    let trovato=false;
+    for(let r=0;r<G.RIGHE&&!trovato;r++) for(let c=0;c<G.COLS&&!trovato;c++){
+      if(G.mappa[r][c]===T.SABBIA){ destR=r; destC=c; trovato=true; }
+    }
+    if(!trovato){ destR=Math.floor(G.RIGHE/2); destC=Math.floor(G.COLS/2); }
+  }
+
+  // 2. Manda i pirati verso il porto (con fallback se astar fallisce)
+  for(const p of G.pirati){
+    try{
+      const sr=Math.max(0,Math.min(G.RIGHE-1,Math.round(p.mr)));
+      const sc=Math.max(0,Math.min(G.COLS-1,Math.round(p.mc)));
+      const path=astar(sr, sc, destR, destC);
+      p.percorso = path && path.length>0 ? path : [{r:destR,c:destC}];
+    } catch(e){
+      p.percorso=[{r:destR,c:destC}];
+    }
+    p._stato="cammina"; p.percorsoIdx=0; p.dest={r:destR,c:destC};
+  }
+
+  // 3. Mostra overlay campana
+  const ov=document.getElementById('overlay-campana');
+  document.getElementById('campana-icona').textContent='🔔';
+  document.getElementById('campana-titolo').textContent='⚔ '+bersaglio.icona+' '+bersaglio.nome;
+  document.getElementById('campana-msg').textContent='La ciurma si raduna al porto...';
+  document.getElementById('campana-barra').style.width='0%';
+  ov.classList.add('aperto');
+
+  // 4. Anima marcia (3 secondi) — con timeout di sicurezza
+  const totalDur=3000;
+  const startTs=performance.now();
+  const barEl=document.getElementById('campana-barra');
+  const msgEl=document.getElementById('campana-msg');
+  const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0));
+  let completato=false;
+
+  // Sicurezza: se l'animazione non completa entro 5s, forza il completamento
+  const safetyTimer=setTimeout(()=>{
+    if(!completato){ completato=true; ov.classList.remove('aperto'); salpaNave(nave,bersaglio,tattica,durata); }
+  }, 5000);
+
+  function animaMarcia(ts){
+    if(completato) return;
+    const progress=Math.min(100,(ts-startTs)/totalDur*100);
+    barEl.style.width=progress+'%';
+
+    if(progress<33)       msgEl.textContent='🏃 La ciurma marcia verso il porto...';
+    else if(progress<66)  msgEl.textContent='⛵ I pirati salgono a bordo di '+nave.nome+'...';
+    else                  msgEl.textContent='🌊 Salpa verso '+bersaglio.nome+' ('+durata+' giorni)...';
+
+    if(progress<100){
+      requestAnimationFrame(animaMarcia);
     } else {
-      aggMsg('🏳 La tattica diplomatica fallisce — si combatte!','male');
+      completato=true;
+      clearTimeout(safetyTimer);
+      setTimeout(()=>{ ov.classList.remove('aperto'); salpaNave(nave,bersaglio,tattica,durata); }, 300);
     }
   }
-
-  // Avvia battaglia tattica
-  iniziaBattegliaTattica(nave, bersaglio, tattica);
+  requestAnimationFrame(animaMarcia);
 }
 
-// ═══════════════════════════════════════════════════
-// BATTAGLIA TATTICA — turni con scelte attive
-// ═══════════════════════════════════════════════════
-let datiBattaglia={};
+// Nave parte: salva i dati del raid, attiva il timer
+function salpaNave(nave, bersaglio, tattica, durata){
+  nave.inMare    = true;
+  nave.timerRaid = durata;
+  nave.raidData  = { bersaglio, tattica };
 
-function iniziaBattegliaTattica(nave, bersaglio, tattica){
-  if(G.battagliaAttiva) return;
-  G.battagliaAttiva=true;
+  G.cooldownRaid  = 4;
+  G.contatori.raid++;
 
+  // Pirati tornano a vagare liberamente
+  for(const p of G.pirati){
+    p._stato="vaga"; p._vagaTimer=10+Math.floor(Math.random()*30);
+    p.dest=null; p.percorso=null; p.percorsoIdx=0;
+  }
+
+  aggMsg('⛵ '+nave.nome+' salpa! Rientro tra '+durata+' giorni.','bene');
+  controllaMissione('raid', G.contatori.raid);
+  aggiornaUI();
+}
+
+// Chiamata dal tick quando timerRaid arriva a 0
+function rientroNave(nave){
+  nave.inMare=false;
+
+  const rd=nave.raidData||null;
+  nave.raidData=null;
+
+  if(!rd){
+    // Raid legacy senza dati salvati: bottino generico
+    const bottino=Math.floor(80+Math.random()*100);
+    const cibo=Math.floor(20+Math.random()*40);
+    G.oro+=bottino; G.cibo+=cibo;
+    nave.hp=Math.min(nave.hpMax, nave.hp+10);
+    notifica('💰 Raid Completato!', nave.nome+' porta '+bottino+' oro.');
+    for(const p of G.pirati) p.umore=Math.min(100,p.umore+12);
+    return;
+  }
+
+  const {bersaglio, tattica}=rd;
+
+  // Calcola esito
   const mediaCombo=G.pirati.reduce((a,p)=>a+p.combattimento,0)/Math.max(G.pirati.length,1);
-  const mediaNav=G.pirati.reduce((a,p)=>a+p.navigazione,0)/Math.max(G.pirati.length,1);
-  const baseAtk=Math.floor(6+(mediaCombo*.14)+(nave.livCannoni||0)*5);
-  const dotDmg=tattica.bonus.dot||0;
+  const forzaAtk=Math.floor(
+    8
+    + mediaCombo*.12
+    + (nave.livCannoni||0)*4
+    + (tattica.bonus.atk||0)
+    + (G.ricerca.completate.has('cannoni')?8:0)
+    + (G.ricerca.completate.has('bordata')&&tattica.id==='bordata'?12:0)
+  );
+  const nemDif=bersaglio.nemico.difesa + bersaglio.nemico.atk*.3;
+  const chVitt=Math.min(92, Math.max(12, 55+(forzaAtk-nemDif)*3));
+  const vinto=Math.random()*100<chVitt;
 
-  datiBattaglia={
-    nave, bersaglio, tattica,
-    pHP: nave.hp, pHPMax: nave.hpMax,
-    eHP: bersaglio.nemico.hp, eHPMax: bersaglio.nemico.hp,
-    round:0, maxRound:8,
-    baseAtk, mediaCombo, mediaNav,
-    dotDmg, dotActive:false,
-    log:[],
-    moraleBonus:0,
-    // stato turno
-    faseScelta:true,
-    esito:null,
-  };
-
-  mostraUiTattica();
-}
-
-function mostraUiTattica(){
-  const bd=datiBattaglia;
-  const ov=document.getElementById('overlay-battaglia');
-  if(!ov) return;
-
-  const pPct=Math.round(bd.pHP/bd.pHPMax*100);
-  const ePct=Math.round(bd.eHP/bd.eHPMax*100);
-  const colP=pPct>60?'#4fc04f':pPct>30?'#f0c040':'#c0392b';
-  const colE=ePct>60?'#4fc04f':ePct>30?'#f0c040':'#c0392b';
-
-  const azioni=[
-    {id:'bt-bordata',   ico:'💣', label:'Bordata',      desc:`Danno +8, rischio +4`},
-    {id:'bt-difendi',   ico:'🛡', label:'Difenditi',    desc:`Danni subiti -40%`},
-    {id:'bt-abborda',   ico:'🗡', label:'Abborda',      desc:`Usa ciurma (comb. ${Math.floor(bd.mediaCombo)})`},
-    {id:'bt-manovra',   ico:'💨', label:'Manovra',      desc:`Evita i danni (nav. ${Math.floor(bd.mediaNav)})`},
-    {id:'bt-rum',       ico:'🍺', label:'Rum da Guerra',desc:`+20 HP, ${G.rum<10?'NO RUM':'costo 10 rum'}`},
-    {id:'bt-ritiro',    ico:'🏳', label:'Batti in Ritirata', desc:'Ritiro tattico'},
-  ];
-
-  ov.innerHTML=`
-  <div style="width:min(420px,96vw);background:linear-gradient(160deg,#0d1e30,#060f1a);
-    border:2px solid var(--oro-scuro);border-radius:10px;padding:0;overflow:hidden">
-
-    <!-- Header bersaglio -->
-    <div style="background:rgba(0,0,0,.4);padding:10px 16px;border-bottom:1px solid var(--bordo)">
-      <div style="font-family:'Pirata One',cursive;font-size:1.1rem;color:var(--oro);text-align:center">
-        ${bd.bersaglio.icona} ${bd.bersaglio.nome} — Round ${bd.round+1}/${bd.maxRound}
-      </div>
-    </div>
-
-    <!-- Barre HP -->
-    <div style="padding:12px 16px 8px;display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">
-      <div>
-        <div style="font-size:.68rem;color:var(--sabbia);margin-bottom:3px">⛵ ${bd.nave.nome}</div>
-        <div style="height:8px;background:#1a2a1a;border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${pPct}%;background:${colP};border-radius:4px;transition:width .4s"></div></div>
-        <div style="font-size:.65rem;color:${colP};margin-top:2px">${bd.pHP}/${bd.pHPMax} HP</div>
-      </div>
-      <div style="font-family:'Pirata One',cursive;color:var(--rum-chiaro);font-size:1rem">VS</div>
-      <div style="text-align:right">
-        <div style="font-size:.68rem;color:var(--sabbia);margin-bottom:3px">${bd.bersaglio.nemico.icona} ${bd.bersaglio.nemico.nome}</div>
-        <div style="height:8px;background:#2a1a1a;border-radius:4px;overflow:hidden">
-          <div style="height:100%;width:${ePct}%;background:${colE};border-radius:4px;float:right;transition:width .4s"></div></div>
-        <div style="font-size:.65rem;color:${colE};margin-top:2px">${bd.eHP}/${bd.eHPMax} HP</div>
-      </div>
-    </div>
-
-    <!-- Log ultimi eventi -->
-    <div style="background:rgba(0,0,0,.3);margin:0 12px;border-radius:6px;padding:8px 10px;min-height:52px;margin-bottom:8px">
-      ${bd.log.slice(-3).map((l,i)=>`<div style="font-size:.72rem;color:${i===bd.log.length-3||bd.log.length<=3?'var(--pergamena)':'#888'};margin-bottom:2px">${l}</div>`).join('')||'<div style="font-size:.72rem;color:#666;font-style:italic">La battaglia comincia...</div>'}
-    </div>
-
-    <!-- Azioni del turno -->
-    ${bd.faseScelta?`
-    <div style="padding:0 12px 10px">
-      <div style="font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--sabbia);opacity:.6;margin-bottom:6px;text-align:center">Scegli la tua mossa</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-        ${azioni.map(a=>`
-          <button onclick="eseguiMossaTattica('${a.id.replace('bt-','')}')"
-            style="background:rgba(255,255,255,.06);border:1px solid var(--bordo);border-radius:6px;
-            padding:7px 4px;cursor:pointer;font-family:'IM Fell English',serif;
-            color:var(--pergamena);transition:all .15s;${a.id==='bt-rum'&&G.rum<10?'opacity:.4;cursor:not-allowed':''}"
-            ${a.id==='bt-rum'&&G.rum<10?'disabled':''}>
-            <div style="font-size:1.2rem;margin-bottom:2px">${a.ico}</div>
-            <div style="font-size:.62rem;color:var(--oro)">${a.label}</div>
-            <div style="font-size:.55rem;color:#888;margin-top:1px">${a.desc}</div>
-          </button>`).join('')}
-      </div>
-    </div>`:`
-    <div style="padding:12px 16px;text-align:center">
-      <div id="bt-risultato-tattico" style="font-family:'Pirata One',cursive;font-size:1.3rem;margin-bottom:10px"></div>
-      <button onclick="chiudiBattegliaTattica()"
-        style="font-family:'Pirata One',cursive;font-size:1rem;
-        background:linear-gradient(135deg,var(--oro-scuro),var(--oro));color:var(--inchiostro);
-        border:none;padding:9px 28px;border-radius:5px;cursor:pointer">Avanti ›</button>
-    </div>`}
-  </div>`;
-
-  ov.classList.add('aperto');
-}
-
-function eseguiMossaTattica(mossa){
-  const bd=datiBattaglia;
-  bd.round++;
-  bd.faseScelta=false;
-
-  let pAtk=bd.baseAtk+(bd.tattica.bonus.atk||0);
-  let eDifesa=bd.bersaglio.nemico.difesa+(bd.nave.livCannoni||0)*2;
-  let pDifesa=Math.max(0,(bd.nave.livVelocita||0)*3);
-  let selfDmg=0;
-  let logEntry='';
-
-  // Applica ricerca globale
-  if(G.ricerca.completate.has('cannoni')) pAtk+=6;
-  if(G.ricerca.completate.has('armatura')) pDifesa+=5;
-  const haiBordata=G.ricerca.completate.has('bordata');
-  const haiAlchimia=G.ricerca.completate.has('alchimia');
-
-  // Effetto DoT (incendio turni precedenti)
-  if(bd.dotActive&&bd.dotDmg>0){
-    bd.eHP=Math.max(0,bd.eHP-bd.dotDmg);
-    logEntry+=`🔥 Incendio: -${bd.dotDmg} HP al nemico. `;
-  }
-
-  switch(mossa){
-    case 'bordata':{
-      if(haiBordata&&Math.random()<.35) pAtk=Math.floor(pAtk*2);
-      const dannoFatto=Math.max(1,pAtk-eDifesa+Math.floor(Math.random()*8));
-      const dannoSubito=Math.max(0,bd.bersaglio.nemico.atk-pDifesa+Math.floor(Math.random()*6));
-      bd.eHP=Math.max(0,bd.eHP-dannoFatto);
-      bd.pHP=Math.max(0,bd.pHP-dannoSubito);
-      logEntry=`💣 Bordata${haiBordata&&pAtk>bd.baseAtk+6?'doppia':''}: -${dannoFatto} al nemico, -${dannoSubito} a te.`;
-      break;}
-    case 'difendi':{
-      const difRidotta=Math.floor(bd.bersaglio.nemico.atk*.6)-pDifesa;
-      const dannoSubito=Math.max(0,difRidotta+Math.floor(Math.random()*4));
-      const dannoFatto=Math.max(1,Math.floor(pAtk*.5)-eDifesa+Math.floor(Math.random()*5));
-      bd.pHP=Math.max(0,bd.pHP-dannoSubito);
-      bd.eHP=Math.max(0,bd.eHP-dannoFatto);
-      logEntry=`🛡 Difesa: resistite bene! -${dannoSubito} a te, -${dannoFatto} al nemico.`;
-      break;}
-    case 'abborda':{
-      const bonusCrew=Math.floor(bd.mediaCombo*.18);
-      const dannoFatto=Math.max(1,pAtk+bonusCrew-eDifesa+Math.floor(Math.random()*10));
-      const dannoSubito=Math.max(0,Math.floor(bd.bersaglio.nemico.atk*1.2)-pDifesa+Math.floor(Math.random()*8));
-      bd.eHP=Math.max(0,bd.eHP-dannoFatto);
-      bd.pHP=Math.max(0,bd.pHP-dannoSubito);
-      for(const p of G.pirati) p.xp=(p.xp||0)+3;
-      logEntry=`🗡 Abbordaggio! La ciurma imperversa: -${dannoFatto} al nemico. Pirati +3 XP.`;
-      break;}
-    case 'manovra':{
-      const chEvit=Math.min(80,Math.max(10,Math.floor(bd.mediaNav*.8)+(bd.nave.livVelocita||0)*12));
-      if(Math.random()*100<chEvit){
-        const dannoFatto=Math.max(1,Math.floor(pAtk*.7)-eDifesa+Math.floor(Math.random()*6));
-        bd.eHP=Math.max(0,bd.eHP-dannoFatto);
-        logEntry=`💨 Manovra riuscita! Schivate e contrattaccate: -${dannoFatto} al nemico.`;
-      } else {
-        const dannoSubito=Math.max(2,bd.bersaglio.nemico.atk+Math.floor(Math.random()*6));
-        bd.pHP=Math.max(0,bd.pHP-dannoSubito);
-        logEntry=`💨 Manovra fallita! Il nemico coglie il momento: -${dannoSubito} a te.`;
-      }
-      break;}
-    case 'rum':{
-      if(G.rum>=10){
-        G.rum-=10;
-        const cura=haiAlchimia?25:20;
-        bd.pHP=Math.min(bd.pHPMax,bd.pHP+cura);
-        const dannoFatto=Math.max(1,Math.floor(pAtk*.6)-eDifesa+Math.floor(Math.random()*5));
-        bd.eHP=Math.max(0,bd.eHP-dannoFatto);
-        logEntry=`🍺 Rum da guerra! +${cura} HP. Contrattacco debole: -${dannoFatto} al nemico.`;
-      } else {
-        logEntry=`🍺 Rum insufficiente! Il cuoco è dispiaciuto.`;
-      }
-      break;}
-    case 'ritiro':{
-      bd.pHP=Math.max(10,Math.floor(bd.pHPMax*.55));
-      bd.eHP=1; // forza fine battaglia con ritirata
-      logEntry=`🏳 Battete in ritirata. La nave si allontana.`;
-      bd.esito='ritiro';
-      break;}
-  }
-
-  // Attiva DoT (incendio) se tattica
-  if(bd.dotDmg>0&&!bd.dotActive) bd.dotActive=true;
-
-  // Applicazione tattica speronamento
-  if(bd.tattica.id==='speronamento'&&bd.round===1){
-    const extra=bd.tattica.bonus.selfDmg||0;
-    bd.pHP=Math.max(1,bd.pHP-extra);
-    logEntry+=` (Speronamento: -${extra} danno proprio)`;
-  }
-
-  bd.log.push(logEntry);
-
-  // Check fine battaglia
-  if(bd.esito==='ritiro'||bd.eHP<=0||bd.pHP<=0||bd.round>=bd.maxRound){
-    fineBattegliaTattica();
-  } else {
-    bd.faseScelta=true;
-    mostraUiTattica();
-  }
-}
-
-function fineBattegliaTattica(){
-  const bd=datiBattaglia;
-  const vinto=bd.esito!=='ritiro'&&bd.pHP>bd.eHP;
-  const ritirato=bd.esito==='ritiro';
-  bd.faseScelta=false;
-
-  bd.nave.hp=Math.max(5,bd.pHP);
+  // Danno alla nave
+  const dannoBase=vinto
+    ? nave.hpMax*(0.04+Math.random()*.1)
+    : nave.hpMax*(0.18+Math.random()*.28);
+  const dannoMod= tattica.id==='manovra_evasiva' ? 0.55
+                : tattica.id==='speronamento'     ? 1.35
+                : 1.0;
+  const dannoNave=Math.max(2, Math.floor(dannoBase*dannoMod));
+  nave.hp=Math.max(5, nave.hp-dannoNave);
+  nave.hp=Math.min(nave.hpMax, nave.hp+8); // riparo minimo al rientro
 
   if(vinto){
-    // Calcola bottino
-    let oro=0,cibo=0,legno=0,rum=0,ricerca=0;
-    const b=bd.bersaglio.bottino;
-    if(b.oro)     oro=b.oro[0]+Math.floor(Math.random()*(b.oro[1]-b.oro[0]));
-    if(b.cibo)    cibo=b.cibo[0]+Math.floor(Math.random()*(b.cibo[1]-b.cibo[0]));
-    if(b.legno)   legno=b.legno[0]+Math.floor(Math.random()*(b.legno[1]-b.legno[0]));
-    if(b.rum)     rum=b.rum[0]+Math.floor(Math.random()*(b.rum[1]-b.rum[0]));
-    if(b.ricerca) ricerca=b.ricerca[0]+Math.floor(Math.random()*(b.ricerca[1]-b.ricerca[0]));
+    const b=bersaglio.bottino;
+    const oro   = b.oro    ? b.oro[0]   +Math.floor(Math.random()*(b.oro[1]   -b.oro[0]))   : 0;
+    const cibo  = b.cibo   ? b.cibo[0]  +Math.floor(Math.random()*(b.cibo[1]  -b.cibo[0]))  : 0;
+    const legno = b.legno  ? b.legno[0] +Math.floor(Math.random()*(b.legno[1] -b.legno[0])) : 0;
+    const rum   = b.rum    ? b.rum[0]   +Math.floor(Math.random()*(b.rum[1]   -b.rum[0]))   : 0;
+    const ric   = b.ricerca? b.ricerca[0]+Math.floor(Math.random()*(b.ricerca[1]-b.ricerca[0])): 0;
 
-    // Moltiplicatori potenziamenti
-    const multCan=1+(bd.nave.livCannoni||0)*.12;
-    const multSti=1+(bd.nave.livStiva||0)*.18;
-    const multRic=G.ricerca.completate.has('cannoni')?1.25:1;
-    oro=Math.floor(oro*multCan*multRic);
-    cibo=Math.floor(cibo*multSti);
+    const multCan  = 1 + (nave.livCannoni||0)*.15;
+    const multSti  = 1 + (nave.livStiva||0)*.2;
+    const multRic  = G.ricerca.completate.has('cannoni') ? 1.3 : 1;
+    const barbanera= G.pirati.find(p=>p.id==='cap_blackbeard'&&p.naveId===nave.id);
+    const multBB   = barbanera ? 1.5 : 1;
+    const multAbbo = (tattica.id==='abbordaggio') ? 1+(mediaCombo*.005) : 1;
 
-    G.oro+=oro; G.cibo+=cibo; G.legno+=legno; G.rum+=rum; G.ricerca.punti+=ricerca;
+    const oroFinale  = Math.floor(oro   * multCan * multRic * multBB * multAbbo);
+    const cibFinale  = Math.floor(cibo  * multSti);
+    const legFinale  = Math.floor(legno * multSti);
+    const rumFinale  = Math.floor(rum);
 
-    // Effetti reputazione
-    for(const[k,v] of Object.entries(bd.bersaglio.rep))
-      if(v&&G.fazioni[k]) G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));
+    G.oro           += oroFinale;
+    G.cibo          += cibFinale;
+    G.legno         += legFinale;
+    G.rum           += rumFinale;
+    G.ricerca.punti += ric;
 
-    // XP pirati
-    for(const p of G.pirati){ p.umore=Math.min(100,p.umore+18); p.xp=(p.xp||0)+20; }
+    // Reputazioni
+    for(const[k,v] of Object.entries(bersaglio.rep))
+      if(v && G.fazioni[k]) G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));
+
+    if(barbanera) G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+5);
+
+    const grazia=G.pirati.find(p=>p.id==='cap_grazia'&&p.naveId===nave.id);
+    if(grazia){ const extra=Math.floor(oroFinale*.15); G.oro+=extra; }
+
+    // XP e morale
+    for(const p of G.pirati){
+      p.umore=Math.min(100,p.umore+16);
+      if(p.naveId===nave.id){
+        p.xp=(p.xp||0)+20;
+        const xpN=(p.livello||1)*100;
+        if(p.xp>=xpN){
+          p.xp-=xpN; p.livello=(p.livello||1)+1;
+          p.combattimento=Math.min(100,p.combattimento+5);
+          p.navigazione=Math.min(100,p.navigazione+5);
+          notifica('⬆ '+p.nome+' sale di livello!','Lv'+p.livello+' — stats +5');
+        }
+      }
+    }
 
     // Possibile prigioniero
-    if(Math.random()<.45) catturaPrigioniero(bd.bersaglio.rep.reale<0?'Marina Reale':'Mercante');
+    if(Math.random()<.4) catturaPrigioniero(bersaglio.rep.reale<0?'Marina Reale':'Mercante');
 
-    // Evento speciale porto coloniale: upgrade gratuito
-    if(bd.bersaglio.id==='porto_coloniale'){
-      const upgTipi=['cannoni','velocita','stiva'];
-      const t=upgTipi[Math.floor(Math.random()*upgTipi.length)];
-      const chiave='liv'+t.charAt(0).toUpperCase()+t.slice(1);
-      if(bd.nave[chiave]<3){ bd.nave[chiave]++; bd.log.push(`🎁 Upgrade gratuito: ${t}!`); }
+    // Evento speciale porto coloniale
+    if(bersaglio.id==='porto_coloniale'){
+      const ts=['cannoni','velocita','stiva'];
+      const tt=ts[Math.floor(Math.random()*ts.length)];
+      const kk='liv'+tt.charAt(0).toUpperCase()+tt.slice(1);
+      if(nave[kk]<3){ nave[kk]++; aggMsg('⬆ Upgrade gratuito: '+tt+' su '+nave.nome,'bene'); }
     }
+    if(bersaglio.id==='galeone_reale')
+      G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+20);
 
-    // Evento speciale corsaro: +bonus rep
-    if(bd.bersaglio.id==='nave_corsara'){
-      G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+10);
-    }
+    const bottinoStr=[
+      oroFinale && `+${oroFinale}💰`,
+      cibFinale && `+${cibFinale}🍖`,
+      legFinale && `+${legFinale}🪵`,
+      rumFinale && `+${rumFinale}🍺`,
+      ric       && `+${ric}🔭`,
+    ].filter(Boolean).join(' ');
 
-    const bottinoStr=[oro&&`${oro}💰`,cibo&&`${cibo}🍖`,legno&&`${legno}🪵`,rum&&`${rum}🍺`,ricerca&&`${ricerca}🔭`].filter(Boolean).join(' ');
-    bd.log.push(`🏆 VITTORIA! Bottino: ${bottinoStr}`);
-    notifica('⚔ Vittoria!',`${bd.bersaglio.nome} sconfitta. ${bottinoStr}`);
+    notifica('⚔ Raid Riuscito!', bersaglio.icona+' '+bersaglio.nome+' saccheggiata! '+bottinoStr);
+    aggMsg('💰 '+nave.nome+' rientra: '+bottinoStr+' (danno -'+dannoNave+'hp)','bene');
 
-    // Lancia raid (nave va in mare a tornare)
-    bd.nave.inMare=true;
-    bd.nave.timerRaid=bd.bersaglio.durataBase;
-    G.cooldownRaid=4; G.contatori.raid++;
-    controllaMissione('raid',G.contatori.raid);
-
-  } else if(ritirato){
-    bd.log.push(`🏳 Ritirata tattica. La nave torna in porto.`);
-    for(const p of G.pirati) p.umore=Math.max(10,p.umore-10);
-    notifica('🏳 Ritirata','Avete battuto in ritirata. La nave è danneggiata.','male');
   } else {
-    // Sconfitta
-    bd.nave.hp=Math.max(5,Math.floor(bd.nave.hpMax*.2));
-    for(const p of G.pirati) p.umore=Math.max(5,p.umore-22);
-    bd.log.push(`💀 SCONFITTA. Battete in ritirata con la nave semidistrutta.`);
-    notifica('💀 Sconfitta!',`${bd.nave.nome} si ritira sconfitta.`,'male');
+    for(const p of G.pirati) p.umore=Math.max(5,p.umore-18);
+    notifica('💀 Raid Fallito',
+      bersaglio.icona+' '+bersaglio.nome+' ha respinto l\'attacco. '+nave.nome+' rientra danneggiata.','male');
+    aggMsg('💀 Raid fallito — nave -'+dannoNave+' HP','male');
   }
-
-  mostraUiTattica();
-  aggiornaUI();
 }
 
-function chiudiBattegliaTattica(){
-  G.battagliaAttiva=false;
-  const ov=document.getElementById('overlay-battaglia');
-  if(ov){ ov.classList.remove('aperto'); ov.innerHTML=''; }
-  aggiornaUI();
-}
-
-// Mantieni compatibilità con vecchie funzioni
+// Compatibilità
 function lanciaRaid(nave){
-  // Usato solo internamente per raid post-diplomazia
   nave.inMare=true;
-  const dur=Math.max(1,2+Math.floor(Math.random()*2)-(nave.livVelocita||0));
-  nave.timerRaid=dur;
+  const durata=Math.max(1,2+Math.floor(Math.random()*2)-(nave.livVelocita||0));
+  nave.timerRaid=durata;
+  nave.raidData=null;
   G.cooldownRaid=4; G.contatori.raid++;
   G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+3);
   aggMsg(nave.nome+' salpa!','bene');
   controllaMissione('raid',G.contatori.raid);
   aggiornaUI();
 }
-function iniziaBattaglia(nave,eMercante){ iniziaBattegliaTattica(nave, BERSAGLI_RAID[eMercante?0:2], TATTICHE_RAID[0]); }
+function iniziaBattegliaTattica(nave,bersaglio,tattica){ avviaSequenzaRaid(nave,bersaglio,tattica); }
+function chiudiBattegliaTattica(){ document.getElementById('overlay-campana').classList.remove('aperto'); }
 function chiudiBattaglia(){ chiudiBattegliaTattica(); }
+function iniziaBattaglia(nave,em){ avviaSequenzaRaid(nave,BERSAGLI_RAID[em?0:2],TATTICHE_RAID[0]); }
 
 // ── PRIGIONIERI ──
 function catturaPrigioniero(fazione){
@@ -3421,7 +3413,7 @@ function commercia(risorsa){
 // ── EDITTI ──
 function apriEditti(){
   apriModale('📜 Editti del Capitano',`
-    <p>La tua parola è legge sull\'isola.</p>
+    <p>La tua parola è legge sull'isola.</p>
     <div style="display:flex;flex-direction:column;gap:6px;margin-top:12px">
       <button class="mbtn primario" onclick="editto('banchetto')">🍖 Grande Banchetto — 60 cibo, morale +35</button>
       <button class="mbtn primario" onclick="editto('bonus')">💰 Paga Straordinaria — 120 oro, morale +25</button>
@@ -3455,14 +3447,14 @@ function editto(tipo){
   aggiornaUI();
 }
 
-// ── TICK ──
+// ═══════════════════════════════════════════════════
+// TICK — avanzamento tempo
+// ═══════════════════════════════════════════════════
 function tick(){
   G.tick++; G.giorno++;
 
-  // Aggiorna destinazioni pirati ogni tick
   for(const p of G.pirati) aggiornaPirata(p);
 
-  // conteggio edifici
   const nFattor  = G.edifici.filter(b=>b.tipo==='fattoria').length;
   const nDistil  = G.edifici.filter(b=>b.tipo==='distilleria').length;
   const nSegh    = G.edifici.filter(b=>b.tipo==='segheria').length;
@@ -3479,49 +3471,30 @@ function tick(){
   const haTaverna= G.edifici.find(b=>b.tipo==='taverna');
   const haCaserma= G.edifici.find(b=>b.tipo==='caserma');
 
-  // ── produzione risorse ──
-  G.cibo   += 5 + nFattor*9;
-  G.legno  += 3 + nSegh*7;
-  G.rum    += nDistil*6;
-  G.oro    += 12 + nCasa*6 + nSarto*10;
+  // produzione risorse
+  G.cibo          += 5 + nFattor*9;
+  G.legno         += 3 + nSegh*7;
+  G.rum           += nDistil*6;
+  G.oro           += 12 + nCasa*6 + nSarto*10;
   G.ricerca.punti += nOsserv*3;
 
-  // bordello consuma rum
   if(nBordello>0){
-    const costoRumBord=nBordello*2;
-    if(G.rum>=costoRumBord) G.rum-=costoRumBord;
+    const cr=nBordello*2;
+    if(G.rum>=cr) G.rum-=cr;
     else G.bisogni.divertimento=Math.max(0,G.bisogni.divertimento-10);
   }
 
-  // ── bisogni: aggiornamento ──
   const B=G.bisogni;
-  // Divertimento
-  B.divertimento=Math.max(0,Math.min(100,
-    B.divertimento + nBordello*20 + nArena*12 + nCanta*8 + (haTaverna?6:0) - 8
-  ));
-  // Spirito
-  B.spirito=Math.max(0,Math.min(100,
-    B.spirito + nCappella*18 - 5
-  ));
-  // Salute
-  B.salute=Math.max(0,Math.min(100,
-    B.salute + nInferm*20 + nBagni*12 - 6
-  ));
-  // Sicurezza
-  B.sicurezza=Math.max(0,Math.min(100,
-    B.sicurezza + nGuardia*15 + (G.edifici.find(b=>b.tipo==='fortezza')?10:0) - 4
-  ));
-  // Lusso
-  B.lusso=Math.max(0,Math.min(100,
-    B.lusso + nSarto*15 + (G.edifici.find(b=>b.tipo==='mercatonero')?10:0) - 6
-  ));
+  B.divertimento=Math.max(0,Math.min(100, B.divertimento + nBordello*20 + nArena*12 + nCanta*8 + (haTaverna?6:0) - 8));
+  B.spirito     =Math.max(0,Math.min(100, B.spirito      + nCappella*18 - 5));
+  B.salute      =Math.max(0,Math.min(100, B.salute       + nInferm*20 + nBagni*12 - 6));
+  B.sicurezza   =Math.max(0,Math.min(100, B.sicurezza    + nGuardia*15 + (G.edifici.find(b=>b.tipo==='fortezza')?10:0) - 4));
+  B.lusso       =Math.max(0,Math.min(100, B.lusso        + nSarto*15 + (G.edifici.find(b=>b.tipo==='mercatonero')?10:0) - 6));
 
-  // ── effetti bisogni su morale ──
   const soddMedia=(B.divertimento+B.spirito+B.salute+B.sicurezza+B.lusso)/5;
-  const bonusSodd=Math.floor((soddMedia-50)/10); // -5 a +5 per pirata
+  const bonusSodd=Math.floor((soddMedia-50)/10);
   for(const p of G.pirati) p.umore=Math.min(100,Math.max(5,p.umore+bonusSodd));
 
-  // avvisi bisogni critici (ogni 5 tick)
   if(G.tick%5===0){
     if(B.divertimento<20) aggMsg('😤 La ciurma si annoia! Costruisci un Bordello o Arena.','male');
     if(B.salute<20)       aggMsg('🤒 I pirati si ammalano! Serve un\'Infermeria.','male');
@@ -3530,64 +3503,45 @@ function tick(){
     if(B.lusso<15&&G.pirati.length>6) aggMsg('😒 La ciurma vuole lussi. Assumi un Sarto.','male');
   }
 
-  // ── effetti speciali edifici ──
-  // Arena: addestra casualmente un pirata
   if(nArena>0&&G.tick%4===0){
     const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
-    if(p){p.combattimento=Math.min(100,p.combattimento+2);}
+    if(p) p.combattimento=Math.min(100,p.combattimento+2);
   }
-  // Infermeria: guarisce pirati feriti (umore basso)
   if(nInferm>0){
     for(const p of G.pirati) if(p.umore<40) p.umore=Math.min(100,p.umore+8);
   }
-  // Cappella: riduce diserzione
   const sogliaDiserzione=nCappella>0?8:12;
 
-  // Consumo cibo
   const costoCibo=G.pirati.length*2;
   G.cibo-=costoCibo;
   if(G.cibo<0){G.cibo=0;for(const p of G.pirati) p.umore-=10;aggMsg('⚠ I pirati stanno morendo di fame!','male');}
 
-  // Rum e morale
   const costoRum=G.pirati.length;
   if(G.rum>=costoRum){G.rum-=costoRum;for(const p of G.pirati) p.umore=Math.min(100,p.umore+3);}
   else for(const p of G.pirati) p.umore-=6;
   if(haTaverna) for(const p of G.pirati) p.umore=Math.min(100,p.umore+5);
 
-  // Paghe — le case riducono la paga
   const pirateCoperti=Math.min(G.pirati.length, nCasa*2);
   const pagaTotale=G.pirati.reduce((a,p)=>a+p.paga,0);
   const pagaFinale=Math.max(0, pagaTotale-pirateCoperti);
   G.oro-=pagaFinale;
   if(G.oro<0){G.oro=0;for(const p of G.pirati) p.umore-=8;}
 
-  // Abilità capitani
   for(const p of G.pirati){
     if(!p.capitano) continue;
-    if(p.id==='cap_bellamy'){
-      // Bellamy: +5 morale tutti, -30% paga
-      for(const q of G.pirati) q.umore=Math.min(100,q.umore+5);
-    }
-    if(p.id==='cap_jack'){
-      // Jack: +8 morale tutti
-      for(const q of G.pirati) q.umore=Math.min(100,q.umore+8);
-    }
-    if(p.id==='cap_ching'){
-      // Ching: tutte le navi +20 hpMax (one-time check)
-      if(!G._chingApplicata){
-        G._chingApplicata=true;
-        for(const n of G.navi) n.hpMax+=20;
-      }
+    if(p.id==='cap_bellamy') for(const q of G.pirati) q.umore=Math.min(100,q.umore+5);
+    if(p.id==='cap_jack')    for(const q of G.pirati) q.umore=Math.min(100,q.umore+8);
+    if(p.id==='cap_ching'&&!G._chingApplicata){
+      G._chingApplicata=true;
+      for(const n of G.navi) n.hpMax+=20;
     }
   }
 
-  // Addestramento caserma
   if(haCaserma&&G.tick%3===0){
     const p=G.pirati[Math.floor(Math.random()*G.pirati.length)];
     if(p){p.combattimento=Math.min(100,p.combattimento+1);p.navigazione=Math.min(100,p.navigazione+1);}
   }
 
-  // Deriva umore e diserzione
   for(const p of G.pirati){
     p.umore=Math.max(5,Math.min(100,p.umore+(Math.random()-.5)*3));
     if(p.umore<sogliaDiserzione&&Math.random()<.2&&!G.ricerca.completate.has('medicina')){
@@ -3596,11 +3550,9 @@ function tick(){
     }
   }
 
-  // Usura navi in mare
   for(const n of G.navi){
     if(n.inMare){
       n.usura=Math.min(100,(n.usura||0)+2);
-      // usura alta riduce hpMax
       if(n.usura>50){
         const penalita=Math.floor((n.usura-50)*.4);
         const base=80+(G.ricerca.completate.has('armatura')?20:0)+(n.livCannoni||0)*5;
@@ -3610,57 +3562,18 @@ function tick(){
     }
   }
 
-  // Rientro navi da raid
+  // Rientro navi — esito calcolato qui, al ritorno reale
   for(const n of G.navi){
-    if(n.inMare&&n.timerRaid>0){
+    if(n.inMare && n.timerRaid>0){
       n.timerRaid--;
-      if(n.timerRaid<=0){
-        n.inMare=false;
-        const multRic=G.ricerca.completate.has('cannoni')?1.3:1;
-        const multCan=1+(n.livCannoni||0)*0.15;
-        const multSti=1+(n.livStiva||0)*0.2;
-        const bottino=Math.floor((70+Math.random()*130)*multRic*multCan);
-        const cibo=Math.floor((20+Math.random()*50)*multSti);
-        G.oro+=bottino; G.cibo+=cibo;
-        n.hp=Math.min(n.hpMax,n.hp+15);
-        for(const p of G.pirati){
-          p.umore=Math.min(100,p.umore+14);
-          // XP per pirati assegnati alla nave
-          if(p.naveId===n.id){
-            p.xp=(p.xp||0)+15;
-            const xpN=(p.livello||1)*100;
-            if(p.xp>=xpN){
-              p.xp-=xpN; p.livello=(p.livello||1)+1;
-              p.combattimento=Math.min(100,p.combattimento+5);
-              p.navigazione=Math.min(100,p.navigazione+5);
-              notifica('⬆ '+p.nome+' sale di livello!','Lv'+p.livello+' — Combattimento e Navigazione +5');
-            }
-          }
-        }
-        let bonusMsg='';
-        // Barbanera a bordo
-        if(n._blackbeard||G.pirati.find(p=>p.id==='cap_blackbeard'&&p.naveId===n.id)){
-          const extra=Math.floor(bottino*.5);
-          G.oro+=extra;
-          G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+5);
-          bonusMsg=' + Barbanera +'+extra+'!';
-        }
-        // Grazia a bordo (velocità già gestita in lanciaRaid)
-        if(n._grazia||G.pirati.find(p=>p.id==='cap_grazia'&&p.naveId===n.id)){
-          const extra=Math.floor(bottino*.15);
-          G.oro+=extra;
-          bonusMsg+=' + Grazia +'+extra+'!';
-        }
-        notifica('💰 Raid Completato!',n.nome+' porta '+bottino+' oro e '+cibo+' cibo!'+bonusMsg);
-      }
+      if(n.timerRaid<=0) rientroNave(n);
     }
   }
 
-  // Upkeep prigionieri
   for(const p of G.prigionieri){p.giorni++;G.cibo=Math.max(0,G.cibo-1);}
 
   if(G.cooldownRaid>0) G.cooldownRaid--;
-  G.fazioni.reale.rep=Math.max(-100,Math.min(100,G.fazioni.reale.rep+.5));
+  G.fazioni.reale.rep  =Math.max(-100,Math.min(100,G.fazioni.reale.rep+.5));
   G.fazioni.mercante.rep=Math.max(-100,Math.min(100,G.fazioni.mercante.rep+.2));
   if(G.tick%7===0) eventoRandom();
   controllaMissione('oro',G.oro);
@@ -3673,6 +3586,11 @@ function tick(){
 // ═══════════════════════════════════════════════════
 // EVENTI NARRATIVI
 // ═══════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════
+// MODULO: EVENTS
+// ═══════════════════════════════════════
 G.eventoAttivo=false;
 G.cooldownEvento=0;
 
@@ -4323,6 +4241,11 @@ function controllaMissione(tipo,val){
 // ═══════════════════════════════════════════════════
 // RENDER PANNELLO
 // ═══════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════
+// MODULO: UI
+// ═══════════════════════════════════════
 function mostraTab(tab){
   G.tabCorrente=tab;
   document.querySelectorAll('.ptab').forEach((b,i)=>{
@@ -4968,10 +4891,11 @@ function aggiornaUI(){
   renderPannello();
 }
 
-// ═══════════════════════════════════════════════════
-// INPUT
-// ═══════════════════════════════════════════════════
-// ── INPUT & PAN ──
+
+
+// ═══════════════════════════════════════
+// MODULO: INPUT
+// ═══════════════════════════════════════
 const pan={attivo:false,startX:0,startY:0,camStartX:0,camStartY:0,mosso:false};
 
 // ── MOBILE DRAWER ──
@@ -5013,6 +4937,11 @@ function impostaMobile(){
 // PATHFINDING A* — movimento pirati verso edifici
 // ═══════════════════════════════════════════════════
 
+
+
+// ═══════════════════════════════════════
+// MODULO: PATHFINDING
+// ═══════════════════════════════════════
 function heuristica(r1,c1,r2,c2){ return Math.abs(r1-r2)+Math.abs(c1-c2); }
 
 // Costo per attraversare un tile (sentiero preferito, erba ok, rocce no)
@@ -5071,55 +5000,93 @@ function astar(sr,sc,er,ec){
   return null; // nessun percorso
 }
 
-// Aggiorna destinazione e percorso di un pirata
+// ── MOVIMENTO PIRATI — stile Tropico 2 ──
+// Ogni pirata ha uno stato: 'vaga' | 'cammina' | 'pausa'
+// Vaga: si muove casualmente sul tile corrente (piccoli passi)
+// Cammina: segue un percorso A* verso un edificio
+// Pausa: aspetta qualche secondo all'edificio prima di ripartire
+//
+// Il tick chiama aggiornaPirata() → decide lo stato
+// Il render chiama muoviPirata() → applica il movimento frame per frame
+
 function aggiornaPirata(p){
-  // Scegli destinazione: un edificio casuale se non ne ha una
-  if(!p.dest||p.percorso===null||(p.percorsoIdx>=(p.percorso||[]).length)){
-    if(G.edifici.length===0){ p.dest=null; return; }
-    const target=G.edifici[Math.floor(Math.random()*G.edifici.length)];
-    const tr=target.r, tc=target.c;
-    const sr=Math.round(p.mr), sc2=Math.round(p.mc);
-    const path=astar(sr,sc2,tr,tc);
-    p.dest={r:tr,c:tc};
-    p.percorso=path;
-    p.percorsoIdx=0;
+  // Se il pirata è in stato 'pausa', decrementa il timer
+  if(p._stato==='pausa'){
+    p._pausaTimer=(p._pausaTimer||0)-1;
+    if(p._pausaTimer<=0){
+      // Pausa finita — torna a vagare o scegli nuova dest
+      p._stato='vaga';
+      p.dest=null; p.percorso=null; p.percorsoIdx=0;
+    }
+    return;
+  }
+
+  // Se sta camminando e ha raggiunto la destinazione → pausa
+  if(p._stato==='cammina' && p.percorso && p.percorsoIdx>=(p.percorso.length||0)){
+    p._stato='pausa';
+    p._pausaTimer=40+Math.floor(Math.random()*60); // pausa 40-100 frame (~1-2 secondi)
+    return;
+  }
+
+  // Se sta vagando, ogni tanto scegli una nuova destinazione
+  if(p._stato!=='cammina'){
+    p._vagaTimer=(p._vagaTimer||0)-1;
+    if(p._vagaTimer>0) return; // continua a vagare
+    p._vagaTimer=30+Math.floor(Math.random()*50);
+
+    // Con edifici disponibili: vai verso uno casuale (ma non sempre lo stesso)
+    if(G.edifici.length>0 && Math.random()<0.65){
+      // Escludi la destinazione precedente se possibile
+      const candidati=G.edifici.filter(b=>!p.dest||(b.r!==p.dest.r||b.c!==p.dest.c));
+      const pool=candidati.length>0 ? candidati : G.edifici;
+      const target=pool[Math.floor(Math.random()*pool.length)];
+      const sr=Math.max(0,Math.min(G.RIGHE-1,Math.round(p.mr)));
+      const sc=Math.max(0,Math.min(G.COLS-1,Math.round(p.mc)));
+      const path=astar(sr,sc,target.r,target.c);
+      if(path && path.length>0){
+        p.dest={r:target.r,c:target.c};
+        p.percorso=path;
+        p.percorsoIdx=0;
+        p._stato='cammina';
+      }
+    }
+    // altrimenti rimane a vagare nel tile corrente
   }
 }
 
-// Muove un pirata lungo il percorso calcolato
+// Muove un pirata frame per frame (chiamato dal renderer ~60fps)
 function muoviPirata(p){
-  if(!p.percorso||p.percorso.length===0){
-    // movimento casuale legacy se non ha percorso
-    p.mc+=(Math.random()-.5)*.04*G.velocita;
-    p.mr+=(Math.random()-.5)*.04*G.velocita;
-    p.mc=Math.max(G.COLS*.2,Math.min(G.COLS*.8,p.mc));
-    p.mr=Math.max(G.RIGHE*.2,Math.min(G.RIGHE*.8,p.mr));
-    return;
-  }
-  if(p.percorsoIdx>=p.percorso.length){
-    // arrivato — pausa breve poi nuova dest
-    p.pausaTick=(p.pausaTick||0)-1;
-    if(p.pausaTick<=0){ p.dest=null; p.percorso=null; p.percorsoIdx=0; }
-    return;
-  }
-  const target=p.percorso[p.percorsoIdx];
-  const targetMc=target.c+.5, targetMr=target.r+.5;
-  const dx=targetMc-p.mc, dy=targetMr-p.mr;
-  const dist=Math.sqrt(dx*dx+dy*dy);
-  const speed=.06*G.velocita;
-  if(dist<speed+.05){
-    p.mc=targetMc; p.mr=targetMr;
-    p.percorsoIdx++;
-    if(p.percorsoIdx>=p.percorso.length){
-      p.pausaTick=3+Math.floor(Math.random()*4); // pausa 3-6 tick all'edificio
+  if(p._stato==='pausa') return; // fermo all'edificio
+
+  if(p._stato==='cammina' && p.percorso && p.percorsoIdx<p.percorso.length){
+    // Segui il percorso
+    const target=p.percorso[p.percorsoIdx];
+    const tx=target.c+.5, ty=target.r+.5;
+    const dx=tx-p.mc, dy=ty-p.mr;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const speed=.05*G.velocita;
+    if(dist<speed+.04){
+      p.mc=tx; p.mr=ty;
+      p.percorsoIdx++;
+    } else {
+      p.mc+=dx/dist*speed;
+      p.mr+=dy/dist*speed;
     }
   } else {
-    p.mc+=dx/dist*speed;
-    p.mr+=dy/dist*speed;
+    // Vaga: piccolo movimento casuale nel tile corrente
+    if(!p._vagaDx || Math.random()<0.02){
+      const a=Math.random()*Math.PI*2;
+      p._vagaDx=Math.cos(a)*.008;
+      p._vagaDy=Math.sin(a)*.008;
+    }
+    p.mc+=p._vagaDx*G.velocita;
+    p.mr+=p._vagaDy*G.velocita;
   }
-  // Mantieni dentro bounds
-  p.mc=Math.max(0,Math.min(G.COLS-.5,p.mc));
-  p.mr=Math.max(0,Math.min(G.RIGHE-.5,p.mr));
+
+  // Mantieni dentro i bounds dell'isola (zona centrale)
+  const margin=1.5;
+  p.mc=Math.max(margin,Math.min(G.COLS-margin,p.mc));
+  p.mr=Math.max(margin,Math.min(G.RIGHE-margin,p.mr));
 }
 
 // ── COSTRUZIONE SENTIERO ──
@@ -5150,9 +5117,11 @@ function rimuoviSentiero(r,c){
     for(const p of G.pirati){ p.percorso=null; p.percorsoIdx=0; }
   }
 }
-// ═══════════════════════════════════════════════════
-// PORTRAIT PIRATA HUD — stile Tropico 2
-// ═══════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════
+// MODULO: PORTRAIT
+// ═══════════════════════════════════════
 let _portraitPirataId=null;
 const pCtx=()=>document.getElementById('portrait-canvas').getContext('2d');
 
@@ -5401,11 +5370,6 @@ function disegnaPortraitCanvas(p, cEff, nEff, umore){
   px.fillText('Lv'+(p.livello||1)+' · '+(p.xp||0)+' xp', W*.5, H-11);
 }
 
-function chiudiPortrait(){
-  document.getElementById('portrait-hud').classList.remove('visibile');
-  G.pirataSelezionato=null;
-  _portraitPirataId=null;
-}
 
 // Aggiorna il portrait ogni frame se visibile
 function tickPortrait(){
@@ -5414,6 +5378,11 @@ function tickPortrait(){
   if(!p){ chiudiPortrait(); return; }
   aggiornaPortrait();
 }
+
+
+// ═══════════════════════════════════════
+// MODULO: CORE
+// ═══════════════════════════════════════
 function limiteCamera(){
   const tileW=G.TILE*G.zoom;
   const tileH=G.TILE*G.zoom;
@@ -5630,6 +5599,11 @@ function cambiaVelocita(){
 // ═══════════════════════════════════════════════════
 
 // Obiettivi vittoria — tutti devono essere soddisfatti
+
+
+// ═══════════════════════════════════════
+// MODULO: MAIN
+// ═══════════════════════════════════════
 const OBIETTIVI_VITTORIA=[
   {
     id:'flotta',
@@ -5765,13 +5739,16 @@ function riavviaGioco(){
 let ultimoTick=0;
 function cicloGioco(ts=0){
   requestAnimationFrame(cicloGioco);
-  try{
-    disegnaScena();
-    tickPortrait();
-    const intervallo=G.tickMs/G.velocita;
-    if(ts-ultimoTick>=intervallo){ultimoTick=ts;tick();}
-  }catch(err){console.error('cicloGioco:',err);}
+  try{ disegnaScena(); }catch(e){ console.error('disegnaScena:',e); }
+  try{ tickPortrait(); }catch(e){ console.error('tickPortrait:',e); }
+  const intervallo=G.tickMs/G.velocita;
+  if(ts-ultimoTick>=intervallo){
+    ultimoTick=ts;
+    try{ tick(); }catch(e){ console.error('tick:',e); }
+  }
 }
+
+
 
 </script>
 </body>
