@@ -629,6 +629,24 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 }
 
 
+/* Pulsante velocità — mostra stato corrente */
+#btn-velocita{
+  font-family:var(--font-label);font-size:var(--fs-sm);font-weight:700;
+  background:rgba(255,255,255,.07);border:1px solid var(--bordo);
+  color:var(--oro);padding:6px 14px;border-radius:5px;cursor:pointer;
+  min-height:36px;letter-spacing:1px;transition:all .15s;
+}
+#btn-velocita:hover{background:rgba(240,192,64,.18);border-color:var(--oro);}
+
+/* Pulsante musica */
+#btn-musica{
+  font-size:1.2rem;background:rgba(255,255,255,.07);
+  border:1px solid var(--bordo);color:var(--oro);
+  padding:6px 10px;border-radius:5px;cursor:pointer;
+  transition:all .15s;min-height:36px;
+}
+#btn-musica:hover{background:rgba(240,192,64,.18);border-color:var(--oro);}
+
 </style>
 </head>
 <body>
@@ -732,6 +750,7 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   <button class="btn-azione" onclick="apriPrigione()">⛓ Prigione</button>
   <button class="btn-azione pericolo" id="btn-annulla" onclick="annullaCostruzione()">✕ Annulla</button>
   <button id="btn-velocita" onclick="cambiaVelocita()">▶▶ Veloce</button>
+  <button id="btn-musica" onclick="toggleMusica()" title="Musica">🎵</button>
 </div>
 
 <!-- DRAWER OVERLAY (mobile) -->
@@ -806,6 +825,449 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 <script>
 
 // ═══════════════════════════════════════
+// MODULO: MUSIC
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// MUSICA PROCEDURALE — stile Tropico 2
+// Web Audio API pura, zero file esterni.
+//
+// Struttura: intro → loop principale (A+B) → variazioni
+// Strumenti: chitarra classica, fisarmonica, percussioni caraibiche,
+//            basso, flauto (melody ornamentale)
+// Tonalità: Am (Minore Armonica) — tipico dei Caraibi / piratesco
+// Tempo: 92 BPM
+// ═══════════════════════════════════════════════════
+
+const MUSIC = (() => {
+
+  let ctx = null;         // AudioContext
+  let masterGain = null;  // volume master
+  let running = false;
+  let startTime = 0;
+  let schedulerTimer = null;
+  let currentBeat = 0;
+  let currentBar = 0;
+  let volume = 0.45;      // volume default
+
+  // ── COSTANTI ──
+  const BPM = 92;
+  const BEAT = 60 / BPM;           // durata di un beat in secondi
+  const BAR  = BEAT * 4;           // durata di una misura (4/4)
+  const LOOKAHEAD   = 0.15;        // scheduler lookahead (sec)
+  const SCHEDULE_MS = 60;          // intervallo scheduler (ms)
+
+  // ── SCALA Am Armonica ──
+  // Note in Hz: A3=220, B3=247, C4=261, D4=294, E4=330, F4=349, G#4=415, A4=440
+  const NOTES = {
+    A2:110, E3:165, A3:220, B3:247, C4:261, D4:294, E4:330,
+    F4:349, G4:392, Gs4:415, A4:440, B4:494, C5:523, D5:587,
+    E5:659, F5:698, Gs5:831, A5:880,
+  };
+
+  // Accordi principali
+  const CHORDS = {
+    Am:  [NOTES.A3, NOTES.E4, NOTES.A4],
+    Dm:  [NOTES.D4, NOTES.F4, NOTES.A4],
+    E7:  [NOTES.E4, NOTES.Gs4, NOTES.B4],
+    F:   [NOTES.F4, NOTES.A4, NOTES.C5],
+    G:   [NOTES.G4, NOTES.B4, NOTES.D5],
+    Am2: [NOTES.A2, NOTES.E3, NOTES.A3],
+  };
+
+  // ── INIZIALIZZA AUDIO ──
+  function init() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+  }
+
+  // ── GENERATORI DI TIMBRI ──
+
+  // Chitarra classica: additive synthesis con envelope a pizzico
+  function playGuitar(freq, time, dur, gainVal=0.18) {
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc1.type = 'sawtooth'; osc1.frequency.value = freq;
+    osc2.type = 'triangle'; osc2.frequency.value = freq * 2.005; // leggero detune
+
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(3500, time);
+    filter.frequency.exponentialRampToValueAtTime(800, time + dur * 0.6);
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(gainVal, time + 0.005);
+    gain.gain.exponentialRampToValueAtTime(gainVal * 0.4, time + dur * 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+    osc1.connect(filter); osc2.connect(filter);
+    filter.connect(gain); gain.connect(masterGain);
+    osc1.start(time); osc2.start(time);
+    osc1.stop(time + dur + 0.05); osc2.stop(time + dur + 0.05);
+  }
+
+  // Fisarmonica: onda quadra con vibrato — timbro nasale caraibico
+  function playAccordion(freq, time, dur, gainVal=0.09) {
+    const osc  = ctx.createOscillator();
+    const lfo  = ctx.createOscillator();
+    const lfoG = ctx.createGain();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = 'square'; osc.frequency.value = freq;
+    lfo.type = 'sine';   lfo.frequency.value = 5.5;
+    lfoG.gain.value = freq * 0.006; // vibrato depth
+    lfo.connect(lfoG); lfoG.connect(osc.frequency);
+
+    filter.type = 'bandpass'; filter.frequency.value = freq * 1.8; filter.Q.value = 1.2;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(gainVal, time + 0.04);
+    gain.gain.setValueAtTime(gainVal, time + dur - 0.06);
+    gain.gain.linearRampToValueAtTime(0, time + dur);
+
+    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+    lfo.start(time); osc.start(time);
+    lfo.stop(time + dur + 0.05); osc.stop(time + dur + 0.05);
+  }
+
+  // Basso (pizzicato basso): sinusoide con sub-attack morbido
+  function playBass(freq, time, dur, gainVal=0.28) {
+    const osc  = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = 'triangle'; osc.frequency.value = freq;
+    osc2.type = 'sine';    osc2.frequency.value = freq * 0.5; // sub
+
+    filter.type = 'lowpass'; filter.frequency.value = 350;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(gainVal, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(gainVal * 0.5, time + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+    osc.connect(filter); osc2.connect(filter);
+    filter.connect(gain); gain.connect(masterGain);
+    osc.start(time); osc2.start(time);
+    osc.stop(time + dur + 0.05); osc2.stop(time + dur + 0.05);
+  }
+
+  // Flauto (melodia): onda sinusoidale con attacco morbido
+  function playFlute(freq, time, dur, gainVal=0.07) {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine'; osc.frequency.value = freq;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(gainVal, time + 0.06);
+    gain.gain.setValueAtTime(gainVal, time + dur - 0.08);
+    gain.gain.linearRampToValueAtTime(0, time + dur);
+
+    osc.connect(gain); gain.connect(masterGain);
+    osc.start(time); osc.stop(time + dur + 0.05);
+  }
+
+  // ── PERCUSSIONI ──
+
+  // Conga/tamburo basso caraibico
+  function playConga(time, isAccent=false) {
+    const noise = ctx.createBufferSource();
+    const buf   = ctx.createBuffer(1, ctx.sampleRate * 0.18, ctx.sampleRate);
+    const data  = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/data.length, 3);
+
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const ngain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(isAccent ? 180 : 130, time);
+    osc.frequency.exponentialRampToValueAtTime(60, time + 0.12);
+
+    filter.type = 'bandpass'; filter.frequency.value = 400; filter.Q.value = 2;
+    ngain.gain.value = 0.04;
+
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(isAccent ? 0.22 : 0.14, time + 0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.16);
+
+    noise.buffer = buf;
+    noise.connect(filter); filter.connect(ngain); ngain.connect(masterGain);
+    osc.connect(gain); gain.connect(masterGain);
+    noise.start(time); osc.start(time);
+    noise.stop(time + 0.2); osc.stop(time + 0.2);
+  }
+
+  // Shaker (maracas) — rumore filtrato highpass
+  function playShaker(time, gainVal=0.06) {
+    const buf  = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/data.length, 2);
+
+    const src    = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain   = ctx.createGain();
+
+    filter.type = 'highpass'; filter.frequency.value = 5000;
+    gain.gain.setValueAtTime(gainVal, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+
+    src.buffer = buf;
+    src.connect(filter); filter.connect(gain); gain.connect(masterGain);
+    src.start(time); src.stop(time + 0.06);
+  }
+
+  // Piatto (crash leggero)
+  function playCymbal(time, gainVal=0.04) {
+    const buf  = ctx.createBuffer(1, ctx.sampleRate * 0.4, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i/data.length, 1.2);
+
+    const src    = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain   = ctx.createGain();
+
+    filter.type = 'bandpass'; filter.frequency.value = 8000; filter.Q.value = 0.8;
+    gain.gain.setValueAtTime(gainVal, time);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.35);
+
+    src.buffer = buf;
+    src.connect(filter); filter.connect(gain); gain.connect(masterGain);
+    src.start(time); src.stop(time + 0.45);
+  }
+
+  // ── PATTERN MUSICALI ──
+
+  // Arpeggio di chitarra su accordo
+  function guitarArpeggio(chord, barTime, pattern) {
+    // pattern: array di {beat, noteIdx, dur}
+    pattern.forEach(({beat, noteIdx, dur}) => {
+      const noteFreq = chord[noteIdx % chord.length];
+      playGuitar(noteFreq, barTime + beat * BEAT, dur * BEAT);
+    });
+  }
+
+  // Basso: una nota per beat con il pattern
+  function bassLine(notes, barTime) {
+    notes.forEach(([beat, freq, dur]) => {
+      if (freq) playBass(freq, barTime + beat * BEAT, dur * BEAT);
+    });
+  }
+
+  // ── SEZIONE A — Am principale ──
+  // (misure 0-3): intro piratesca, ritmo staccato chitarra + basso + conga
+  function scheduleBarA(barTime) {
+    // Basso
+    bassLine([
+      [0, NOTES.A2, 0.9], [2, NOTES.E3, 0.45], [2.5, NOTES.A2, 0.45],
+      [3, NOTES.D4*0.5, 0.5], // D2 (bassa)
+    ], barTime);
+
+    // Chitarra arpeggio Am
+    guitarArpeggio(CHORDS.Am, barTime, [
+      {beat:0,    noteIdx:0, dur:0.4},
+      {beat:0.5,  noteIdx:1, dur:0.35},
+      {beat:1,    noteIdx:2, dur:0.55},
+      {beat:1.5,  noteIdx:1, dur:0.3},
+      {beat:2,    noteIdx:0, dur:0.4},
+      {beat:2.5,  noteIdx:2, dur:0.35},
+      {beat:3,    noteIdx:1, dur:0.5},
+      {beat:3.5,  noteIdx:0, dur:0.4},
+    ]);
+
+    // Conga pattern caraibico: 1 - & 3 - &
+    playConga(barTime + 0 * BEAT, true);
+    playConga(barTime + 0.5 * BEAT);
+    playConga(barTime + 1.5 * BEAT);
+    playConga(barTime + 2 * BEAT, true);
+    playConga(barTime + 2.75 * BEAT);
+    playConga(barTime + 3.5 * BEAT);
+
+    // Shaker su ogni ottavo
+    for (let i = 0; i < 8; i++) playShaker(barTime + i * BEAT * 0.5);
+  }
+
+  // ── SEZIONE B — modulazione Dm/E7 ──
+  function scheduleBarB(barTime) {
+    // Basso
+    bassLine([
+      [0, NOTES.D4*0.5, 0.9], [1.5, NOTES.A2, 0.5],
+      [2, NOTES.E3*0.5*0.5, 0.9], [3.5, NOTES.A2, 0.4],
+    ], barTime);
+
+    // Chitarra Dm → E7
+    guitarArpeggio(CHORDS.Dm, barTime, [
+      {beat:0, noteIdx:0, dur:0.5}, {beat:0.5, noteIdx:1, dur:0.4},
+      {beat:1, noteIdx:2, dur:0.6}, {beat:1.5, noteIdx:1, dur:0.35},
+    ]);
+    guitarArpeggio(CHORDS.E7, barTime, [
+      {beat:2, noteIdx:0, dur:0.5}, {beat:2.5, noteIdx:1, dur:0.4},
+      {beat:3, noteIdx:2, dur:0.7}, {beat:3.5, noteIdx:0, dur:0.4},
+    ]);
+
+    // Conga variazione
+    playConga(barTime + 0 * BEAT, true);
+    playConga(barTime + 0.75 * BEAT);
+    playConga(barTime + 1.5 * BEAT, true);
+    playConga(barTime + 2 * BEAT);
+    playConga(barTime + 2.5 * BEAT);
+    playConga(barTime + 3 * BEAT, true);
+    playConga(barTime + 3.75 * BEAT);
+
+    for (let i = 0; i < 8; i++) playShaker(barTime + i * BEAT * 0.5, 0.05);
+  }
+
+  // ── SEZIONE C — fisarmonica melody + piatto ──
+  function scheduleBarC(barTime) {
+    // Basso
+    bassLine([
+      [0, NOTES.A2, 0.9], [2, NOTES.F4*0.5, 0.9],
+    ], barTime);
+
+    // Fisarmonica melodia in Am: frase ispirata al tema Tropico 2
+    const melody = [
+      [0,   NOTES.E5,  0.9],
+      [1,   NOTES.D5,  0.5],
+      [1.5, NOTES.C5,  0.4],
+      [2,   NOTES.A4,  0.6],
+      [2.5, NOTES.B4,  0.4],
+      [3,   NOTES.C5,  0.5],
+      [3.5, NOTES.B4,  0.4],
+    ];
+    melody.forEach(([beat, freq, dur]) =>
+      playAccordion(freq, barTime + beat * BEAT, dur * BEAT));
+
+    // Chitarra sostegno
+    guitarArpeggio(CHORDS.Am, barTime, [
+      {beat:0, noteIdx:0, dur:0.8}, {beat:1, noteIdx:1, dur:0.8},
+      {beat:2, noteIdx:2, dur:0.8}, {beat:3, noteIdx:1, dur:0.8},
+    ]);
+
+    // Conga + piatto
+    playConga(barTime + 0 * BEAT, true);
+    playConga(barTime + 1 * BEAT);
+    playConga(barTime + 2 * BEAT, true);
+    playConga(barTime + 3 * BEAT);
+    playCymbal(barTime);
+    for (let i = 0; i < 8; i++) playShaker(barTime + i * BEAT * 0.5);
+  }
+
+  // ── SEZIONE D — risoluzione con flauto ──
+  function scheduleBarD(barTime) {
+    // Basso risoluzione
+    bassLine([
+      [0, NOTES.E3, 0.9], [1, NOTES.A2, 0.5],
+      [2, NOTES.A2, 0.9], [3, NOTES.E3, 0.9],
+    ], barTime);
+
+    // Flauto: variazione melodica acuta
+    const fluteM = [
+      [0,   NOTES.A5,  0.6],
+      [0.75,NOTES.Gs5, 0.4],
+      [1.5, NOTES.A5,  0.5],
+      [2,   NOTES.E5,  0.8],
+      [3,   NOTES.D5,  0.5],
+      [3.5, NOTES.E5,  0.4],
+    ];
+    fluteM.forEach(([beat, freq, dur]) =>
+      playFlute(freq, barTime + beat * BEAT, dur * BEAT));
+
+    // Chitarra E7 → Am (cadenza)
+    guitarArpeggio(CHORDS.E7, barTime, [
+      {beat:0, noteIdx:0, dur:0.5},{beat:0.5, noteIdx:2, dur:0.4},
+      {beat:1, noteIdx:1, dur:0.7},{beat:1.5, noteIdx:0, dur:0.4},
+    ]);
+    guitarArpeggio(CHORDS.Am, barTime, [
+      {beat:2, noteIdx:2, dur:0.6},{beat:2.5, noteIdx:1, dur:0.4},
+      {beat:3, noteIdx:0, dur:0.8},{beat:3.5, noteIdx:2, dur:0.5},
+    ]);
+
+    playCymbal(barTime);
+    playConga(barTime + 0 * BEAT, true);
+    playConga(barTime + 1 * BEAT);
+    playConga(barTime + 2 * BEAT, true);
+    playConga(barTime + 3.5 * BEAT);
+    for (let i = 0; i < 8; i++) playShaker(barTime + i * BEAT * 0.5);
+  }
+
+  // ── PATTERN LOOP (8 misure) ──
+  // A A B A  C D A B
+  const LOOP_PATTERN = ['A','A','B','A','C','D','A','B'];
+
+  function scheduleBar(barIndex, barTime) {
+    const section = LOOP_PATTERN[barIndex % LOOP_PATTERN.length];
+    if      (section === 'A') scheduleBarA(barTime);
+    else if (section === 'B') scheduleBarB(barTime);
+    else if (section === 'C') scheduleBarC(barTime);
+    else if (section === 'D') scheduleBarD(barTime);
+  }
+
+  // ── SCHEDULER ──
+  // Programma le misure in anticipo per evitare glitch audio
+  function scheduler() {
+    const now = ctx.currentTime;
+    const scheduleUntil = now + LOOKAHEAD;
+
+    while (startTime + currentBar * BAR < scheduleUntil) {
+      scheduleBar(currentBar, startTime + currentBar * BAR);
+      currentBar++;
+    }
+    schedulerTimer = setTimeout(scheduler, SCHEDULE_MS);
+  }
+
+  // ── API PUBBLICA ──
+
+  function start() {
+    if (running) return;
+    init();
+    if (ctx.state === 'suspended') ctx.resume();
+    running = true;
+    currentBar = 0;
+    startTime = ctx.currentTime + 0.1;
+    // Fade in
+    masterGain.gain.setValueAtTime(0, ctx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 2.5);
+    scheduler();
+  }
+
+  function stop() {
+    if (!running) return;
+    running = false;
+    clearTimeout(schedulerTimer);
+    // Fade out
+    if (masterGain) {
+      masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1.5);
+    }
+  }
+
+  function setVolume(v) {
+    volume = Math.max(0, Math.min(1, v));
+    if (masterGain && running) {
+      masterGain.gain.linearRampToValueAtTime(volume, ctx.currentTime + 0.3);
+    }
+  }
+
+  function toggle() {
+    running ? stop() : start();
+    return running;
+  }
+
+  function isRunning() { return running; }
+
+  return { start, stop, toggle, setVolume, isRunning };
+
+})();
+
+
+// ═══════════════════════════════════════
 // MODULO: STATE
 // ═══════════════════════════════════════
 // ═══════════════════════════════════════════════════
@@ -818,7 +1280,9 @@ const G={
   mappa:[], COLS:26, RIGHE:20, TILE:52,
   zoom:1, ZOOM_MIN:.45, ZOOM_MAX:2.2,
   camX:0, camY:0,
-  velocita:1, tickMs:2800,
+  // Proiezione isometrica 2:1
+  ISO_W:64, ISO_H:32, ISO_SCALE:1,
+  velocita:1, tickMs:8000,  // 1 giorno = 8s normale, /velocita in cicloGioco
   modalitaCostruzione:null, pirataSelezionato:null,
   cooldownRaid:0, tick:0,
   tabCorrente:'costruisci',
@@ -1148,512 +1612,492 @@ function generaMappa(){
 
 
 // ═══════════════════════════════════════
-// MODULO: RENDERER
+// MODULO: RENDERER_TILES
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// RENDERER TILES — Proiezione Isometrica 2:1
+//
+// Sistema di coordinate:
+//   Griglia (col, row) → Schermo (sx, sy) con:
+//   sx = (col - row) * ISO_W/2  + offsetX
+//   sy = (col + row) * ISO_H/2  + offsetY
+//
+// Ogni tile è un rombo (diamond) ISO_W × ISO_H.
+// Luce da nord-ovest: faccia N-W illuminata, S-E in ombra.
+// ═══════════════════════════════════════════════════
+
 let canvas, ctx;
-let frame=0;
+let frame = 0;
+let _tileCache = null;
 
-// cache dei gradienti riutilizzabili
-let _tileCache=null;
+// ── Converti griglia → schermo (centro del tile) ──
+function isoProj(col, row) {
+  const s = G.ISO_SCALE;
+  const W = G.ISO_W * s, H = G.ISO_H * s;
+  return {
+    x: G.camX + (col - row) * W / 2,
+    y: G.camY + (col + row) * H / 2,
+  };
+}
 
-function applicaZoom(delta, pivotX, pivotY){
-  const oldZoom=G.zoom;
-  G.zoom=Math.max(G.ZOOM_MIN, Math.min(G.ZOOM_MAX, G.zoom*delta));
-  if(G.zoom===oldZoom) return;
-  // mantieni il punto pivot fermo
-  G.camX=pivotX-(pivotX-G.camX)*(G.zoom/oldZoom);
-  G.camY=pivotY-(pivotY-G.camY)*(G.zoom/oldZoom);
+// ── Zoom con pivot ──
+function applicaZoom(delta, pivotX, pivotY) {
+  const oldScale = G.ISO_SCALE;
+  G.ISO_SCALE = Math.max(0.35, Math.min(2.5, G.ISO_SCALE * delta));
+  if (G.ISO_SCALE === oldScale) return;
+  const r = G.ISO_SCALE / oldScale;
+  G.camX = pivotX - (pivotX - G.camX) * r;
+  G.camY = pivotY - (pivotY - G.camY) * r;
   limiteCamera();
 }
 
-function ridimensionaCanvas(){
-  const wrap=document.getElementById('mappa-wrap');
-  canvas.width=wrap.clientWidth;
-  canvas.height=wrap.clientHeight;
-  // centra la mappa tenendo conto dello zoom
-  G.camX=Math.floor((canvas.width -G.COLS*G.TILE*G.zoom)/2);
-  G.camY=Math.floor((canvas.height-G.RIGHE*G.TILE*G.zoom)/2);
-  _tileCache=null;
+// ── Centra la camera sulla mappa ──
+function ridimensionaCanvas() {
+  const wrap = document.getElementById('mappa-wrap');
+  // Fallback se il DOM non è ancora stato ridimensionato (primo frame)
+  const w = wrap.clientWidth  || window.innerWidth;
+  const h = wrap.clientHeight || window.innerHeight - 90;
+  canvas.width  = w;
+  canvas.height = h;
+  const W = G.ISO_W * G.ISO_SCALE;
+  const H = G.ISO_H * G.ISO_SCALE;
+  // Centro della griglia in coordinate iso
+  const mapCX = (G.COLS - G.RIGHE) * W / 2;
+  const mapCY = (G.COLS + G.RIGHE) * H / 2;
+  G.camX = canvas.width  / 2 - mapCX / 2;
+  G.camY = canvas.height / 2 - mapCY / 2 - H * 2;
+  limiteCamera();
+  _tileCache = null;
 }
 
-// hash deterministico per variazioni per-tile
-function hash(r,c,salt){
-  let v=(r*2749+c*1597+salt*3571)&0xffff;
-  v=((v^(v>>>7))*0x45d9f3b)&0xffff;
-  return (v&0xffff)/0xffff;
+// Hash deterministico per variazioni per-tile
+function hash(r, c, salt) {
+  let v = (r * 2749 + c * 1597 + salt * 3571) & 0xffff;
+  v = ((v ^ (v >>> 7)) * 0x45d9f3b) & 0xffff;
+  return (v & 0xffff) / 0xffff;
 }
 
-// ── disegna un singolo tile — stile Tropico ──
-function disegnaTile(t,x,y,r,c){
-  const S=G.TILE;
+// ── Disegna un tile a rombo isometrico ──
+// (cx,cy) = centro in alto del rombo (punto più alto)
+function disegnaTileIso(t, cx, cy, r, c) {
+  const s  = G.ISO_SCALE;
+  const W  = G.ISO_W * s;   // larghezza rombo
+  const H  = G.ISO_H * s;   // altezza rombo
+  const hw = W / 2, hh = H / 2;
 
-  // ── OCEANO PROFONDO — turchese caraibico ──
-  if(t===T.OCEANO){
-    const v=hash(r,c,1);
-    // base turchese profonda
-    const baseH=195+v*12;
-    ctx.fillStyle=`hsl(${baseH},72%,${18+v*6}%)`;
-    ctx.fillRect(x,y,S,S);
-    // vignetta bordi
-    const gd=ctx.createRadialGradient(x+S*.5,y+S*.5,S*.1,x+S*.5,y+S*.5,S*.9);
-    gd.addColorStop(0,'rgba(0,60,80,.0)');
-    gd.addColorStop(1,'rgba(0,20,40,.4)');
-    ctx.fillStyle=gd;ctx.fillRect(x,y,S,S);
-    // riflesso solare bianco-turchese
-    const shimmer=.04+Math.sin(frame*.025+c*.7+r*.4)*.02;
-    const gs=ctx.createLinearGradient(x,y,x+S*.6,y+S*.5);
-    gs.addColorStop(0,`rgba(180,255,255,${shimmer})`);
-    gs.addColorStop(1,'rgba(120,220,255,0)');
-    ctx.fillStyle=gs;ctx.fillRect(x,y,S,S);
-    // onde caraibiche animate — 3 layer
-    const f1=frame*.018+c*.55+r*.3;
-    const f2=frame*.013+c*.38-r*.25;
-    const f3=frame*.022-c*.3+r*.42;
-    ctx.lineWidth=2;
-    ctx.strokeStyle=`rgba(160,240,255,${.12+Math.sin(f1)*.05})`;
-    ctx.beginPath();
-    ctx.moveTo(x,y+S*.28+Math.sin(f1)*3.5);
-    ctx.bezierCurveTo(x+S*.3,y+S*.28+Math.sin(f1+1)*4,x+S*.7,y+S*.28-Math.sin(f1+2)*4,x+S,y+S*.28+Math.sin(f1+3)*3.5);
-    ctx.stroke();
-    ctx.lineWidth=1.5;
-    ctx.strokeStyle=`rgba(120,220,255,${.08+Math.sin(f2)*.03})`;
-    ctx.beginPath();
-    ctx.moveTo(x,y+S*.56+Math.sin(f2)*2.5);
-    ctx.bezierCurveTo(x+S*.35,y+S*.56-Math.sin(f2+1)*3,x+S*.65,y+S*.56+Math.sin(f2+2)*3,x+S,y+S*.56+Math.sin(f2+3)*2.5);
-    ctx.stroke();
-    ctx.lineWidth=1;
-    ctx.strokeStyle=`rgba(200,255,255,${.05+Math.sin(f3)*.02})`;
-    ctx.beginPath();
-    ctx.moveTo(x,y+S*.76+Math.sin(f3)*2);
-    ctx.bezierCurveTo(x+S*.4,y+S*.76+Math.sin(f3+1)*2.5,x+S*.6,y+S*.76-Math.sin(f3)*2,x+S,y+S*.76+Math.sin(f3+2)*2);
-    ctx.stroke();
-    return;
-  }
-
-  // ── ACQUE BASSE — laguna color smeraldo ──
-  if(t===T.BASSO){
-    const sv=hash(r,c,9);
-    ctx.fillStyle=`hsl(${175+sv*15},${65+sv*15}%,${32+sv*10}%)`;
-    ctx.fillRect(x,y,S,S);
-    // fondale corallino visibile
-    for(let i=0;i<4;i++){
-      const cx2=x+hash(r,c,i+300)*S, cy2=y+hash(r,c,i+310)*S;
-      const col=hash(r,c,i+320);
-      ctx.fillStyle=col>.6?`rgba(240,160,80,${.12+col*.08})`:`rgba(180,80,80,${.08+col*.06})`;
-      ctx.beginPath();ctx.arc(cx2,cy2,2+col*4,0,Math.PI*2);ctx.fill();
-    }
-    // trasparenza acqua con gradiente toplight
-    const gt=ctx.createLinearGradient(x,y,x,y+S);
-    gt.addColorStop(0,`rgba(100,220,200,${.18+sv*.08})`);
-    gt.addColorStop(1,`rgba(20,100,120,${.1})`);
-    ctx.fillStyle=gt;ctx.fillRect(x,y,S,S);
-    // increspature
-    const fb=frame*.016+c*.48+r*.28;
-    ctx.strokeStyle=`rgba(200,255,240,${.15+Math.sin(fb)*.06})`;
-    ctx.lineWidth=1.5;
-    ctx.beginPath();
-    ctx.moveTo(x+S*.05,y+S*.42+Math.sin(fb)*2);
-    ctx.bezierCurveTo(x+S*.3,y+S*.4,x+S*.7,y+S*.44,x+S*.95,y+S*.42+Math.sin(fb+2)*2);
-    ctx.stroke();
-    ctx.strokeStyle=`rgba(200,255,240,${.08+Math.sin(fb+1.5)*.04})`;
-    ctx.lineWidth=1;
-    ctx.beginPath();
-    ctx.moveTo(x+S*.1,y+S*.68+Math.sin(fb+1)*1.5);
-    ctx.bezierCurveTo(x+S*.4,y+S*.66,x+S*.6,y+S*.7,x+S*.9,y+S*.68+Math.sin(fb+3)*1.5);
-    ctx.stroke();
-    return;
-  }
-
-  // ── SABBIA — spiaggia caraibica ──
-  if(t===T.SABBIA){
-    const sv=hash(r,c,2);
-    // sabbia calda con variazione
-    const r1=215+Math.floor(sv*25), g1=190+Math.floor(sv*20), b1=130+Math.floor(sv*20);
-    ctx.fillStyle=`rgb(${r1},${g1},${b1})`;
-    ctx.fillRect(x,y,S,S);
-    // texture granulosa
-    for(let i=0;i<8;i++){
-      const hx=hash(r,c,i+10),hy=hash(r,c,i+20),hr2=hash(r,c,i+30);
-      ctx.fillStyle=`rgba(${Math.floor(160+hr2*60)},${Math.floor(130+hr2*40)},${Math.floor(80+hr2*40)},${.1+hr2*.12})`;
-      ctx.beginPath();ctx.arc(x+hx*S,y+hy*S,0.8+hr2*2,0,Math.PI*2);ctx.fill();
-    }
-    // bordo bagnato verso mare
-    const gw=ctx.createLinearGradient(x,y+S*.6,x,y+S);
-    gw.addColorStop(0,'rgba(80,160,140,0)');
-    gw.addColorStop(1,'rgba(60,140,120,.28)');
-    ctx.fillStyle=gw;ctx.fillRect(x,y+S*.6,S,S*.4);
-    // highlight solare sx-alto
-    const gl=ctx.createLinearGradient(x,y,x+S*.4,y+S*.4);
-    gl.addColorStop(0,'rgba(255,250,220,.18)');
-    gl.addColorStop(1,'rgba(255,250,220,0)');
-    ctx.fillStyle=gl;ctx.fillRect(x,y,S,S);
-    // ombra destra-basso
-    const gs2=ctx.createLinearGradient(x+S*.6,y+S*.6,x+S,y+S);
-    gs2.addColorStop(0,'rgba(180,140,80,0)');
-    gs2.addColorStop(1,'rgba(140,100,50,.14)');
-    ctx.fillStyle=gs2;ctx.fillRect(x,y,S,S);
-    return;
-  }
-
-  // ── ERBA — verde tropicale brillante ──
-  if(t===T.ERBA){
-    const ev=hash(r,c,3);
-    const hue=108+ev*12;
-    ctx.fillStyle=`hsl(${hue},${52+ev*18}%,${28+ev*10}%)`;
-    ctx.fillRect(x,y,S,S);
-    // macchie di colore
-    const gp=ctx.createRadialGradient(
-      x+S*(0.25+hash(r,c,40)*.5),y+S*(0.25+hash(r,c,41)*.5),S*.05,
-      x+S*.5,y+S*.5,S*.55
-    );
-    gp.addColorStop(0,`hsla(${hue+8},68%,${36+ev*8}%,${.2+ev*.12})`);
-    gp.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=gp;ctx.fillRect(x,y,S,S);
-    // ciuffi d'erba tropicale
-    ctx.lineWidth=1.1;
-    for(let i=0;i<7;i++){
-      const gx=x+hash(r,c,i+50)*S;
-      const gy=y+hash(r,c,i+60)*S;
-      const gh=4+hash(r,c,i+70)*6;
-      const incl=(hash(r,c,i+80)-.5)*4;
-      const sat=50+ev*20;
-      ctx.strokeStyle=`hsla(${hue+15},${sat}%,${44+ev*12}%,.6)`;
-      ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+incl,gy-gh);ctx.stroke();
-    }
-    // illuminazione calda
-    const gli=ctx.createLinearGradient(x,y,x+S,y+S);
-    gli.addColorStop(0,'rgba(255,255,180,.07)');
-    gli.addColorStop(0.5,'rgba(0,0,0,0)');
-    gli.addColorStop(1,'rgba(0,20,0,.1)');
-    ctx.fillStyle=gli;ctx.fillRect(x,y,S,S);
-    return;
-  }
-
-  // ── FORESTA — giungla densa ──
-  if(t===T.FORESTA){
-    const fv=hash(r,c,4);
-    ctx.fillStyle=`hsl(${118+fv*10},${58+fv*14}%,${14+fv*8}%)`;
-    ctx.fillRect(x,y,S,S);
-    // chiazze di verde più scuro/chiaro
-    for(let i=0;i<4;i++){
-      const bx=x+hash(r,c,i+90)*S, by=y+hash(r,c,i+95)*S;
-      const bv=hash(r,c,i+100);
-      ctx.fillStyle=`hsla(${115+bv*20},${50+bv*20}%,${12+bv*14}%,${.3+bv*.2})`;
-      ctx.beginPath();ctx.arc(bx,by,4+bv*8,0,Math.PI*2);ctx.fill();
-    }
-    // ombre dense sottobosco
-    const gs=ctx.createRadialGradient(x+S*.6,y+S*.6,0,x+S*.5,y+S*.5,S*.7);
-    gs.addColorStop(0,'rgba(0,0,0,0)');
-    gs.addColorStop(1,'rgba(0,15,5,.18)');
-    ctx.fillStyle=gs;ctx.fillRect(x,y,S,S);
-    return;
-  }
-
-  // ── ROCCIA — pietra vulcanica scura ──
-  if(t===T.ROCCIA){
-    const rv=hash(r,c,5);
-    ctx.fillStyle=`rgb(${Math.floor(70+rv*22)},${Math.floor(60+rv*18)},${Math.floor(50+rv*14)})`;
-    ctx.fillRect(x,y,S,S);
-    // texture spezzata
-    const gc=ctx.createLinearGradient(x,y,x+S*.7,y+S*.7);
-    gc.addColorStop(0,`rgba(160,140,110,${.12+rv*.08})`);
-    gc.addColorStop(1,`rgba(20,15,10,${.15+rv*.1})`);
-    ctx.fillStyle=gc;ctx.fillRect(x,y,S,S);
-    ctx.strokeStyle=`rgba(25,20,14,${.25+rv*.1})`;ctx.lineWidth=.9;
-    ctx.beginPath();
-    ctx.moveTo(x+hash(r,c,110)*S,y+hash(r,c,111)*S);
-    ctx.lineTo(x+hash(r,c,112)*S,y+hash(r,c,113)*S);
-    ctx.stroke();
-    return;
-  }
-
-  // ── COLLINA — roccia tropicale con vegetazione ──
-  if(t===T.COLLINA){
-    const cv=hash(r,c,6);
-    ctx.fillStyle=`rgb(${Math.floor(118+cv*22)},${Math.floor(100+cv*18)},${Math.floor(72+cv*14)})`;
-    ctx.fillRect(x,y,S,S);
-    // luce forte dall'alto-sinistra stile tropico
-    const gc=ctx.createLinearGradient(x,y,x+S,y+S);
-    gc.addColorStop(0,`rgba(255,240,180,${.2+cv*.08})`);
-    gc.addColorStop(0.4,'rgba(0,0,0,0)');
-    gc.addColorStop(1,`rgba(0,0,0,${.25+cv*.12})`);
-    ctx.fillStyle=gc;ctx.fillRect(x,y,S,S);
-    // ciuffi di vegetazione sparsi sulle pendici
-    ctx.lineWidth=1;
-    for(let i=0;i<5;i++){
-      const gx=x+hash(r,c,i+120)*S, gy=y+hash(r,c,i+130)*S;
-      const gh=3+hash(r,c,i+140)*5;
-      ctx.strokeStyle=`rgba(80,120,40,${.35+cv*.15})`;
-      ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+(hash(r,c,i+150)-.5)*3,gy-gh);ctx.stroke();
-    }
-    // bordo vignetta
-    const gv=ctx.createRadialGradient(x+S*.4,y+S*.35,0,x+S*.5,y+S*.5,S*.7);
-    gv.addColorStop(0,'rgba(255,220,150,.04)');
-    gv.addColorStop(1,'rgba(0,0,0,.1)');
-    ctx.fillStyle=gv;ctx.fillRect(x,y,S,S);
-    return;
-  }
-
-  // ── FIUME — acqua dolce scorrente ──
-  if(t===T.FIUME){
-    ctx.fillStyle='#2a6040';
-    ctx.fillRect(x,y,S,S);
-    const ff=frame*.022+c*.45+r*.32;
-    // acqua turchese chiara
-    ctx.fillStyle=`rgba(40,140,200,${.82+Math.sin(ff)*.06})`;
-    ctx.fillRect(x+S*.14,y+S*.14,S*.72,S*.72);
-    // highlight superficie
-    const gf=ctx.createLinearGradient(x+S*.14,y+S*.14,x+S*.5,y+S*.5);
-    gf.addColorStop(0,`rgba(140,220,255,${.25+Math.sin(ff+1)*.08})`);
-    gf.addColorStop(1,'rgba(40,140,200,0)');
-    ctx.fillStyle=gf;ctx.fillRect(x+S*.14,y+S*.14,S*.72,S*.72);
-    // corrente animata
-    ctx.strokeStyle=`rgba(200,240,255,${.22+Math.sin(ff*1.4)*.1})`;
-    ctx.lineWidth=1.2;
-    ctx.beginPath();
-    ctx.moveTo(x+S*.18,y+S*.4+Math.sin(ff)*2);
-    ctx.bezierCurveTo(x+S*.4,y+S*.38,x+S*.6,y+S*.42,x+S*.82,y+S*.4+Math.sin(ff+2)*2);
-    ctx.stroke();
-    // rive erbose
-    ctx.fillStyle='rgba(40,100,40,.5)';
-    ctx.fillRect(x,y,S,S*.16);
-    ctx.fillRect(x,y+S*.84,S,S*.16);
-    ctx.fillRect(x,y,S*.16,S);
-    ctx.fillRect(x+S*.84,y,S*.16,S);
-    return;
-  }
-
-  // ── SENTIERO — terra battuta con connessioni ai vicini ──
-  if(t===T.SENTIERO){
-    const pv=hash(r,c,7);
-    // base terra battuta
-    ctx.fillStyle=`rgb(${Math.floor(148+pv*18)},${Math.floor(118+pv*14)},${Math.floor(65+pv*10)})`;
-    ctx.fillRect(x,y,S,S);
-    // connessioni ai vicini — allarga la carreggiata verso i tile sentiero adiacenti
-    const N=G.mappa[r-1]&&G.mappa[r-1][c]; const S2=G.mappa[r+1]&&G.mappa[r+1][c];
-    const W=G.mappa[r]&&G.mappa[r][c-1]; const E2=G.mappa[r]&&G.mappa[r][c+1];
-    const isPath=(t2)=>t2===T.SENTIERO||G.edifici.find(b=>b.r===(t2===N?r-1:t2===S2?r+1:r)&&b.c===(t2===W?c-1:t2===E2?c+1:c));
-    const connN=N===T.SENTIERO||G.edifici.find(b=>b.r===r-1&&b.c===c);
-    const connS=S2===T.SENTIERO||G.edifici.find(b=>b.r===r+1&&b.c===c);
-    const connW=W===T.SENTIERO||G.edifici.find(b=>b.r===r&&b.c===c-1);
-    const connE=E2===T.SENTIERO||G.edifici.find(b=>b.r===r&&b.c===c+1);
-    // corsie
-    const pw=S*.28; // larghezza carreggiata
-    ctx.fillStyle=`rgb(${Math.floor(135+pv*15)},${Math.floor(105+pv*12)},${Math.floor(55+pv*8)})`;
-    // centro sempre
-    ctx.fillRect(x+S*.5-pw*.5,y+S*.5-pw*.5,pw,pw);
-    if(connN||connS){ctx.fillRect(x+S*.5-pw*.5,y,pw,S);}
-    if(connW||connE){ctx.fillRect(x,y+S*.5-pw*.5,S,pw);}
-    if(!connN&&!connS&&!connW&&!connE){ctx.fillRect(x+S*.2,y+S*.2,S*.6,S*.6);}
-    // solchi/texture
-    ctx.strokeStyle=`rgba(100,72,30,${.3+pv*.15})`;ctx.lineWidth=.8;
-    ctx.beginPath();ctx.moveTo(x+S*.38,y);ctx.lineTo(x+S*.36,y+S);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(x+S*.62,y);ctx.lineTo(x+S*.64,y+S);ctx.stroke();
-    // ciottoli sparsi
-    for(let i=0;i<3;i++){
-      ctx.fillStyle=`rgba(175,155,105,${.25+hash(r,c,i+180)*.25})`;
-      ctx.beginPath();ctx.arc(x+hash(r,c,i+160)*S,y+hash(r,c,i+170)*S,0.8+hash(r,c,i+190)*1.2,0,Math.PI*2);ctx.fill();
-    }
-    // erba ai bordi (bordi non connessi)
-    if(!connN){const g=ctx.createLinearGradient(x,y,x,y+S*.22);g.addColorStop(0,'rgba(40,90,30,.3)');g.addColorStop(1,'rgba(40,90,30,0)');ctx.fillStyle=g;ctx.fillRect(x,y,S,S*.22);}
-    if(!connS){const g=ctx.createLinearGradient(x,y+S,x,y+S*.78);g.addColorStop(0,'rgba(40,90,30,.3)');g.addColorStop(1,'rgba(40,90,30,0)');ctx.fillStyle=g;ctx.fillRect(x,y+S*.78,S,S*.22);}
-    if(!connW){const g=ctx.createLinearGradient(x,y,x+S*.22,y);g.addColorStop(0,'rgba(40,90,30,.3)');g.addColorStop(1,'rgba(40,90,30,0)');ctx.fillStyle=g;ctx.fillRect(x,y,S*.22,S);}
-    if(!connE){const g=ctx.createLinearGradient(x+S,y,x+S*.78,y);g.addColorStop(0,'rgba(40,90,30,.3)');g.addColorStop(1,'rgba(40,90,30,0)');ctx.fillStyle=g;ctx.fillRect(x+S*.78,y,S*.22,S);}
-    return;
-  }
-
-  // ── PALUDE ──
-  if(t===T.PALUDE){
-    const mv=hash(r,c,8);
-    ctx.fillStyle=`rgb(${Math.floor(45+mv*15)},${Math.floor(65+mv*18)},${Math.floor(35+mv*12)})`;
-    ctx.fillRect(x,y,S,S);
-    // pozze d\'acqua scura
-    for(let i=0;i<2;i++){
-      const wx=x+hash(r,c,i+200)*S*.7+S*.1;
-      const wy=y+hash(r,c,i+210)*S*.7+S*.1;
-      const wr=3+hash(r,c,i+220)*6;
-      ctx.fillStyle=`rgba(20,50,40,${.55+hash(r,c,i+230)*.2})`;
-      ctx.beginPath();ctx.ellipse(wx,wy,wr,wr*.6,0,0,Math.PI*2);ctx.fill();
-    }
-    // alghe/muschio
-    ctx.strokeStyle=`rgba(30,80,30,${.4+mv*.2})`;
-    ctx.lineWidth=.8;
-    for(let i=0;i<3;i++){
-      const ax=x+hash(r,c,i+240)*S, ay=y+hash(r,c,i+250)*S;
-      ctx.beginPath();ctx.arc(ax,ay,2+hash(r,c,i+260)*3,0,Math.PI*2);ctx.stroke();
-    }
-    // nebbia leggera
-    const gm=ctx.createRadialGradient(x+S*.5,y+S*.5,0,x+S*.5,y+S*.5,S*.6);
-    gm.addColorStop(0,'rgba(150,200,150,.04)');
-    gm.addColorStop(1,'rgba(100,160,100,.12)');
-    ctx.fillStyle=gm;ctx.fillRect(x,y,S,S);
-    return;
-  }
-
-  // fallback
-  ctx.fillStyle='#333';
-  ctx.fillRect(x,y,S,S);
-}
-
-// ── disegna transizioni bordo tra biomi (chiamata dentro ctx.save/scale) ──
-function disegnaTransizioni(){
-  const S=G.TILE;
-  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
-    const t=G.mappa[r][c];
-    const x=c*S, y=r*S;
-    if(t!==T.SABBIA&&t!==T.ERBA&&t!==T.FORESTA) continue;
-    const vicini=[[r-1,c,0,1,'top'],[r+1,c,0,-1,'bot'],[r,c-1,1,0,'lft'],[r,c+1,-1,0,'rgt']];
-    for(const vicino of vicini){
-      const nr=vicino[0],nc=vicino[1],dir=vicino[4];
-      const nt=G.mappa[nr]&&G.mappa[nr][nc];
-      if(nt===undefined) continue;
-      if((nt===T.OCEANO||nt===T.BASSO)&&t===T.SABBIA){
-        let gx1=x,gy1=y,gx2=x,gy2=y;
-        const d=S*.4;
-        if(dir==='top'){gy2=y+d;}else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
-        else if(dir==='lft'){gx2=x+d;}else{gx1=x+S;gx2=x+S-d;}
-        const gt=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
-        gt.addColorStop(0,'rgba(60,100,120,.35)');gt.addColorStop(1,'rgba(60,100,120,0)');
-        ctx.fillStyle=gt;ctx.fillRect(x,y,S,S);
-      }
-      if(nt===T.FORESTA&&(t===T.ERBA||t===T.SABBIA)){
-        let gx1=x,gy1=y,gx2=x,gy2=y;
-        const d=S*.5;
-        if(dir==='top'){gy2=y+d;}else if(dir==='bot'){gy1=y+S;gy2=y+S-d;}
-        else if(dir==='lft'){gx2=x+d;}else{gx1=x+S;gx2=x+S-d;}
-        const gf=ctx.createLinearGradient(gx1,gy1,gx2,gy2);
-        gf.addColorStop(0,'rgba(10,40,10,.28)');gf.addColorStop(1,'rgba(10,40,10,0)');
-        ctx.fillStyle=gf;ctx.fillRect(x,y,S,S);
-      }
-    }
-  }
-}
-
-// ── disegna albero — palma tropicale stile Tropico ──
-function disegnaAlbero(ax,ay,scala,tinta,palude){
-  const S=G.TILE;
-  const cx2=ax+S/2, cy2=ay+S/2;
-  const h=S*scala;
-  // ombra ellittica morbida
-  ctx.save();
-  ctx.globalAlpha=.22;
-  ctx.fillStyle='#001a08';
+  // Percorso rombo: top → right → bottom → left
   ctx.beginPath();
-  ctx.ellipse(cx2+h*.2,cy2+h*.35,h*.38,h*.13,0,0,Math.PI*2);
+  ctx.moveTo(cx,      cy);       // top
+  ctx.lineTo(cx + hw, cy + hh);  // right
+  ctx.lineTo(cx,      cy + H);   // bottom
+  ctx.lineTo(cx - hw, cy + hh);  // left
+  ctx.closePath();
+
+  switch (t) {
+
+    case T.OCEANO: {
+      const v   = hash(r, c, 1);
+      const hue = 195 + v * 14;
+      const wave = Math.sin(frame * .018 + c * .55 + r * .3) * .04;
+      ctx.fillStyle = `hsl(${hue}, 72%, ${20 + v*6 + wave*8}%)`;
+      ctx.fill();
+      // riflesso solare
+      const shim = .06 + Math.sin(frame * .025 + c * .7) * .025;
+      ctx.fillStyle = `rgba(180,255,255,${shim})`;
+      ctx.beginPath();
+      ctx.moveTo(cx - hw * .5, cy + hh * .4);
+      ctx.lineTo(cx,           cy + hh * .1);
+      ctx.lineTo(cx + hw * .3, cy + hh * .5);
+      ctx.lineTo(cx - hw * .2, cy + hh * .8);
+      ctx.closePath();
+      ctx.fill();
+      // onda animata
+      const f1 = frame * .018 + c * .55 + r * .3;
+      ctx.strokeStyle = `rgba(160,240,255,${.12 + Math.sin(f1) * .05})`;
+      ctx.lineWidth = 1.2 * s;
+      ctx.beginPath();
+      ctx.moveTo(cx - hw * .7, cy + hh * .55 + Math.sin(f1) * 2 * s);
+      ctx.bezierCurveTo(
+        cx - hw * .2, cy + hh * .45 + Math.sin(f1+1)*3*s,
+        cx + hw * .2, cy + hh * .5  - Math.sin(f1+2)*3*s,
+        cx + hw * .7, cy + hh * .55 + Math.sin(f1+3)*2*s
+      );
+      ctx.stroke();
+      break;
+    }
+
+    case T.BASSO: {
+      const sv = hash(r, c, 9);
+      ctx.fillStyle = `hsl(${175+sv*15}, ${65+sv*15}%, ${34+sv*10}%)`;
+      ctx.fill();
+      // corallo
+      for (let i = 0; i < 3; i++) {
+        const hx = cx + (hash(r,c,i+300)-.5)*W*.7;
+        const hy = cy + hh * .4 + hash(r,c,i+310)*hh*.8;
+        const col = hash(r,c,i+320);
+        ctx.fillStyle = col>.6 ? `rgba(240,160,80,${.15+col*.1})`
+                                : `rgba(180,80,80,${.1+col*.08})`;
+        ctx.beginPath();
+        ctx.arc(hx, hy, (2+col*3)*s, 0, Math.PI*2);
+        ctx.fill();
+      }
+      // trasparenza acqua
+      ctx.fillStyle = `rgba(100,220,200,${.2+sv*.08})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
+      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
+      ctx.closePath(); ctx.fill();
+      // increspature
+      const fb = frame*.016 + c*.48 + r*.28;
+      ctx.strokeStyle = `rgba(200,255,240,${.18+Math.sin(fb)*.07})`;
+      ctx.lineWidth = s;
+      ctx.beginPath();
+      ctx.moveTo(cx-hw*.6, cy+hh*.6+Math.sin(fb)*2*s);
+      ctx.bezierCurveTo(cx-hw*.2,cy+hh*.5, cx+hw*.2,cy+hh*.6, cx+hw*.6,cy+hh*.6+Math.sin(fb+2)*2*s);
+      ctx.stroke();
+      break;
+    }
+
+    case T.SABBIA: {
+      const sv = hash(r, c, 2);
+      const r1=215+sv*25|0, g1=190+sv*20|0, b1=130+sv*20|0;
+      ctx.fillStyle = `rgb(${r1},${g1},${b1})`;
+      ctx.fill();
+      // illuminazione NW (top face più chiara)
+      ctx.fillStyle = `rgba(255,250,220,${.12+sv*.06})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx-hw*.8, cy+hh*.8);
+      ctx.lineTo(cx, cy+H*.6);
+      ctx.lineTo(cx+hw*.2, cy+hh*.4);
+      ctx.closePath(); ctx.fill();
+      // granuli
+      for (let i=0; i<6; i++) {
+        const gx=cx+(hash(r,c,i+10)-.5)*W*.8;
+        const gy=cy+hh*.3+hash(r,c,i+20)*hh*1.2;
+        const gv=hash(r,c,i+30);
+        ctx.fillStyle=`rgba(${160+gv*60|0},${130+gv*40|0},${80+gv*40|0},${.12+gv*.1})`;
+        ctx.beginPath(); ctx.arc(gx,gy,(0.8+gv*1.5)*s,0,Math.PI*2); ctx.fill();
+      }
+      break;
+    }
+
+    case T.ERBA: {
+      const ev = hash(r, c, 3);
+      const hue = 108 + ev*12;
+      ctx.fillStyle = `hsl(${hue},${52+ev*18}%,${30+ev*10}%)`;
+      ctx.fill();
+      // NW highlight
+      ctx.fillStyle = `hsla(${hue+10},60%,${50+ev*10}%,${.12+ev*.06})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx-hw*.9, cy+hh*.9);
+      ctx.lineTo(cx-hw*.1, cy+H*.85);
+      ctx.lineTo(cx+hw*.4, cy+hh*.4);
+      ctx.closePath(); ctx.fill();
+      // ciuffi
+      ctx.lineWidth = s * .9;
+      for (let i=0; i<5; i++) {
+        const gx=cx+(hash(r,c,i+50)-.5)*W*.7;
+        const gy=cy+hh*.3+hash(r,c,i+60)*hh*1.3;
+        const gh=(4+hash(r,c,i+70)*5)*s;
+        ctx.strokeStyle=`hsla(${hue+15},${50+ev*20}%,${44+ev*12}%,.55)`;
+        ctx.beginPath();
+        ctx.moveTo(gx,gy);
+        ctx.lineTo(gx+(hash(r,c,i+80)-.5)*3*s, gy-gh);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case T.FORESTA: {
+      const fv = hash(r, c, 4);
+      ctx.fillStyle = `hsl(${118+fv*10},${58+fv*14}%,${14+fv*8}%)`;
+      ctx.fill();
+      // sottobosco scuro
+      ctx.fillStyle = `rgba(0,15,5,${.15+fv*.08})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
+      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
+      ctx.closePath(); ctx.fill();
+      // chiazze
+      for (let i=0; i<3; i++) {
+        const bv=hash(r,c,i+100);
+        ctx.fillStyle=`hsla(${115+bv*20},${50+bv*20}%,${12+bv*14}%,${.25+bv*.18})`;
+        ctx.beginPath();
+        ctx.arc(cx+(hash(r,c,i+90)-.5)*W*.6, cy+hh*.4+hash(r,c,i+95)*hh, (4+bv*7)*s, 0,Math.PI*2);
+        ctx.fill();
+      }
+      break;
+    }
+
+    case T.ROCCIA: {
+      const rv = hash(r, c, 5);
+      ctx.fillStyle = `rgb(${70+rv*22|0},${60+rv*18|0},${50+rv*14|0})`;
+      ctx.fill();
+      // highlight NW
+      ctx.fillStyle = `rgba(160,140,110,${.1+rv*.07})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx-hw*.8, cy+hh*.8);
+      ctx.lineTo(cx, cy+H*.5);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+
+    case T.COLLINA: {
+      const cv = hash(r, c, 6);
+      ctx.fillStyle = `rgb(${118+cv*22|0},${100+cv*18|0},${72+cv*14|0})`;
+      ctx.fill();
+      // luce forte NW
+      ctx.fillStyle = `rgba(255,240,180,${.18+cv*.08})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx-hw*.85, cy+hh*.85);
+      ctx.lineTo(cx-hw*.1, cy+H*.8);
+      ctx.lineTo(cx+hw*.3, cy+hh*.35);
+      ctx.closePath(); ctx.fill();
+      // ombra SE
+      ctx.fillStyle = `rgba(0,0,20,${.2+cv*.1})`;
+      ctx.beginPath();
+      ctx.moveTo(cx+hw, cy+hh);
+      ctx.lineTo(cx, cy+H);
+      ctx.lineTo(cx-hw*.2, cy+H*.9);
+      ctx.lineTo(cx+hw*.7, cy+hh*.4);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+
+    case T.FIUME: {
+      ctx.fillStyle = '#2a6040';
+      ctx.fill();
+      const ff = frame*.022 + c*.45 + r*.32;
+      ctx.fillStyle = `rgba(40,140,200,${.84+Math.sin(ff)*.06})`;
+      ctx.beginPath();
+      const fw=hw*.72, fh=hh*.72;
+      ctx.moveTo(cx,      cy+hh-fh);
+      ctx.lineTo(cx+fw,   cy+hh);
+      ctx.lineTo(cx,      cy+hh+fh);
+      ctx.lineTo(cx-fw,   cy+hh);
+      ctx.closePath(); ctx.fill();
+      // corrente
+      ctx.strokeStyle=`rgba(200,240,255,${.2+Math.sin(ff*1.4)*.1})`;
+      ctx.lineWidth=1.2*s;
+      ctx.beginPath();
+      ctx.moveTo(cx-fw*.7, cy+hh+Math.sin(ff)*2*s);
+      ctx.bezierCurveTo(cx-fw*.2,cy+hh*.8, cx+fw*.2,cy+hh+.5, cx+fw*.7,cy+hh+Math.sin(ff+2)*2*s);
+      ctx.stroke();
+      break;
+    }
+
+    case T.SENTIERO: {
+      const pv = hash(r, c, 7);
+      ctx.fillStyle = `rgb(${148+pv*18|0},${118+pv*14|0},${65+pv*10|0})`;
+      ctx.fill();
+      // carreggiata (striscia centrale più chiara)
+      ctx.fillStyle = `rgba(200,170,100,${.2+pv*.1})`;
+      ctx.beginPath();
+      ctx.moveTo(cx-hw*.25, cy+hh*.25);
+      ctx.lineTo(cx+hw*.25, cy+hh*.25);
+      ctx.lineTo(cx+hw*.25, cy+hh*1.75);
+      ctx.lineTo(cx-hw*.25, cy+hh*1.75);
+      ctx.closePath(); ctx.fill();
+      // bordo solco
+      ctx.strokeStyle=`rgba(100,72,30,${.25+pv*.12})`;ctx.lineWidth=.7*s;
+      ctx.beginPath();ctx.moveTo(cx-hw*.2,cy+hh*.1);ctx.lineTo(cx-hw*.2,cy+hh*1.9);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx+hw*.2,cy+hh*.1);ctx.lineTo(cx+hw*.2,cy+hh*1.9);ctx.stroke();
+      break;
+    }
+
+    case T.PALUDE: {
+      const mv = hash(r, c, 8);
+      ctx.fillStyle = `rgb(${45+mv*15|0},${65+mv*18|0},${35+mv*12|0})`;
+      ctx.fill();
+      // pozza scura
+      const wx=cx+(hash(r,c,200)-.5)*W*.5, wy=cy+hh*.6+hash(r,c,210)*hh*.8;
+      ctx.fillStyle=`rgba(20,50,40,${.55+hash(r,c,220)*.2})`;
+      ctx.beginPath(); ctx.ellipse(wx,wy,(5+hash(r,c,221)*8)*s,(3+hash(r,c,222)*4)*s,0,0,Math.PI*2); ctx.fill();
+      // nebbia
+      ctx.fillStyle=`rgba(120,180,120,${.06+mv*.03})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
+      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+
+    default:
+      ctx.fillStyle = '#222'; ctx.fill();
+  }
+
+  // Bordo tile sottile (solo terra/isola)
+  if (t !== T.OCEANO && t !== T.BASSO) {
+    ctx.strokeStyle = 'rgba(0,0,0,.08)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+  }
+}
+
+// ── Transizioni biomi (sfumature ai bordi) ──
+// Nel sistema iso le transizioni sono gestite direttamente nelle texture del tile.
+// Questa funzione è mantenuta per compatibilità ma fa poco in iso vero.
+function disegnaTransizioni() {
+  // Nell'iso 2:1 le transizioni di bordo sono già nel tile stesso.
+  // Per le spiagge aggiungiamo una striscia foam sull'oceano adiacente.
+  const s = G.ISO_SCALE;
+  const W = G.ISO_W * s, H = G.ISO_H * s;
+  for (let r=0; r<G.RIGHE; r++) for (let c=0; c<G.COLS; c++) {
+    if (G.mappa[r][c] !== T.SABBIA) continue;
+    // Controlla vicini oceano
+    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+    for (const [dr,dc] of dirs) {
+      const nr=r+dr, nc=c+dc;
+      if (nr<0||nc<0||nr>=G.RIGHE||nc>=G.COLS) continue;
+      if (G.mappa[nr][nc] !== T.OCEANO) continue;
+      // Foam sulla spiaggia verso oceano
+      const p = isoProj(c, r);
+      const cx = p.x, cy = p.y + H/2; // centro tile
+      const foam = .15 + Math.sin(frame*.015 + c*.4 + r*.3) * .08;
+      ctx.fillStyle = `rgba(255,255,255,${foam})`;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy+H*.4);
+      ctx.lineTo(cx+W*.3*dr, cy+H*.4+H*.2*dc);
+      ctx.lineTo(cx, cy+H*.6);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+}
+
+
+// ═══════════════════════════════════════
+// MODULO: RENDERER_NATURE
+// ═══════════════════════════════════════
+// ── ALBERO ISO — palma tropicale con coordinate iso 2:1 ──
+// cx,cy = centro tile, s = ISO_SCALE
+function disegnaAlberoIso(cx, cy, scala, tinta, palude, s){
+  const h = G.ISO_H * scala * s * 2.2; // altezza visiva
+  const tx = cx + h*.08;    // base tronco (leggermente a dx per prospettiva)
+  const ty = cy;             // base al centro tile
+
+  // Ombra a terra verso SE (stile Tropico 2)
+  ctx.save();
+  ctx.globalAlpha = .28;
+  ctx.fillStyle = '#001a08';
+  ctx.beginPath();
+  ctx.ellipse(tx + h*.45, ty + h*.2, h*.42, h*.1, .22, 0, Math.PI*2);
   ctx.fill();
   ctx.restore();
 
-  if(palude){
-    // albero di palude — più slanciato e pallido
-    ctx.strokeStyle='#5a7040';ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(cx2,cy2+h*.2);ctx.lineTo(cx2+h*.05,cy2-h*.3);ctx.stroke();
-    ctx.fillStyle=`rgba(80,120,60,${.55+tinta*.2})`;
-    ctx.beginPath();ctx.ellipse(cx2+h*.05,cy2-h*.35,h*.22,h*.15,-.2,0,Math.PI*2);ctx.fill();
+  if (palude){
+    ctx.strokeStyle='#5a7040'; ctx.lineWidth = 1.5*s;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx+h*.04, ty-h*.55); ctx.stroke();
+    ctx.fillStyle = `rgba(80,120,60,${.55+tinta*.2})`;
+    ctx.beginPath(); ctx.ellipse(tx+h*.04, ty-h*.6, h*.2, h*.12, -.2, 0, Math.PI*2); ctx.fill();
     return;
   }
 
-  // palma tropicale — tronco curvo
-  const hue=105+tinta*25;
-  // tronco
-  const tg=ctx.createLinearGradient(cx2-S*.04,cy2+h*.15,cx2+S*.06,cy2-h*.15);
-  tg.addColorStop(0,'#6b4a1e');tg.addColorStop(0.5,'#8a6228');tg.addColorStop(1,'#5a3810');
-  ctx.fillStyle=tg;
+  const hue = 105 + tinta*25;
+
+  // Tronco — curvo verso dx (prospettiva iso)
+  const tg = ctx.createLinearGradient(tx-h*.04, ty, tx+h*.06, ty-h*.4);
+  tg.addColorStop(0,'#6b4a1e'); tg.addColorStop(.5,'#8a6228'); tg.addColorStop(1,'#5a3810');
+  ctx.fillStyle = tg;
   ctx.beginPath();
-  ctx.moveTo(cx2-S*.05,cy2+h*.18);
-  ctx.quadraticCurveTo(cx2+S*.04,cy2-h*.1,cx2+S*.06,cy2-h*.2);
-  ctx.quadraticCurveTo(cx2+S*.1,cy2-h*.2,cx2+S*.08,cy2-h*.15);
-  ctx.quadraticCurveTo(cx2+S*.04,cy2,cx2+S*.04,cy2+h*.18);
-  ctx.closePath();ctx.fill();
-  // segni tronco (anelli foglia)
-  ctx.strokeStyle='rgba(60,35,8,.35)';ctx.lineWidth=.8;
-  for(let i=0;i<4;i++){
-    const ty=cy2-h*(.05+i*.07);
-    ctx.beginPath();ctx.moveTo(cx2+S*.03,ty);ctx.lineTo(cx2+S*.09,ty+1);ctx.stroke();
+  ctx.moveTo(tx - h*.04, ty);
+  ctx.quadraticCurveTo(tx+h*.04, ty-h*.2, tx+h*.06, ty-h*.35);
+  ctx.quadraticCurveTo(tx+h*.09, ty-h*.35, tx+h*.07, ty-h*.28);
+  ctx.quadraticCurveTo(tx+h*.03, ty-h*.1, tx+h*.03, ty);
+  ctx.closePath(); ctx.fill();
+
+  // Anelli tronco
+  ctx.strokeStyle='rgba(60,35,8,.3)'; ctx.lineWidth=.7*s;
+  for (let i=0; i<4; i++){
+    const ay = ty - h*(.06+i*.07);
+    ctx.beginPath(); ctx.moveTo(tx+h*.02, ay); ctx.lineTo(tx+h*.08, ay+1*s); ctx.stroke();
   }
 
-  // fronde — 6 foglie a ventaglio
-  const foglie=[
-    {a:-0.3, l:h*.75, w:h*.12, dr:-.25},
-    {a:0.55,  l:h*.7,  w:h*.11, dr:.2},
-    {a:-1.1, l:h*.62, w:h*.1,  dr:-.15},
-    {a:1.3,  l:h*.65, w:h*.1,  dr:.18},
-    {a:-1.8, l:h*.55, w:h*.09, dr:-.1},
-    {a:2.1,  l:h*.5,  w:h*.09, dr:.12},
+  // Fronde — 6 foglie proiettate in iso
+  const foglie = [
+    {a:-0.3, l:h*.72, w:h*.11, dr:-.22},
+    {a:0.55,  l:h*.68, w:h*.1,  dr:.18},
+    {a:-1.1,  l:h*.6,  w:h*.09, dr:-.14},
+    {a:1.3,   l:h*.62, w:h*.09, dr:.16},
+    {a:-1.8,  l:h*.54, w:h*.08, dr:-.09},
+    {a:2.1,   l:h*.5,  w:h*.08, dr:.11},
   ];
-  const tx=cx2+S*.07, ty2=cy2-h*.18;
-  for(const f of foglie){
-    const ex2=tx+Math.cos(f.a)*f.l;
-    const ey=ty2+Math.sin(f.a)*f.l*.5;
-    // foglia con curva
-    const lc=ctx.createLinearGradient(tx,ty2,ex2,ey);
+  const frx = tx+h*.07, fry = ty-h*.33;
+  for (const f of foglie){
+    const ex = frx + Math.cos(f.a)*f.l;
+    const ey = fry + Math.sin(f.a)*f.l*.45; // schiacciato in Y per iso
+    const lc = ctx.createLinearGradient(frx,fry,ex,ey);
     lc.addColorStop(0,`hsla(${hue+10},72%,${22+tinta*8}%,1)`);
-    lc.addColorStop(0.5,`hsla(${hue},68%,${28+tinta*10}%,1)`);
+    lc.addColorStop(.5,`hsla(${hue},68%,${28+tinta*10}%,1)`);
     lc.addColorStop(1,`hsla(${hue-8},60%,${20+tinta*6}%,.7)`);
-    ctx.fillStyle=lc;
+    ctx.fillStyle = lc;
+    const wx = Math.cos(f.a+Math.PI/2)*f.w;
+    const wy = Math.sin(f.a+Math.PI/2)*f.w*.45;
+    const mx = frx+Math.cos(f.a+f.dr)*f.l*.52;
+    const my = fry+Math.sin(f.a+f.dr)*f.l*.24;
     ctx.beginPath();
-    ctx.moveTo(tx,ty2);
-    const mx=tx+Math.cos(f.a+f.dr)*f.l*.55;
-    const my=ty2+Math.sin(f.a+f.dr)*f.l*.28;
-    const wx=Math.cos(f.a+Math.PI/2)*f.w;
-    const wy=Math.sin(f.a+Math.PI/2)*f.w*.5;
-    ctx.quadraticCurveTo(mx+wx,my+wy,ex2,ey);
-    ctx.quadraticCurveTo(mx-wx*.3,my-wy*.3,tx,ty2);
+    ctx.moveTo(frx, fry);
+    ctx.quadraticCurveTo(mx+wx, my+wy, ex, ey);
+    ctx.quadraticCurveTo(mx-wx*.3, my-wy*.3, frx, fry);
     ctx.fill();
-    // nervatura centrale
-    ctx.strokeStyle=`rgba(${Math.floor(20+tinta*30)},${Math.floor(80+tinta*20)},${Math.floor(15+tinta*10)},.4)`;
-    ctx.lineWidth=.7;
-    ctx.beginPath();ctx.moveTo(tx,ty2);ctx.quadraticCurveTo(mx,my,ex2,ey);ctx.stroke();
+    // nervatura
+    ctx.strokeStyle=`rgba(${20+tinta*30|0},${80+tinta*20|0},${15+tinta*10|0},.35)`;
+    ctx.lineWidth=.6*s;
+    ctx.beginPath(); ctx.moveTo(frx,fry); ctx.quadraticCurveTo(mx,my,ex,ey); ctx.stroke();
   }
-  // noce di cocco (alcuni alberi)
-  if(tinta>.55){
+  // Noce di cocco
+  if (tinta>.55){
     ctx.fillStyle='#5a3a10';
-    ctx.beginPath();ctx.arc(tx+3,ty2+3,S*.055,0,Math.PI*2);ctx.fill();
+    ctx.beginPath(); ctx.arc(frx+2*s,fry+2*s, h*.05, 0, Math.PI*2); ctx.fill();
     ctx.fillStyle='#7a5020';
-    ctx.beginPath();ctx.arc(tx+2,ty2+2,S*.04,0,Math.PI*2);ctx.fill();
+    ctx.beginPath(); ctx.arc(frx+s,fry+s, h*.035, 0, Math.PI*2); ctx.fill();
   }
-  // highlight foglie in cima
-  ctx.fillStyle=`rgba(255,255,200,${.05+tinta*.04})`;
-  ctx.beginPath();
-  ctx.ellipse(tx-h*.1,ty2-h*.08,h*.1,h*.06,-.5,0,Math.PI*2);
-  ctx.fill();
 }
 
-// ── disegna roccia ──
-function disegnaRoccia(rx,ry,scala){
-  const S=G.TILE;
-  const cx2=rx+S*.5, cy2=ry+S*.58;
-  const w=S*.4*scala, h=S*.3*scala;
-  // ombra morbida
-  ctx.save();
-  ctx.globalAlpha=.25;
-  ctx.fillStyle='#000';
-  ctx.beginPath();
-  ctx.ellipse(cx2+w*.15,cy2+h*.55,w*.75,h*.22,0,0,Math.PI*2);
-  ctx.fill();
+// ── ROCCIA ISO ──
+function disegnaRocciaIso(cx, cy, scala, s){
+  const w = G.ISO_W * scala * s * .45;
+  const h = w * .55;
+  const rx = cx + w*.15;  // offset verso destra per prospettiva
+  const ry = cy - h*.3;
+
+  // Ombra
+  ctx.save(); ctx.globalAlpha=.28; ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.ellipse(rx+w*.35, ry+h*.7, w*.62, h*.18, .15, 0, Math.PI*2); ctx.fill();
   ctx.restore();
-  // corpo principale
-  const gr=ctx.createRadialGradient(cx2-w*.22,cy2-h*.3,h*.05,cx2,cy2,w);
-  gr.addColorStop(0,'#a09070');
-  gr.addColorStop(0.4,'#756550');
-  gr.addColorStop(0.8,'#504535');
-  gr.addColorStop(1,'#302820');
-  ctx.fillStyle=gr;
+
+  // Corpo principale — 3 facce iso
+  // Tetto
+  const gr = ctx.createRadialGradient(rx-w*.2,ry-h*.25,h*.04,rx,ry,w);
+  gr.addColorStop(0,'#a09070'); gr.addColorStop(.4,'#756550'); gr.addColorStop(.8,'#504535'); gr.addColorStop(1,'#302820');
+  ctx.fillStyle = gr;
+  ctx.beginPath(); ctx.ellipse(rx, ry, w, h*.55, -.15, 0, Math.PI*2); ctx.fill();
+
+  // Faccia S (più chiara)
+  ctx.fillStyle='rgba(180,160,120,.25)';
   ctx.beginPath();
-  ctx.ellipse(cx2,cy2,w,h,-.15,0,Math.PI*2);
-  ctx.fill();
-  // crepa/highlight
-  ctx.strokeStyle='rgba(255,240,200,.18)';ctx.lineWidth=1;
-  ctx.beginPath();
-  ctx.moveTo(cx2-w*.35,cy2-h*.25);
-  ctx.quadraticCurveTo(cx2-w*.1,cy2-h*.45,cx2+w*.1,cy2-h*.2);
-  ctx.stroke();
-  // bordo scuro base
-  ctx.strokeStyle='rgba(0,0,0,.3)';ctx.lineWidth=1.2;
-  ctx.beginPath();
-  ctx.ellipse(cx2,cy2,w,h,-.15,Math.PI*.1,Math.PI*.9);
-  ctx.stroke();
+  ctx.moveTo(rx-w*.5, ry+h*.2);
+  ctx.lineTo(rx+w*.5, ry+h*.2);
+  ctx.lineTo(rx+w*.4, ry+h*.55);
+  ctx.lineTo(rx-w*.4, ry+h*.55);
+  ctx.closePath(); ctx.fill();
+
+  // Highlight NW
+  ctx.strokeStyle='rgba(255,240,200,.18)'; ctx.lineWidth=s;
+  ctx.beginPath(); ctx.moveTo(rx-w*.4,ry-h*.2); ctx.quadraticCurveTo(rx-w*.1,ry-h*.4,rx+w*.1,ry-h*.18); ctx.stroke();
+
+  // Bordo scuro base
+  ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.2*s;
+  ctx.beginPath(); ctx.ellipse(rx, ry, w, h*.55, -.15, Math.PI*.1, Math.PI*.9); ctx.stroke();
 }
 
+
+// ═══════════════════════════════════════
+// MODULO: RENDERER_ISO
+// ═══════════════════════════════════════
 // ══════════════════════════════════════════════════════
 // HELPER ISOMETRICO — prospettiva stile Tropico 2
 // Luce da nord-ovest (alto-sinistra)
@@ -1756,26 +2200,34 @@ function isoRoof(bx,by,w,d,hBase,hPeak,colLeft,colRight,colFront){
 }
 
 // Finestra isometrica su facciata sud
-function isoWindow(bx,by,lit){
+function isoWindow(bx,by,lit,sz){
+  sz=sz||8; // dimensione finestra scalabile
+  const w=sz,h=sz*.88;
   ctx.fillStyle=lit?'rgba(255,220,100,.9)':'rgba(80,100,120,.6)';
-  ctx.fillRect(bx-4,by-8,8,7);
-  ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=.8;ctx.strokeRect(bx-4,by-8,8,7);
+  ctx.fillRect(bx-w/2,by-h,w,h);
+  ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=.8;ctx.strokeRect(bx-w/2,by-h,w,h);
   if(lit){
-    // bagliore finestra illuminata
     ctx.fillStyle='rgba(255,200,60,.15)';
-    ctx.fillRect(bx-6,by-10,12,11);
-    // croce vetri
-    ctx.strokeStyle='rgba(100,60,0,.5)';ctx.lineWidth=.7;
-    ctx.beginPath();ctx.moveTo(bx,by-8);ctx.lineTo(bx,by-1);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(bx-4,by-4);ctx.lineTo(bx+4,by-4);ctx.stroke();
+    ctx.fillRect(bx-w/2-2,by-h-2,w+4,h+3);
+    ctx.strokeStyle='rgba(100,60,0,.5)';ctx.lineWidth=.6;
+    ctx.beginPath();ctx.moveTo(bx,by-h);ctx.lineTo(bx,by);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(bx-w/2,by-h/2);ctx.lineTo(bx+w/2,by-h/2);ctx.stroke();
   }
 }
 
+
+
+// ═══════════════════════════════════════
+// MODULO: RENDERER_BUILDINGS
+// ═══════════════════════════════════════
 // ── disegna edificio — isometrico stile Tropico 2 ──
-function disegnaEdificio(tipo,ex,ey){
-  const S=G.TILE;
-  // Punto di ancoraggio: centro-basso del tile
-  const bx=ex+S*.5, by=ey+S*.82;
+// cx,cy = centro tile iso (da isoProj), s = ISO_SCALE
+function disegnaEdificio(tipo,cx,cy,s){
+  s = s || G.ISO_SCALE;
+  const S = G.ISO_H * s * 1.8;  // unità di scala edificio
+  // Punto di ancoraggio: centro-basso del tile iso
+  const bx = cx;
+  const by = cy + G.ISO_H * s * .5;
   ctx.save();
   isoShadow(bx,by,S*.55,S*.28);
 
@@ -2239,422 +2691,403 @@ function disegnaEdificio(tipo,ex,ey){
   ctx.restore();
 }
 
-// ── disegna nave in mare — isometrica ──
-function disegnaNav(sx,sy,colore){
-  ctx.save();
-  ctx.translate(sx,sy);
-  const S=G.TILE;
-  const sc=S/52; // scala relativa al tile
 
-  // ombra a mare
-  ctx.globalAlpha=.18;ctx.fillStyle='#000';
-  ctx.beginPath();ctx.ellipse(sc*4,sc*16,sc*26,sc*7,0,0,Math.PI*2);ctx.fill();
+
+// ═══════════════════════════════════════
+// MODULO: RENDERER_UNITS
+// ═══════════════════════════════════════
+// ── NAVE ISO — sciabecco piratesco ──
+function disegnaNav(sx, sy, colore, s){
+  s = s || G.ISO_SCALE;
+  ctx.save();
+  ctx.translate(sx, sy);
+  const sc = G.ISO_H * s * .055;  // unità di scala nave
+
+  // Ombra a mare
+  ctx.globalAlpha=.15; ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.ellipse(sc*4,sc*5,sc*14,sc*3.5,.12,0,Math.PI*2); ctx.fill();
   ctx.globalAlpha=1;
 
-  // scafo — vista isometrica (legno scuro)
-  const scG=ctx.createLinearGradient(-sc*22,0,sc*22,sc*14);
-  scG.addColorStop(0,colore||'#6a3e1a');
-  scG.addColorStop(1,'#3a1e08');
+  // Scafo iso (vista 3/4)
+  const scG=ctx.createLinearGradient(-sc*12,0,sc*12,sc*7);
+  scG.addColorStop(0,colore||'#6a3e1a'); scG.addColorStop(1,'#3a1e08');
   ctx.fillStyle=scG;
   ctx.beginPath();
-  ctx.moveTo(-sc*22,sc*4);
-  ctx.quadraticCurveTo(-sc*8,sc*14,sc*8,sc*14);
-  ctx.quadraticCurveTo(sc*24,sc*14,sc*26,sc*6);
-  ctx.quadraticCurveTo(sc*20,-sc*2,0,-sc*4);
-  ctx.quadraticCurveTo(-sc*14,-sc*4,-sc*22,sc*4);
-  ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#2a1008';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.moveTo(-sc*14,sc*2);
+  ctx.quadraticCurveTo(-sc*5,sc*9,sc*5,sc*9);
+  ctx.quadraticCurveTo(sc*16,sc*9,sc*17,sc*3);
+  ctx.quadraticCurveTo(sc*12,-sc*1,0,-sc*2.5);
+  ctx.quadraticCurveTo(-sc*9,-sc*2.5,-sc*14,sc*2);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#2a1008'; ctx.lineWidth=1.5*s; ctx.stroke();
 
-  // fascia dorata scafo
-  ctx.strokeStyle='rgba(200,160,60,.6)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(-sc*20,sc*5);ctx.quadraticCurveTo(sc*4,sc*11,sc*24,sc*4);ctx.stroke();
+  // Fascia dorata
+  ctx.strokeStyle='rgba(200,160,60,.55)'; ctx.lineWidth=s;
+  ctx.beginPath(); ctx.moveTo(-sc*13,sc*3); ctx.quadraticCurveTo(sc*2,sc*7.5,sc*15,sc*2); ctx.stroke();
 
-  // cannoni laterali
+  // Cannoni
   ctx.fillStyle='#3a3028';
-  for(let i=0;i<3;i++){
-    ctx.fillRect(-sc*14+i*sc*10,sc*4,sc*5,sc*3);
-  }
+  for(let i=0;i<3;i++) ctx.fillRect(-sc*9+i*sc*6.5,sc*3,sc*4,sc*2);
 
-  // coperta
-  const deckG=ctx.createLinearGradient(-sc*18,0,sc*18,0);
-  deckG.addColorStop(0,'#8a6030');deckG.addColorStop(1,'#6a4820');
-  ctx.fillStyle=deckG;
-  ctx.beginPath();ctx.ellipse(sc*2,sc*1,sc*18,sc*8,0,0,Math.PI*2);ctx.fill();
+  // Coperta
+  const dG=ctx.createLinearGradient(-sc*11,0,sc*11,0);
+  dG.addColorStop(0,'#8a6030'); dG.addColorStop(1,'#6a4820');
+  ctx.fillStyle=dG;
+  ctx.beginPath(); ctx.ellipse(sc*1.5,sc*.5,sc*11.5,sc*5,0,0,Math.PI*2); ctx.fill();
 
-  // albero maestro
-  ctx.strokeStyle='#7a5020';ctx.lineWidth=sc*3;
-  ctx.beginPath();ctx.moveTo(sc*2,sc*2);ctx.lineTo(sc*2,-sc*38);ctx.stroke();
-  // pennone
-  ctx.lineWidth=sc*1.5;
-  ctx.beginPath();ctx.moveTo(-sc*16,-sc*28);ctx.lineTo(sc*20,-sc*28);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(-sc*10,-sc*18);ctx.lineTo(sc*14,-sc*18);ctx.stroke();
+  // Albero maestro
+  ctx.strokeStyle='#7a5020'; ctx.lineWidth=sc*1.8;
+  ctx.beginPath(); ctx.moveTo(sc*1.5,sc*.5); ctx.lineTo(sc*1.5,-sc*24); ctx.stroke();
+  // Pennoni
+  ctx.lineWidth=sc*1;
+  ctx.beginPath(); ctx.moveTo(-sc*11,-sc*18); ctx.lineTo(sc*14,-sc*18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-sc*7,-sc*11); ctx.lineTo(sc*10,-sc*11); ctx.stroke();
 
-  // vela principale (color crema con patch)
-  const sailG=ctx.createLinearGradient(-sc*14,-sc*36,sc*18,-sc*10);
-  sailG.addColorStop(0,'rgba(248,235,195,.95)');
-  sailG.addColorStop(1,'rgba(210,190,140,.85)');
+  // Vela principale
+  const sailG=ctx.createLinearGradient(-sc*9,-sc*24,sc*12,-sc*7);
+  sailG.addColorStop(0,'rgba(248,235,195,.96)'); sailG.addColorStop(1,'rgba(210,190,140,.86)');
   ctx.fillStyle=sailG;
-  ctx.beginPath();ctx.moveTo(sc*2,-sc*36);ctx.lineTo(sc*20,-sc*28);ctx.lineTo(sc*14,-sc*12);ctx.lineTo(-sc*10,-sc*18);ctx.lineTo(-sc*16,-sc*28);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.15)';ctx.lineWidth=.8;ctx.stroke();
-  // cucitura vela
-  ctx.strokeStyle='rgba(180,150,90,.4)';ctx.lineWidth=.8;
-  ctx.beginPath();ctx.moveTo(sc*2,-sc*36);ctx.lineTo(sc*2,-sc*10);ctx.stroke();
-
-  // vela di trinchetto (più piccola)
-  ctx.fillStyle='rgba(240,225,180,.8)';
-  ctx.beginPath();ctx.moveTo(-sc*14,-sc*14);ctx.lineTo(-sc*4,-sc*28);ctx.lineTo(sc*4,-sc*14);ctx.closePath();ctx.fill();
-
-  // bandiera jolly roger (animata)
-  const flagWave=Math.sin(frame*.08)*sc*3;
-  ctx.fillStyle='#0a0a0a';
   ctx.beginPath();
-  ctx.moveTo(sc*2,-sc*38);
-  ctx.lineTo(sc*16,-sc*36+flagWave);
-  ctx.lineTo(sc*14,-sc*30+flagWave*.5);
-  ctx.lineTo(sc*2,-sc*34);
-  ctx.closePath();ctx.fill();
-  // teschio bandiera
-  ctx.fillStyle='rgba(255,255,255,.8)';ctx.font=`${sc*7}px serif`;
-  ctx.textAlign='center';ctx.fillText('☠',sc*10,-sc*32+flagWave*.7);
+  ctx.moveTo(sc*1.5,-sc*24); ctx.lineTo(sc*14,-sc*18);
+  ctx.lineTo(sc*10,-sc*11); ctx.lineTo(-sc*7,-sc*11); ctx.lineTo(-sc*11,-sc*18);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.12)'; ctx.lineWidth=.8*s; ctx.stroke();
+
+  // Vela di trinchetto
+  ctx.fillStyle='rgba(240,225,180,.82)';
+  ctx.beginPath();
+  ctx.moveTo(-sc*10,-sc*9); ctx.lineTo(-sc*2,-sc*18); ctx.lineTo(sc*3,-sc*9);
+  ctx.closePath(); ctx.fill();
+
+  // Bandiera Jolly Roger (animata)
+  const fw=Math.sin(frame*.08)*sc*2;
+  ctx.fillStyle='#080808';
+  ctx.beginPath();
+  ctx.moveTo(sc*1.5,-sc*24); ctx.lineTo(sc*11,-sc*22+fw);
+  ctx.lineTo(sc*10,-sc*18+fw*.5); ctx.lineTo(sc*1.5,-sc*21);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.75)'; ctx.font=`${sc*5}px serif`;
+  ctx.textAlign='center'; ctx.fillText('☠',sc*7,-sc*20+fw*.6);
 
   ctx.restore();
 }
 
-// ── disegna pirata — isometrico stile Tropico 2 ──
-function disegnaPirata(px,py,selezionato,umore,ruolo){
-  const mc=coloreUmore(umore);
-  const S=G.TILE;
-  const sc=S/52;
+// ── PIRATA ISO — stile Tropico 2, vista 3/4 ──
+function disegnaPirataIso(cx, cy, selezionato, umore, ruolo, s){
+  s = s || G.ISO_SCALE;
+  const mc = coloreUmore(umore);
+  const sc = G.ISO_H * s * .038;  // unità di scala pirata (~1px per unità = ~25px totali)
 
-  if(selezionato){
-    // alone di selezione dorato
-    ctx.save();
-    ctx.globalAlpha=.25;
-    ctx.fillStyle='#f0c040';
-    ctx.beginPath();ctx.ellipse(px,py+sc*4,sc*16,sc*6,0,0,Math.PI*2);ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle='rgba(240,192,64,.85)';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.ellipse(px,py+sc*4,sc*16,sc*6,0,0,Math.PI*2);ctx.stroke();
+  // Cerchio selezione
+  if (selezionato){
+    ctx.save(); ctx.globalAlpha=.3; ctx.fillStyle='#f0c040';
+    ctx.beginPath(); ctx.ellipse(cx+sc*2,cy+sc*2.5,sc*7,sc*2.5,.1,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.strokeStyle='rgba(240,192,64,.85)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.ellipse(cx+sc*2,cy+sc*2.5,sc*7,sc*2.5,.1,0,Math.PI*2); ctx.stroke();
   }
 
-  // ombra isometrica a terra
-  ctx.save();ctx.globalAlpha=.22;ctx.fillStyle='#000';
-  ctx.beginPath();ctx.ellipse(px+sc*2,py+sc*6,sc*8,sc*3,0,0,Math.PI*2);ctx.fill();ctx.restore();
+  // Ombra a terra
+  ctx.save(); ctx.globalAlpha=.22; ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.ellipse(cx+sc*2,cy+sc*3,sc*5,sc*1.5,.12,0,Math.PI*2); ctx.fill(); ctx.restore();
 
-  // STIVALI / GAMBE
-  ctx.fillStyle='#2a1a08';
-  // gamba sinistra
-  ctx.beginPath();
-  ctx.moveTo(px-sc*3,py+sc*2);ctx.lineTo(px-sc*4,py+sc*8);
-  ctx.lineTo(px-sc*1,py+sc*8);ctx.lineTo(px-sc*1,py+sc*2);ctx.closePath();ctx.fill();
-  // gamba destra
-  ctx.beginPath();
-  ctx.moveTo(px+sc*1,py+sc*2);ctx.lineTo(px+sc*0,py+sc*8);
-  ctx.lineTo(px+sc*4,py+sc*8);ctx.lineTo(px+sc*3,py+sc*2);ctx.closePath();ctx.fill();
-  // risvolto stivali
-  ctx.fillStyle='#4a3018';
-  ctx.fillRect(px-sc*4,py+sc*6,sc*4,sc*2);
-  ctx.fillRect(px+sc*0,py+sc*6,sc*4,sc*2);
-
-  // CORPO con colore per ruolo
+  // Colori per ruolo
   const bodyColors={
-    'Bucaniere':['#8a2818','#5a1808'],
-    'Navigatore':['#1a3a7a','#0e2252'],
-    'Cannoniere':['#3a3028','#1a1818'],
-    'Chirurgo':['#e8e8e0','#c0c0b8'],
-    'Cuoco':['#d8c090','#a89060'],
-    'Nostromo':['#3a6a28','#1e3e14'],
-    'Spia':['#282820','#141410'],
-    'Quartier Mastro':['#8a7020','#5a4a10'],
+    'Bucaniere':     ['#9a2818','#5a1808'],
+    'Navigatore':    ['#1a4a8a','#0e2a5a'],
+    'Cannoniere':    ['#3a3028','#1a1818'],
+    'Chirurgo':      ['#e0e0d8','#b0b0a8'],
+    'Cuoco':         ['#d8c090','#b09870'],
+    'Nostromo':      ['#2a6a28','#1a4a18'],
+    'Spia':          ['#1e1e18','#101010'],
+    'Quartier Mastro':['#8a7828','#5a5010'],
   };
-  const bc=bodyColors[ruolo]||['#6a4a28','#3a2810'];
-  const bodyG=ctx.createLinearGradient(px-sc*6,py-sc*10,px+sc*6,py+sc*2);
-  bodyG.addColorStop(0,bc[0]);bodyG.addColorStop(1,bc[1]);
+  const bc = bodyColors[ruolo]||['#6a4a28','#3a2810'];
+
+  // GAMBE (stivali)
+  ctx.fillStyle='#2a1a08';
+  // gamba sx (più indietro = più corta in iso)
+  ctx.fillRect(cx-sc*1.5, cy-sc*0.5, sc*2.2, sc*3.8);
+  // gamba dx
+  ctx.fillRect(cx+sc*0.5, cy-sc*0.5, sc*2.2, sc*3.8);
+  // risvolti
+  ctx.fillStyle='#3a2510';
+  ctx.fillRect(cx-sc*2, cy+sc*2.8, sc*2.5, sc*1.2);
+  ctx.fillRect(cx+sc*0.2, cy+sc*2.8, sc*2.5, sc*1.2);
+
+  // CORPO
+  const bodyG=ctx.createLinearGradient(cx-sc*3.5,cy-sc*7,cx+sc*3.5,cy);
+  bodyG.addColorStop(0,bc[0]); bodyG.addColorStop(1,bc[1]);
   ctx.fillStyle=bodyG;
   ctx.beginPath();
-  ctx.moveTo(px-sc*5,py+sc*2);
-  ctx.quadraticCurveTo(px-sc*7,py-sc*4,px-sc*4,py-sc*10);
-  ctx.lineTo(px+sc*4,py-sc*10);
-  ctx.quadraticCurveTo(px+sc*7,py-sc*4,px+sc*5,py+sc*2);
-  ctx.closePath();ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=.7;ctx.stroke();
+  ctx.moveTo(cx-sc*2.8,cy);
+  ctx.bezierCurveTo(cx-sc*4,cy-sc*3,cx-sc*3.5,cy-sc*6,cx-sc*2.2,cy-sc*7.5);
+  ctx.lineTo(cx+sc*2.2,cy-sc*7.5);
+  ctx.bezierCurveTo(cx+sc*3.5,cy-sc*6,cx+sc*4,cy-sc*3,cx+sc*2.8,cy);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.18)'; ctx.lineWidth=.6; ctx.stroke();
 
-  // CINTURA con fibbia
-  ctx.fillStyle='#6a4820';
-  ctx.fillRect(px-sc*5,py-sc*2,sc*10,sc*2.5);
-  ctx.fillStyle='#c8a040';
-  ctx.fillRect(px-sc*1.5,py-sc*1.8,sc*3,sc*2);
-  ctx.strokeStyle='#8a6020';ctx.lineWidth=.8;ctx.strokeRect(px-sc*1.5,py-sc*1.8,sc*3,sc*2);
+  // Cintura
+  ctx.fillStyle='#5a3818';
+  ctx.fillRect(cx-sc*3,cy-sc*2.2,sc*6.2,sc*1.6);
+  ctx.fillStyle='#c4940c';
+  ctx.fillRect(cx-sc*1,cy-sc*2.1,sc*2,sc*1.4);
 
-  // BRACCIA
+  // BRACCIO SX (con pistola)
   ctx.fillStyle=bc[0];
-  // braccio sinistro
   ctx.beginPath();
-  ctx.moveTo(px-sc*5,py-sc*9);ctx.lineTo(px-sc*9,py-sc*4);
-  ctx.lineTo(px-sc*7,py-sc*3);ctx.lineTo(px-sc*4,py-sc*7);ctx.closePath();ctx.fill();
-  // braccio destro (con spada)
+  ctx.moveTo(cx-sc*2.8,cy-sc*7);
+  ctx.bezierCurveTo(cx-sc*5.5,cy-sc*5,cx-sc*6.5,cy-sc*2.5,cx-sc*5.5,cy-sc*1);
+  ctx.lineTo(cx-sc*3.5,cy-sc*1.5);
+  ctx.bezierCurveTo(cx-sc*3.8,cy-sc*3.5,cx-sc*2.5,cy-sc*6,cx-sc*1.8,cy-sc*7);
+  ctx.closePath(); ctx.fill();
+  // Pistola
+  ctx.fillStyle='#2a2020'; ctx.strokeStyle='#888'; ctx.lineWidth=.8;
+  ctx.fillRect(cx-sc*7,cy-sc*1.5,sc*3.5,sc*1); ctx.strokeRect(cx-sc*7,cy-sc*1.5,sc*3.5,sc*1);
+
+  // BRACCIO DX (con spada)
+  ctx.fillStyle=bc[0];
   ctx.beginPath();
-  ctx.moveTo(px+sc*5,py-sc*9);ctx.lineTo(px+sc*9,py-sc*2);
-  ctx.lineTo(px+sc*7,py-sc*1);ctx.lineTo(px+sc*4,py-sc*7);ctx.closePath();ctx.fill();
+  ctx.moveTo(cx+sc*2.8,cy-sc*7);
+  ctx.bezierCurveTo(cx+sc*5.5,cy-sc*5,cx+sc*6.2,cy-sc*2,cx+sc*5.5,cy-sc*.5);
+  ctx.lineTo(cx+sc*3.5,cy-sc*1);
+  ctx.bezierCurveTo(cx+sc*3.5,cy-sc*3,cx+sc*2.2,cy-sc*6,cx+sc*1.8,cy-sc*7);
+  ctx.closePath(); ctx.fill();
+  // Spada
+  ctx.strokeStyle='#c0c0c8'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(cx+sc*5.5,cy-sc*.5); ctx.lineTo(cx+sc*8.5,cy+sc*3.5); ctx.stroke();
+  ctx.fillStyle='#c4940c';
+  ctx.beginPath(); ctx.ellipse(cx+sc*5.5,cy-sc*.5,sc*1.5,sc*.6,-.3,0,Math.PI*2); ctx.fill();
 
-  // SPADA (braccio destro)
-  ctx.strokeStyle='#d0d0d8';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(px+sc*8,py-sc*1);ctx.lineTo(px+sc*14,py+sc*8);ctx.stroke();
-  ctx.fillStyle='#c8a040';ctx.beginPath();ctx.arc(px+sc*8,py-sc*1,sc*2,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#8a6020';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(px+sc*6,py+sc*1);ctx.lineTo(px+sc*10,py-sc*3);ctx.stroke();
+  // TESTA + COLLO
+  const skinCol='#c8a878';
+  ctx.fillStyle=skinCol;
+  ctx.beginPath(); ctx.ellipse(cx,cy-sc*9,sc*1.8,sc*1,0,0,Math.PI*2); ctx.fill(); // collo
+  ctx.beginPath(); ctx.ellipse(cx,cy-sc*11.5,sc*3.8,sc*4,0,0,Math.PI*2); ctx.fill(); // testa
 
-  // COLLO + TESTA
-  ctx.fillStyle='#c8a878';
-  ctx.beginPath();ctx.arc(px,py-sc*13,sc*5.5,0,Math.PI*2);ctx.fill();
-  // ombra viso
-  const faceG=ctx.createRadialGradient(px-sc*1.5,py-sc*14,0,px,py-sc*13,sc*5.5);
-  faceG.addColorStop(0,'rgba(220,180,120,.0)');
-  faceG.addColorStop(0.6,'rgba(180,130,70,.12)');
-  faceG.addColorStop(1,'rgba(100,60,20,.35)');
-  ctx.fillStyle=faceG;
-  ctx.beginPath();ctx.arc(px,py-sc*13,sc*5.5,0,Math.PI*2);ctx.fill();
+  // Ombra viso
+  const fG=ctx.createRadialGradient(cx-sc,cy-sc*12,0,cx,cy-sc*11.5,sc*4);
+  fG.addColorStop(0,'rgba(0,0,0,0)'); fG.addColorStop(1,'rgba(80,40,10,.3)');
+  ctx.fillStyle=fG;
+  ctx.beginPath(); ctx.ellipse(cx,cy-sc*11.5,sc*3.8,sc*4,0,0,Math.PI*2); ctx.fill();
 
-  // OCCHIO e bocca
+  // Occhi
   ctx.fillStyle='#1a0a00';
-  ctx.beginPath();ctx.arc(px-sc*1.5,py-sc*13.5,sc*1,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(px+sc*1.5,py-sc*13.5,sc*1,0,Math.PI*2);ctx.fill();
-  // sorriso/espressione in base all'umore
-  ctx.strokeStyle='#5a2a10';ctx.lineWidth=.8;
+  ctx.beginPath(); ctx.arc(cx-sc*1.2,cy-sc*11.8,sc*.75,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+sc*1.2,cy-sc*11.8,sc*.75,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.45)';
+  ctx.beginPath(); ctx.arc(cx-sc*.8,cy-sc*12.1,sc*.3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+sc*1.6,cy-sc*12.1,sc*.3,0,Math.PI*2); ctx.fill();
+
+  // Bocca (espressione da umore)
+  ctx.strokeStyle='rgba(100,40,20,.75)'; ctx.lineWidth=.8;
   ctx.beginPath();
-  if(umore>60){
-    ctx.arc(px,py-sc*12,sc*2,0.1,Math.PI-.1,false); // sorriso
-  } else if(umore>30){
-    ctx.moveTo(px-sc*1.8,py-sc*11.8);ctx.lineTo(px+sc*1.8,py-sc*11.8); // neutro
-  } else {
-    ctx.arc(px,py-sc*10.8,sc*2,Math.PI+0.1,-.1,false); // triste
-  }
+  if(umore>65)      ctx.arc(cx,cy-sc*10.2,sc*1.4,.15,Math.PI-.15,false);  // sorriso
+  else if(umore>35){ ctx.moveTo(cx-sc*1.4,cy-sc*10.2); ctx.lineTo(cx+sc*1.4,cy-sc*10.2); } // neutro
+  else              ctx.arc(cx,cy-sc*9.3,sc*1.4,Math.PI+.15,-.15,false);  // triste
   ctx.stroke();
 
-  // CAPPELLO TRICORNO isometrico
-  ctx.fillStyle='#0e0e0e';
-  // tesa
-  ctx.beginPath();ctx.ellipse(px,py-sc*18,sc*10,sc*4,0,0,Math.PI*2);ctx.fill();
-  // cupola
-  const hatG=ctx.createLinearGradient(px-sc*6,py-sc*24,px+sc*4,py-sc*18);
-  hatG.addColorStop(0,'#2a2a2a');hatG.addColorStop(1,'#0a0a0a');
+  // CAPPELLO TRICORNO
+  ctx.fillStyle='#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(cx,cy-sc*14.5,sc*7.2,sc*2.8,0,0,Math.PI*2); ctx.fill(); // tesa
+  const hatG=ctx.createLinearGradient(cx-sc*4.5,cy-sc*20,cx+sc*3,cy-sc*14.5);
+  hatG.addColorStop(0,'#2a2a2a'); hatG.addColorStop(1,'#0a0a0a');
   ctx.fillStyle=hatG;
   ctx.beginPath();
-  ctx.moveTo(px-sc*6,py-sc*18);
-  ctx.lineTo(px-sc*4,py-sc*24);
-  ctx.lineTo(px+sc*4,py-sc*24);
-  ctx.lineTo(px+sc*6,py-sc*18);
-  ctx.closePath();ctx.fill();
-  // coccarda/piuma dorata sul cappello
-  ctx.strokeStyle='#c8a020';ctx.lineWidth=1.2;
-  ctx.beginPath();ctx.moveTo(px-sc*5,py-sc*18);ctx.lineTo(px+sc*5,py-sc*18);ctx.stroke();
-  ctx.fillStyle='#f0c040';
-  ctx.beginPath();ctx.arc(px-sc*4,py-sc*19,sc*1.5,0,Math.PI*2);ctx.fill();
+  ctx.moveTo(cx-sc*4.5,cy-sc*14.5);
+  ctx.bezierCurveTo(cx-sc*4,cy-sc*19,cx-sc*2,cy-sc*21.5,cx,cy-sc*21.5);
+  ctx.bezierCurveTo(cx+sc*2,cy-sc*21.5,cx+sc*4,cy-sc*19,cx+sc*4.5,cy-sc*14.5);
+  ctx.closePath(); ctx.fill();
+  // Fascia dorata
+  ctx.fillStyle='#c8a020';
+  ctx.fillRect(cx-sc*4.5,cy-sc*16.2,sc*9.2,sc*1.4);
+  // Spilla
+  ctx.fillStyle='#f0c040'; ctx.beginPath(); ctx.arc(cx-sc*2.8,cy-sc*15.5,sc*1,0,Math.PI*2); ctx.fill();
 
-  // INDICATORE UMORE (bolla sopra la testa)
-  ctx.fillStyle='rgba(0,0,0,.5)';
-  ctx.beginPath();ctx.arc(px+sc*7,py-sc*26,sc*4,0,Math.PI*2);ctx.fill();
+  // Indicatore umore
+  ctx.fillStyle='rgba(0,0,0,.55)';
+  ctx.beginPath(); ctx.arc(cx+sc*5,cy-sc*19,sc*2.8,0,Math.PI*2); ctx.fill();
   ctx.fillStyle=mc;
-  ctx.beginPath();ctx.arc(px+sc*7,py-sc*26,sc*3,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.3)';ctx.lineWidth=.6;ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx+sc*5,cy-sc*19,sc*2.2,0,Math.PI*2); ctx.fill();
 }
 
-// ── DRAW PRINCIPALE ──
-function disegnaScena(){
+
+// ═══════════════════════════════════════
+// MODULO: RENDERER_SCENE
+// ═══════════════════════════════════════
+// ── DRAW PRINCIPALE — Isometrico 2:1 con depth sorting ──
+function disegnaScena(dt=0.016){
   frame++;
-  const Z=G.zoom;
-  const TS=G.TILE*Z; // tile size effettiva con zoom
+  // Guard: canvas o ISO non ancora inizializzati
+  if (!canvas || !canvas.width || !canvas.height) return;
+  if (!G.ISO_SCALE || !G.ISO_W || !G.ISO_H) return;
 
-  // sfondo oceano caraibico profondo
-  const bgGrad=ctx.createRadialGradient(canvas.width*.5,canvas.height*.5,0,canvas.width*.5,canvas.height*.5,canvas.width*.7);
-  bgGrad.addColorStop(0,'#0d3855');
-  bgGrad.addColorStop(0.5,'#082840');
-  bgGrad.addColorStop(1,'#040f1a');
-  ctx.fillStyle=bgGrad;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  const s   = G.ISO_SCALE;
+  const IW  = G.ISO_W * s;   // larghezza tile schermo
+  const IH  = G.ISO_H * s;   // altezza tile schermo
 
-  // ── tile con zoom ──
-  ctx.save();
-  ctx.translate(G.camX, G.camY);
-  ctx.scale(Z, Z);
+  // ── SFONDO oceano profondo ──
+  const bg = ctx.createRadialGradient(canvas.width*.5,canvas.height*.5,0,canvas.width*.5,canvas.height*.5,canvas.width*.7);
+  bg.addColorStop(0,'#0d3855'); bg.addColorStop(.5,'#082840'); bg.addColorStop(1,'#040f1a');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
-    const t=G.mappa[r][c];
-    const x=c*G.TILE, y=r*G.TILE;
-    const sx=G.camX+x*Z, sy=G.camY+y*Z;
-    if(sx+TS<0||sy+TS<0||sx>canvas.width||sy>canvas.height) continue;
-    disegnaTile(t,x,y,r,c);
+  // ── Frustum culling: tile visibili ──
+  function visible(col, row){
+    const p = isoProj(col, row);
+    return p.x+IW >= 0 && p.x-IW <= canvas.width &&
+           p.y+IH*3 >= 0 && p.y-IH <= canvas.height;
   }
 
-  // ── transizioni biomi ──
+  // ── 1. TILE TERRENO — ordine iso (row+col crescente = painter's algorithm) ──
+  for (let sum=0; sum<G.RIGHE+G.COLS-1; sum++){
+    const rMin = Math.max(0, sum-G.COLS+1);
+    const rMax = Math.min(G.RIGHE-1, sum);
+    for (let r=rMin; r<=rMax; r++){
+      const c = sum - r;
+      if (!visible(c,r)) continue;
+      const p = isoProj(c, r);
+      const cx = p.x;       // centro-sinistra del rombo
+      const cy = p.y;       // bordo superiore del rombo
+      disegnaTileIso(G.mappa[r][c], cx, cy, r, c);
+    }
+  }
+
+  // ── 2. FOAM/TRANSIZIONI spiaggia ──
   disegnaTransizioni();
 
-  // ── ombreggiatura colline ──
-  if(G.altezza){
-    for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
-      const t=G.mappa[r][c];
-      if(t!==T.COLLINA&&t!==T.FORESTA&&t!==T.ERBA) continue;
-      const x=c*G.TILE, y=r*G.TILE;
-      const sx=G.camX+x*Z, sy=G.camY+y*Z;
-      if(sx+TS<0||sy+TS<0||sx>canvas.width||sy>canvas.height) continue;
-      const h=G.altezza[r][c];
-      const hn=G.altezza[r-1]?G.altezza[r-1][c]:h;
-      const hw=G.altezza[r][c-1]!==undefined?G.altezza[r][c-1]:h;
-      const slope=(h-hn)+(h-hw);
-      const shade=Math.max(-1,Math.min(1,slope*.18));
-      ctx.fillStyle=shade<0?`rgba(255,240,180,${Math.min(.18,-shade)})`:`rgba(0,0,20,${Math.min(.22,shade)})`;
-      ctx.fillRect(x,y,G.TILE,G.TILE);
+  // ── 3. Raccoglie tutti gli oggetti da disegnare con depth key ──
+  // depth = row*2 + col*2 (con tie-breaking per altezza)
+  const oggetti = [];
+
+  // Rocce
+  for (const rc of G.rocce){
+    const p = isoProj(rc.c, rc.r);
+    oggetti.push({ depth: rc.r*2+rc.c*2, tipo:'roccia', data:rc, px:p.x, py:p.y });
+  }
+  // Alberi
+  for (const a of G.alberi){
+    const p = isoProj(a.c, a.r);
+    oggetti.push({ depth: a.r*2+a.c*2, tipo:'albero', data:a, px:p.x, py:p.y });
+  }
+  // Edifici (depth +1 per stare sopra alberi dello stesso tile)
+  for (const b of G.edifici){
+    const p = isoProj(b.c, b.r);
+    oggetti.push({ depth: b.r*2+b.c*2+1, tipo:'edificio', data:b, px:p.x, py:p.y });
+  }
+  // Pirati (depth = posizione float, +2 per stare sopra gli edifici)
+  for (const p of G.pirati){
+    const col = p.mc, row = p.mr;
+    const proj = isoProj(col, row);
+    oggetti.push({ depth: row*2+col*2+0.5, tipo:'pirata', data:p, px:proj.x, py:proj.y });
+  }
+  // POI
+  for (const poi of G.pois||[]){
+    const p = isoProj(poi.c, poi.r);
+    oggetti.push({ depth: poi.r*2+poi.c*2+3, tipo:'poi', data:poi, px:p.x, py:p.y });
+  }
+
+  // ── 4. DEPTH SORT (painter's algorithm iso) ──
+  // Filtra oggetti con coordinate invalide prima del sort
+  const oggettiValidi = oggetti.filter(o => isFinite(o.px) && isFinite(o.py) && isFinite(o.depth));
+  oggettiValidi.sort((a,b) => a.depth - b.depth);
+
+  // ── 5. DISEGNA tutti in ordine ──
+  for (const obj of oggettiValidi){
+    const { px, py, tipo, data } = obj;
+    const cx = px;                    // centro-sinistra rombo
+    const cy = py + IH / 2;          // centro verticale del tile
+
+    switch(tipo){
+      case 'roccia':
+        disegnaRocciaIso(cx, cy, data.scala, s); break;
+      case 'albero':
+        disegnaAlberoIso(cx, cy, data.scala, data.tinta, data.palude, s); break;
+      case 'edificio':
+        disegnaEdificio(data.tipo, cx, cy, s); break;
+      case 'pirata':
+        disegnaPirataIso(cx, cy, G.pirataSelezionato===data.id, data.umore, data.ruolo, s);
+        if (!G.battagliaAttiva) muoviPirata(data, dt * G.velocita);
+        break;
+      case 'poi':
+        disegnaPOI(data, cx, cy, s); break;
     }
   }
 
-  // ── rocce ──
-  for(const rc of G.rocce){
-    const x=rc.c*G.TILE, y=rc.r*G.TILE;
-    disegnaRoccia(x,y,rc.scala);
-  }
-
-  // ── alberi ──
-  for(const a of G.alberi){
-    const x=a.c*G.TILE+a.ox*G.TILE;
-    const y=a.r*G.TILE+a.oy*G.TILE;
-    disegnaAlbero(x,y,a.scala,a.tinta,a.palude);
-  }
-
-  // ── edifici ──
-  for(const b of G.edifici){
-    const x=b.c*G.TILE, y=b.r*G.TILE;
-    disegnaEdificio(b.tipo,x,y);
-  }
-
-  // ── pirati ──
-  for(const p of G.pirati){
-    const x=p.mc*G.TILE+G.TILE/2;
-    const y=p.mr*G.TILE+G.TILE/2;
-    disegnaPirata(x,y,G.pirataSelezionato===p.id,p.umore,p.ruolo,p.id);
-    if(!G.battagliaAttiva) muoviPirata(p);
-  }
-
-  // ── navi in mare ──
-  for(const n of G.navi){
-    if(n.inMare){
-      const ox=(G.COLS+1)*G.TILE+Math.sin(frame*.015+n.id)*22;
-      const oy=(3+n.id*2.8)*G.TILE+Math.cos(frame*.012+n.id)*12;
-      disegnaNav(ox,oy,'#5c3a1a');
+  // ── 6. Navi in mare (fuori dalla griglia, in alto-destra) ──
+  for (const n of G.navi){
+    if (n.inMare){
+      const ox = canvas.width*.82 + Math.sin(frame*.015+n.id)*18*s;
+      const oy = canvas.height*.18 + n.id*55*s + Math.cos(frame*.012+n.id)*10*s;
+      disegnaNav(ox, oy, '#5c3a1a', s);
     }
   }
 
-  // ── POI ──
-  for(const p of G.pois||[]){
-    const x=p.c*G.TILE+G.TILE/2;
-    const y=p.r*G.TILE+G.TILE/2;
-    const pulse=Math.sin(frame*.04)*3;
-    ctx.beginPath();ctx.arc(x,y,9+pulse,0,Math.PI*2);
-    ctx.fillStyle='rgba(240,192,64,.18)';ctx.fill();
-    ctx.strokeStyle='rgba(240,192,64,.55)';ctx.lineWidth=1.5;ctx.stroke();
-    ctx.font=`${G.TILE*.68}px serif`;
-    ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(p.icona,x,y);
-  }
-
-  // ── hover costruzione ──
-  if(G.modalitaCostruzione&&G.modalitaCostruzione!=='sentiero'&&G.hoverC>=0&&G.hoverR>=0){
-    const x=G.hoverC*G.TILE, y=G.hoverR*G.TILE;
-    const ok=puoCostruire(G.hoverR,G.hoverC);
-    ctx.fillStyle=ok?'rgba(80,220,80,.28)':'rgba(220,60,60,.28)';
-    ctx.fillRect(x,y,G.TILE,G.TILE);
-    ctx.strokeStyle=ok?'#4f4':'#f44';ctx.lineWidth=2;
-    ctx.strokeRect(x,y,G.TILE,G.TILE);
-    // Cantiere: evidenzia spiagge vicine come suggerimento
-    if(!ok&&G.modalitaCostruzione==='cantiere'){
-      const dirs=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1],[-2,0],[2,0],[0,-2],[0,2]];
-      ctx.fillStyle='rgba(80,180,255,.2)';
-      for(const[dr,dc] of dirs){
-        const nr=G.hoverR+dr,nc=G.hoverC+dc;
-        if(nr>=0&&nc>=0&&nr<G.RIGHE&&nc<G.COLS&&(G.mappa[nr][nc]===T.SABBIA||G.mappa[nr][nc]===T.BASSO))
-          ctx.fillRect(nc*G.TILE,nr*G.TILE,G.TILE,G.TILE);
-      }
-    }
-    if(ok){
-      ctx.globalAlpha=.5;
-      disegnaEdificio(G.modalitaCostruzione,x,y);
-      ctx.globalAlpha=1;
+  // ── 7. Hover costruzione ──
+  if (G.modalitaCostruzione && G.modalitaCostruzione!=='sentiero' && G.hoverC>=0 && G.hoverR>=0){
+    const p = isoProj(G.hoverC, G.hoverR);
+    const cx = p.x, cy = p.y;
+    const hw = IW/2, hh = IH/2;
+    const ok = puoCostruire(G.hoverR, G.hoverC);
+    ctx.fillStyle   = ok ? 'rgba(80,220,80,.3)' : 'rgba(220,60,60,.3)';
+    ctx.strokeStyle = ok ? '#4f4' : '#f44';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
+    ctx.lineTo(cx, cy+IH); ctx.lineTo(cx-hw, cy+hh);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    if (ok){
+      ctx.globalAlpha = .45;
+      disegnaEdificio(G.modalitaCostruzione, cx, cy+hh, s);
+      ctx.globalAlpha = 1;
     }
   }
 
-  ctx.restore(); // fine blocco zoom
-
-  // ── OMBRE ── disegnate in coordinate schermo dopo il restore ──
+  // ── 8. Ombra globale drammatica (sole NW a ~45°) ──
+  // Disegnata come ellisse allungata verso SE per ogni oggetto alto
   ctx.save();
-  ctx.globalCompositeOperation='multiply';
-  ctx.fillStyle='#607050';
-  const _Z=G.zoom, _S=G.TILE;
-  const _tx=(wx)=>G.camX+wx*_Z;
-  const _ty=(wy)=>G.camY+wy*_Z;
-
-  // alberi
-  ctx.globalAlpha=.38;
-  for(const a of G.alberi){
-    const h=_S*a.scala*_Z;
-    const sx=_tx(a.c*_S+a.ox*_S+_S*.5);
-    const sy=_ty(a.r*_S+a.oy*_S+_S*.5);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = '#506040';
+  const shadowAlts = {fortezza:.55,guardia:.65,osservatorio:.6,cantiere:.3,cappella:.5,caserma:.38,taverna:.42,cantastorie:.48};
+  ctx.globalAlpha = .22;
+  for (const b of G.edifici){
+    const p = isoProj(b.c, b.r);
+    const bx = p.x, by = p.y + IH/2;
+    const altH = (shadowAlts[b.tipo]||.35) * G.ISO_H * s * 1.8;
     ctx.beginPath();
-    ctx.ellipse(sx+h*.5,sy+h*.25,Math.max(2,h*.4),Math.max(1,h*.13),.15,0,Math.PI*2);
+    ctx.ellipse(bx + altH*.6, by + altH*.32, altH*.65, altH*.18, .25, 0, Math.PI*2);
     ctx.fill();
   }
-  // rocce
-  ctx.globalAlpha=.32;
-  for(const rc of G.rocce){
-    const w=Math.max(2,_S*rc.scala*.38*_Z);
-    const sx=_tx(rc.c*_S+_S*.5);
-    const sy=_ty(rc.r*_S+_S*.62);
+  ctx.globalAlpha = .3;
+  for (const a of G.alberi){
+    const p = isoProj(a.c, a.r);
+    const bx = p.x + (a.ox||0)*G.ISO_W*s, by = p.y + IH/2 + (a.oy||0)*G.ISO_H*s;
+    const altH = G.ISO_H * a.scala * s * 1.4;
     ctx.beginPath();
-    ctx.ellipse(sx+w*.32,sy+w*.12,w*.62,Math.max(1,w*.16),.12,0,Math.PI*2);
-    ctx.fill();
-  }
-  // edifici
-  ctx.globalAlpha=.28;
-  const _alts={fortezza:.6,guardia:.7,osservatorio:.65,cantiere:.34,cappella:.55,caserma:.42,taverna:.48,cantastorie:.52};
-  for(const b of G.edifici){
-    const sx=_tx(b.c*_S+_S*.5);
-    const sy=_ty(b.r*_S+_S*.82);
-    const edH=(_alts[b.tipo]||.38)*_S*_Z;
-    const edW=_S*.5*_Z;
-    ctx.beginPath();
-    ctx.moveTo(sx-edW*.5,sy);
-    ctx.lineTo(sx+edW*.5,sy);
-    ctx.lineTo(sx+edW*.5+edH*.55,sy+edH*.28);
-    ctx.lineTo(sx-edW*.5+edH*.55,sy+edH*.28);
-    ctx.closePath();ctx.fill();
-  }
-  // pirati
-  ctx.globalAlpha=.26;
-  for(const p of G.pirati){
-    const sc2=_S*_Z/52;
-    const sx=_tx(p.mc*_S+_S*.5);
-    const sy=_ty(p.mr*_S+_S*.5);
-    ctx.beginPath();
-    ctx.ellipse(sx+sc2*8,sy+sc2*8,Math.max(2,sc2*11),Math.max(1,sc2*3),.18,0,Math.PI*2);
+    ctx.ellipse(bx + altH*.55, by + altH*.28, altH*.5, altH*.14, .2, 0, Math.PI*2);
     ctx.fill();
   }
   ctx.restore();
 
-  // ── vignette caraibica (non scalata) ──
-  const vign=ctx.createRadialGradient(
-    canvas.width*.5,canvas.height*.35,canvas.width*.25,
-    canvas.width*.5,canvas.height*.5,canvas.width*.78
-  );
+  // ── 9. Vignetta caraibica ──
+  const vign = ctx.createRadialGradient(canvas.width*.5,canvas.height*.35,canvas.width*.22,canvas.width*.5,canvas.height*.5,canvas.width*.75);
   vign.addColorStop(0,'rgba(255,220,120,0)');
-  vign.addColorStop(0.6,'rgba(255,180,60,.03)');
-  vign.addColorStop(1,'rgba(20,5,0,.32)');
-  ctx.fillStyle=vign;
+  vign.addColorStop(.6,'rgba(255,180,60,.025)');
+  vign.addColorStop(1,'rgba(20,5,0,.28)');
+  ctx.fillStyle = vign;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
 
-function coloreUmore(u){return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b';}
+// ── Disegna un POI (icona animata) ──
+function disegnaPOI(poi, cx, cy, s){
+  const pulse = Math.sin(frame*.04)*3*s;
+  ctx.beginPath(); ctx.arc(cx, cy, (9+pulse), 0, Math.PI*2);
+  ctx.fillStyle='rgba(240,192,64,.15)'; ctx.fill();
+  ctx.strokeStyle='rgba(240,192,64,.55)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.font=`${G.ISO_W*.6*s}px serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(poi.icona, cx, cy-4*s);
+}
 
-// ═══════════════════════════════════════════════════
-// AVVIO
-// ═══════════════════════════════════════════════════
+function coloreUmore(u){ return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b'; }
 
 
 // ═══════════════════════════════════════
@@ -2678,6 +3111,9 @@ function avviaGioco(){
   notifica('⚓ Benvenuto, Capitano!','La tua isola ti aspetta. Costruisci, saccheggia e forgia una leggenda!');
   aggiornaUI();
   cicloGioco();
+  // Musica: parte al primo click (policy autoplay browser)
+  document.addEventListener("click", avviaMusicaAlPrimoClick, {once:true});
+  impostaVelocitaUI();
 }
 
 function creaaPirata(override={}){
@@ -3542,13 +3978,17 @@ function tick(){
     if(p){p.combattimento=Math.min(100,p.combattimento+1);p.navigazione=Math.min(100,p.navigazione+1);}
   }
 
+  // Deriva umore (casuale) — lista separata per la diserzione
+  const daRimuovere=[];
   for(const p of G.pirati){
     p.umore=Math.max(5,Math.min(100,p.umore+(Math.random()-.5)*3));
     if(p.umore<sogliaDiserzione&&Math.random()<.2&&!G.ricerca.completate.has('medicina')){
       aggMsg(`☠ ${p.nome} è disertato!`,'male');
-      G.pirati=G.pirati.filter(x=>x.id!==p.id);
+      daRimuovere.push(p.id);
     }
   }
+  if(daRimuovere.length>0)
+    G.pirati=G.pirati.filter(p=>!daRimuovere.includes(p.id));
 
   for(const n of G.navi){
     if(n.inMare){
@@ -3589,7 +4029,7 @@ function tick(){
 
 
 // ═══════════════════════════════════════
-// MODULO: EVENTS
+// MODULO: EVENTS_DATA
 // ═══════════════════════════════════════
 G.eventoAttivo=false;
 G.cooldownEvento=0;
@@ -4101,6 +4541,11 @@ const EVENTI_NARRATIVI=[
 // cooldown minimo tra eventi narrativi (in tick)
 const COOLDOWN_EVENTO_MIN=8;
 
+
+
+// ═══════════════════════════════════════
+// MODULO: EVENTS_LOGIC
+// ═══════════════════════════════════════
 function eventoRandom(){
   // ogni 7 tick: 55% narrativo, 45% silenzioso
   if(G.cooldownEvento>0){ G.cooldownEvento--; eventoSilenzioso(); return; }
@@ -4244,7 +4689,7 @@ function controllaMissione(tipo,val){
 
 
 // ═══════════════════════════════════════
-// MODULO: UI
+// MODULO: UI_PANEL
 // ═══════════════════════════════════════
 function mostraTab(tab){
   G.tabCorrente=tab;
@@ -4346,6 +4791,11 @@ function statEffettiva(p, stat){
   return Math.max(1,Math.min(100,Math.floor(val)));
 }
 
+
+
+// ═══════════════════════════════════════
+// MODULO: UI_PIRATE
+// ═══════════════════════════════════════
 function apriProfiloPirata(id){
   const p=G.pirati.find(x=>String(x.id)===String(id));
   if(!p) return;
@@ -4530,6 +4980,11 @@ function apriCapitani(){
   apriModale('⭐ Capitani Famosi', html);
 }
 
+
+
+// ═══════════════════════════════════════
+// MODULO: UI_VIEWS
+// ═══════════════════════════════════════
 function renderFlotta(){
   let h=`<div class="titolo-sez">⛵ Flotta (${G.navi.length})</div>`;
   for(const n of G.navi){
@@ -4708,6 +5163,11 @@ function riparaNave(id){
   apriGestioneNave(id);
 }
 
+
+
+// ═══════════════════════════════════════
+// MODULO: UI_MANAGE
+// ═══════════════════════════════════════
 function apriGestioneNave(id){
   const n=G.navi.find(x=>x.id===id);
   if(!n) return;
@@ -4944,7 +5404,6 @@ function impostaMobile(){
 // ═══════════════════════════════════════
 function heuristica(r1,c1,r2,c2){ return Math.abs(r1-r2)+Math.abs(c1-c2); }
 
-// Costo per attraversare un tile (sentiero preferito, erba ok, rocce no)
 function costoTile(r,c){
   const t=G.mappa[r]&&G.mappa[r][c];
   if(t===undefined) return Infinity;
@@ -4967,20 +5426,17 @@ function astar(sr,sc,er,ec){
   const closed=new Set();
   let iter=0;
   while(open.size>0&&iter++<800){
-    // nodo con f minore
     let bestK=null,bestF=Infinity;
     for(const[k,_] of open){ const fv=f.get(k)||Infinity; if(fv<bestF){bestF=fv;bestK=k;} }
     const cur=open.get(bestK);
     open.delete(bestK); closed.add(bestK);
     if(cur.r===er&&cur.c===ec){
-      // ricostruisce percorso
       const path=[];
       let k=key(er,ec);
       while(parent.has(k)){ const n=parent.get(k); path.unshift({r:n.r,c:n.c}); k=key(n.r,n.c); }
       path.push({r:er,c:ec});
       return path;
     }
-    // vicini (4 direzioni + diagonali)
     const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
     for(const[dr,dc] of dirs){
       const nr=cur.r+dr,nc=cur.c+dc;
@@ -4997,46 +5453,45 @@ function astar(sr,sc,er,ec){
       }
     }
   }
-  return null; // nessun percorso
+  return null;
 }
 
-// ── MOVIMENTO PIRATI — stile Tropico 2 ──
-// Ogni pirata ha uno stato: 'vaga' | 'cammina' | 'pausa'
-// Vaga: si muove casualmente sul tile corrente (piccoli passi)
-// Cammina: segue un percorso A* verso un edificio
-// Pausa: aspetta qualche secondo all'edificio prima di ripartire
+// ═══════════════════════════════════════════════════
+// MOVIMENTO PIRATI — stile Tropico 2
 //
-// Il tick chiama aggiornaPirata() → decide lo stato
-// Il render chiama muoviPirata() → applica il movimento frame per frame
+// Velocità di camminata: ~1.5 tile/secondo alla velocità normale.
+// muoviPirata(p, dt) riceve il delta time in secondi dall'ultimo frame,
+// già moltiplicato per G.velocita → se G.velocita=0 i pirati si fermano.
+//
+// aggiornaPirata(p) è chiamato dal tick (ogni ~8 secondi reali / velocita)
+// e decide il prossimo obiettivo. I timer interni sono in secondi reali
+// per essere indipendenti dall'fps.
+// ═══════════════════════════════════════════════════
+
+// Velocità di camminata base in tile/secondo
+const PIRATA_SPEED = 1.4;
 
 function aggiornaPirata(p){
-  // Se il pirata è in stato 'pausa', decrementa il timer
+  // Pausa all'edificio: decrementa timer in secondi
   if(p._stato==='pausa'){
-    p._pausaTimer=(p._pausaTimer||0)-1;
-    if(p._pausaTimer<=0){
-      // Pausa finita — torna a vagare o scegli nuova dest
-      p._stato='vaga';
-      p.dest=null; p.percorso=null; p.percorsoIdx=0;
-    }
+    // la pausa viene gestita in muoviPirata con _pausaSec
     return;
   }
 
-  // Se sta camminando e ha raggiunto la destinazione → pausa
+  // Se sta camminando e ha finito il percorso → pausa
   if(p._stato==='cammina' && p.percorso && p.percorsoIdx>=(p.percorso.length||0)){
     p._stato='pausa';
-    p._pausaTimer=40+Math.floor(Math.random()*60); // pausa 40-100 frame (~1-2 secondi)
+    p._pausaSec = 3 + Math.random()*5; // 3-8 secondi reali di pausa
     return;
   }
 
-  // Se sta vagando, ogni tanto scegli una nuova destinazione
+  // Se vaga, ogni tanto cerca una nuova destinazione
   if(p._stato!=='cammina'){
-    p._vagaTimer=(p._vagaTimer||0)-1;
-    if(p._vagaTimer>0) return; // continua a vagare
-    p._vagaTimer=30+Math.floor(Math.random()*50);
+    p._vagaSec = (p._vagaSec||0) - (G.tickMs/1000/G.velocita||8);
+    if(p._vagaSec > 0) return;
+    p._vagaSec = 6 + Math.random()*10; // nuova scelta ogni 6-16 secondi reali
 
-    // Con edifici disponibili: vai verso uno casuale (ma non sempre lo stesso)
-    if(G.edifici.length>0 && Math.random()<0.65){
-      // Escludi la destinazione precedente se possibile
+    if(G.edifici.length>0 && Math.random()<0.7){
       const candidati=G.edifici.filter(b=>!p.dest||(b.r!==p.dest.r||b.c!==p.dest.c));
       const pool=candidati.length>0 ? candidati : G.edifici;
       const target=pool[Math.floor(Math.random()*pool.length)];
@@ -5050,47 +5505,67 @@ function aggiornaPirata(p){
         p._stato='cammina';
       }
     }
-    // altrimenti rimane a vagare nel tile corrente
   }
 }
 
-// Muove un pirata frame per frame (chiamato dal renderer ~60fps)
-function muoviPirata(p){
-  if(p._stato==='pausa') return; // fermo all'edificio
+// dt = delta time in secondi, già scalato per velocita (=0 se in pausa)
+function muoviPirata(p, dt){
+  // In pausa: decrementa timer, poi torna a vagare
+  if(p._stato==='pausa'){
+    if(dt>0){
+      p._pausaSec=(p._pausaSec||0)-dt;
+      if(p._pausaSec<=0){
+        p._stato='vaga';
+        p._vagaSec=0; // riparte subito a cercare dest
+        p.dest=null; p.percorso=null; p.percorsoIdx=0;
+      }
+    }
+    return;
+  }
+
+  if(dt===0) return; // gioco in pausa
+
+  // NaN guard: resetta coordinate se corrotte
+  if(!isFinite(p.mc)||!isFinite(p.mr)){
+    p.mc=G.COLS/2; p.mr=G.RIGHE/2;
+    p._stato='vaga'; p.percorso=null; p.percorsoIdx=0;
+    return;
+  }
 
   if(p._stato==='cammina' && p.percorso && p.percorsoIdx<p.percorso.length){
-    // Segui il percorso
     const target=p.percorso[p.percorsoIdx];
     const tx=target.c+.5, ty=target.r+.5;
     const dx=tx-p.mc, dy=ty-p.mr;
     const dist=Math.sqrt(dx*dx+dy*dy);
-    const speed=.05*G.velocita;
-    if(dist<speed+.04){
+    const step=PIRATA_SPEED*dt;
+    if(dist<step+0.01 || dist===0){  // dist===0 evita NaN da 0/0
       p.mc=tx; p.mr=ty;
       p.percorsoIdx++;
     } else {
-      p.mc+=dx/dist*speed;
-      p.mr+=dy/dist*speed;
+      p.mc+=dx/dist*step;
+      p.mr+=dy/dist*step;
     }
   } else {
     // Vaga: piccolo movimento casuale nel tile corrente
-    if(!p._vagaDx || Math.random()<0.02){
+    if(!p._vagaDx || Math.random()<0.01){
       const a=Math.random()*Math.PI*2;
-      p._vagaDx=Math.cos(a)*.008;
-      p._vagaDy=Math.sin(a)*.008;
+      const v=0.15+Math.random()*0.2; // 0.15-0.35 tile/sec quando vaga
+      p._vagaDx=Math.cos(a)*v;
+      p._vagaDy=Math.sin(a)*v;
     }
-    p.mc+=p._vagaDx*G.velocita;
-    p.mr+=p._vagaDy*G.velocita;
+    const dvx = isFinite(p._vagaDx) ? p._vagaDx : 0;
+    const dvy = isFinite(p._vagaDy) ? p._vagaDy : 0;
+    p.mc+=dvx*dt;
+    p.mr+=dvy*dt;
   }
 
-  // Mantieni dentro i bounds dell'isola (zona centrale)
+  // Bounds
   const margin=1.5;
   p.mc=Math.max(margin,Math.min(G.COLS-margin,p.mc));
   p.mr=Math.max(margin,Math.min(G.RIGHE-margin,p.mr));
 }
 
 // ── COSTRUZIONE SENTIERO ──
-// Il sentiero si può piazzare tile per tile oppure trascinare
 let sentieroDrag=false;
 function iniziaSentieroDrag(r,c){ sentieroDrag=true; piazzaSentiero(r,c); }
 function fineSentieroDrag(){ sentieroDrag=false; }
@@ -5098,14 +5573,12 @@ function piazzaSentiero(r,c){
   if(r<0||r>=G.RIGHE||c<0||c>=G.COLS) return;
   const t=G.mappa[r][c];
   if(t===T.OCEANO||t===T.BASSO||t===T.ROCCIA) return;
-  // Non sovrascrivere edifici
   if(G.edifici.find(b=>b.r===r&&b.c===c)) return;
   if(t!==T.SENTIERO){
     if(G.oro<2){ aggMsg('Servono 2 oro per ogni tile sentiero','male'); return; }
     G.oro-=2;
     G.mappa[r][c]=T.SENTIERO;
     _tileCache=null;
-    // Invalida percorsi pirati — ricalcoleranno
     for(const p of G.pirati){ p.percorso=null; p.percorsoIdx=0; }
     aggiornaUI();
   }
@@ -5384,17 +5857,15 @@ function tickPortrait(){
 // MODULO: CORE
 // ═══════════════════════════════════════
 function limiteCamera(){
-  const tileW=G.TILE*G.zoom;
-  const tileH=G.TILE*G.zoom;
-  const mapW=G.COLS*tileW;
-  const mapH=G.RIGHE*tileH;
-  const pad=40;
-  const minX=Math.min(0,canvas.width-mapW-pad);
-  const maxX=pad;
-  const minY=Math.min(0,canvas.height-mapH-pad);
-  const maxY=pad;
-  G.camX=Math.max(minX,Math.min(maxX,G.camX));
-  G.camY=Math.max(minY,Math.min(maxY,G.camY));
+  // Limiti per proiezione isometrica
+  const s   = G.ISO_SCALE;
+  const IW  = G.ISO_W * s, IH = G.ISO_H * s;
+  // Estensione della mappa iso in coordinate schermo
+  const mapW = (G.COLS + G.RIGHE) * IW / 2;
+  const mapH = (G.COLS + G.RIGHE) * IH / 2;
+  const pad  = 80;
+  G.camX = Math.max(-mapW + pad, Math.min(canvas.width - pad, G.camX));
+  G.camY = Math.max(-mapH + pad, Math.min(canvas.height - pad, G.camY));
 }
 
 function impostaInput(){
@@ -5409,9 +5880,10 @@ function impostaInput(){
   canvas.addEventListener('mousemove',e=>{
     const rect=canvas.getBoundingClientRect();
     const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-    const eff=G.TILE*G.zoom;
-    G.hoverR=Math.floor((my-G.camY)/eff);
-    G.hoverC=Math.floor((mx-G.camX)/eff);
+    const s=G.ISO_SCALE, IW=G.ISO_W*s, IH=G.ISO_H*s;
+    const lx=mx-G.camX, ly=my-G.camY;
+    G.hoverC=Math.floor((lx/IW*2+ly/IH*2)/2-.5);
+    G.hoverR=Math.floor((ly/IH*2-lx/IW*2)/2+.5);
     // Sentiero drag-paint
     if(pan.attivo && G.modalitaCostruzione==='sentiero'){
       piazzaSentiero(G.hoverR,G.hoverC); return;
@@ -5527,10 +5999,15 @@ function impostaInput(){
 }
 
 function getTile(e){
-  const rect=canvas.getBoundingClientRect();
-  const x=e.clientX-rect.left, y=e.clientY-rect.top;
-  const eff=G.TILE*G.zoom;
-  return{r:Math.floor((y-G.camY)/eff),c:Math.floor((x-G.camX)/eff)};
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left - G.camX;
+  const my = e.clientY - rect.top  - G.camY;
+  const s  = G.ISO_SCALE;
+  const IW = G.ISO_W * s, IH = G.ISO_H * s;
+  // Inverso proiezione iso: (mx,my) → (col,row)
+  const col = Math.floor((mx/IW*2 + my/IH*2) / 2 - .5);
+  const row = Math.floor((my/IH*2 - mx/IW*2) / 2 + .5);
+  return { r:row, c:col };
 }
 function cliccaMappa(e){
   const{r,c}=getTile(e);
@@ -5588,9 +6065,31 @@ function notifica(titolo,corpo,tipo=''){
 }
 
 // ── VELOCITÀ ──
+// ── VELOCITÀ — stile Tropico 2: ⏸ Pausa / ▶ Normale / ▶▶ Veloce / ▶▶▶ Max ──
+const VELOCITA_LIVELLI = [
+  { val:0,   label:'⏸',       title:'Pausa'  },
+  { val:1,   label:'▶',       title:'Normale' },
+  { val:2.5, label:'▶▶',      title:'Veloce'  },
+  { val:6,   label:'▶▶▶',     title:'Max'     },
+];
+let _velIdx = 1; // parte in Normale
+
 function cambiaVelocita(){
-  G.velocita=G.velocita===1?2:1;
-  document.getElementById('btn-velocita').textContent=G.velocita===1?'▶▶ Veloce':'▶ Normale';
+  _velIdx = (_velIdx + 1) % VELOCITA_LIVELLI.length;
+  const lv = VELOCITA_LIVELLI[_velIdx];
+  G.velocita = lv.val;
+  const btn = document.getElementById('btn-velocita');
+  if(btn){ btn.textContent = lv.label; btn.title = lv.title; }
+  // Musica: mantieni ritmo costante indipendentemente dalla velocità
+  if(typeof MUSIC !== 'undefined'){
+    if(G.velocita === 0) { /* pausa: musica continua ma il tick si ferma */ }
+  }
+}
+
+function impostaVelocitaUI(){
+  const lv = VELOCITA_LIVELLI[_velIdx];
+  const btn = document.getElementById('btn-velocita');
+  if(btn){ btn.textContent = lv.label; btn.title = lv.title; }
 }
 
 // ── CICLO GIOCO ──
@@ -5599,6 +6098,22 @@ function cambiaVelocita(){
 // ═══════════════════════════════════════════════════
 
 // Obiettivi vittoria — tutti devono essere soddisfatti
+
+// ── MUSICA ──
+function toggleMusica(){
+  const on = MUSIC.toggle();
+  const btn = document.getElementById('btn-musica');
+  if(btn) btn.textContent = on ? '🔊' : '🎵';
+}
+
+// Avvia musica al primo click utente (policy browser)
+function avviaMusicaAlPrimoClick(){
+  if(MUSIC.isRunning()) return;
+  MUSIC.start();
+  const btn = document.getElementById('btn-musica');
+  if(btn) btn.textContent = '🔊';
+  document.removeEventListener('click', avviaMusicaAlPrimoClick);
+}
 
 
 // ═══════════════════════════════════════
@@ -5737,14 +6252,26 @@ function riavviaGioco(){
 }
 
 let ultimoTick=0;
+let ultimoFrame=0;
+
 function cicloGioco(ts=0){
   requestAnimationFrame(cicloGioco);
-  try{ disegnaScena(); }catch(e){ console.error('disegnaScena:',e); }
-  try{ tickPortrait(); }catch(e){ console.error('tickPortrait:',e); }
-  const intervallo=G.tickMs/G.velocita;
-  if(ts-ultimoTick>=intervallo){
-    ultimoTick=ts;
-    try{ tick(); }catch(e){ console.error('tick:',e); }
+
+  // Delta time in secondi (cappato a 100ms per evitare salti dopo tab inattiva)
+  const dt = Math.min((ts - ultimoFrame) / 1000, 0.1);
+  ultimoFrame = ts;
+
+  // Render sempre (anche in pausa, per UI reattiva)
+  try{ disegnaScena(dt); }catch(e){ console.error('disegnaScena:',e); }
+  try{ tickPortrait();   }catch(e){ console.error('tickPortrait:',e); }
+
+  // Tick giornaliero: si ferma se velocita=0 (pausa)
+  if(G.velocita > 0){
+    const intervallo = G.tickMs / G.velocita;
+    if(ts - ultimoTick >= intervallo){
+      ultimoTick = ts;
+      try{ tick(); }catch(e){ console.error('tick:',e); }
+    }
   }
 }
 
