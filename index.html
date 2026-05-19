@@ -6,6 +6,7 @@
 <title>Isla del Diablo</title>
 <style>
 
+
 /* ── SISTEMA TIPOGRAFICO ──
    Titoli decorativi : Pirata One
    Label / UI chrome : Cinzel (leggibile, small-caps feeling)
@@ -647,10 +648,10 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 }
 #btn-musica:hover{background:rgba(240,192,64,.18);border-color:var(--oro);}
 
+
 </style>
 </head>
 <body>
-
 <!-- TITOLO -->
 <div id="schermata-titolo">
   <div class="teschio">💀</div>
@@ -748,6 +749,7 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   <button class="btn-azione" onclick="apriCommercio()">🤝 Commercio</button>
   <button class="btn-azione" onclick="apriEditti()">📜 Editti</button>
   <button class="btn-azione" onclick="apriPrigione()">⛓ Prigione</button>
+  <button class="btn-azione" onclick="apriGestioneSchiavi()">⛏ Schiavi</button>
   <button class="btn-azione pericolo" id="btn-annulla" onclick="annullaCostruzione()">✕ Annulla</button>
   <button id="btn-velocita" onclick="cambiaVelocita()">▶▶ Veloce</button>
   <button id="btn-musica" onclick="toggleMusica()" title="Musica">🎵</button>
@@ -821,7 +823,6 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 
 <!-- NOTIFICHE -->
 <div id="area-notifiche"></div>
-
 <script>
 
 // ═══════════════════════════════════════
@@ -1267,6 +1268,7 @@ const MUSIC = (() => {
 })();
 
 
+
 // ═══════════════════════════════════════
 // MODULO: STATE
 // ═══════════════════════════════════════
@@ -1275,7 +1277,7 @@ const MUSIC = (() => {
 // ═══════════════════════════════════════════════════
 const G={
   giorno:1, oro:250, cibo:100, legno:150, rum:50,
-  pirati:[], navi:[], edifici:[], prigionieri:[],
+  pirati:[], navi:[], edifici:[], prigionieri:[], schiavi:[],
   missioniAttive:[],
   mappa:[], COLS:26, RIGHE:20, TILE:52,
   zoom:1, ZOOM_MIN:.45, ZOOM_MAX:2.2,
@@ -1444,6 +1446,7 @@ const NOMI_PRIGIONIERI=['Ten. Belfair','Cap. Sterling','Gov. Blackwell','Amm. Gr
 // heightmap semplice con noise
 
 
+
 // ═══════════════════════════════════════
 // MODULO: MAP
 // ═══════════════════════════════════════
@@ -1609,6 +1612,7 @@ function generaMappa(){
 // ═══════════════════════════════════════════════════
 // CANVAS RENDERER  —  top-down dettagliato
 // ═══════════════════════════════════════════════════
+
 
 
 // ═══════════════════════════════════════
@@ -1969,6 +1973,7 @@ function disegnaTransizioni() {
 }
 
 
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_NATURE
 // ═══════════════════════════════════════
@@ -2095,6 +2100,7 @@ function disegnaRocciaIso(cx, cy, scala, s){
 }
 
 
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_ISO
 // ═══════════════════════════════════════
@@ -2217,6 +2223,7 @@ function isoWindow(bx,by,lit,sz){
 
 
 
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_BUILDINGS
 // ═══════════════════════════════════════
@@ -2305,10 +2312,10 @@ function disegnaEdificio(tipo,cx,cy,s){
     }
 
     case 'fattoria':{
-      // campi coltivati (base verde rigata)
+      // campi coltivati (strisce iso intorno alla capanna)
       for(let i=0;i<4;i++){
         ctx.fillStyle=i%2===0?'#5a8a28':'#4a7a1e';
-        ctx.fillRect(ex+S*.04+i*S*.22,ey+S*.5,S*.21,S*.35);
+        ctx.fillRect(bx-S*.5+i*S*.25,by-S*.1,S*.24,S*.18);
       }
       // capanna
       isoBox(bx-S*.12,by-S*.28,S*.32,S*.2,S*.2,'#8a6a2a','#a07e36','#6a4e18');
@@ -2693,6 +2700,7 @@ function disegnaEdificio(tipo,cx,cy,s){
 
 
 
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_UNITS
 // ═══════════════════════════════════════
@@ -2910,6 +2918,77 @@ function disegnaPirataIso(cx, cy, selezionato, umore, ruolo, s){
   ctx.beginPath(); ctx.arc(cx+sc*5,cy-sc*19,sc*2.2,0,Math.PI*2); ctx.fill();
 }
 
+// ── SCHIAVO ISO — più piccolo del pirata, aspetto dimesso ──
+function disegnaSchiavoIso(cx, cy, felicita, s){
+  s = s || G.ISO_SCALE;
+  const sc = G.ISO_H * s * .030;  // più piccolo del pirata (.038)
+  const felCol = felicita>60?'#4fc04f':felicita>30?'#f0c040':'#c0392b';
+
+  // Ombra
+  ctx.save(); ctx.globalAlpha=.18; ctx.fillStyle='#000';
+  ctx.beginPath(); ctx.ellipse(cx+sc*2,cy+sc*3,sc*4,sc*1.2,.12,0,Math.PI*2); ctx.fill(); ctx.restore();
+
+  // Gambe (pantaloni grigi/logori)
+  ctx.fillStyle='#5a5040';
+  ctx.fillRect(cx-sc*1.5, cy-sc*0.5, sc*2, sc*4);
+  ctx.fillRect(cx+sc*.5,  cy-sc*0.5, sc*2, sc*4);
+
+  // Corpo (camicia strappata, colore neutro)
+  const bodyG=ctx.createLinearGradient(cx-sc*3,cy-sc*7,cx+sc*3,cy);
+  bodyG.addColorStop(0,'#8a7860'); bodyG.addColorStop(1,'#5a4838');
+  ctx.fillStyle=bodyG;
+  ctx.beginPath();
+  ctx.moveTo(cx-sc*2.5,cy);
+  ctx.bezierCurveTo(cx-sc*3.5,cy-sc*3,cx-sc*3,cy-sc*6,cx-sc*2,cy-sc*7);
+  ctx.lineTo(cx+sc*2,cy-sc*7);
+  ctx.bezierCurveTo(cx+sc*3,cy-sc*6,cx+sc*3.5,cy-sc*3,cx+sc*2.5,cy);
+  ctx.closePath(); ctx.fill();
+
+  // Braccia con attrezzo (piccone/vanga)
+  ctx.fillStyle='#8a7860';
+  ctx.beginPath();
+  ctx.moveTo(cx+sc*2.5,cy-sc*6.5);
+  ctx.bezierCurveTo(cx+sc*5,cy-sc*4,cx+sc*5.5,cy-sc*1.5,cx+sc*4.5,cy);
+  ctx.lineTo(cx+sc*3,cy-.5);
+  ctx.bezierCurveTo(cx+sc*3.2,cy-sc*2,cx+sc*2,cy-sc*5.5,cx+sc*1.5,cy-sc*6.5);
+  ctx.closePath(); ctx.fill();
+  // Attrezzo (piccone)
+  ctx.strokeStyle='#8a6030'; ctx.lineWidth=sc*1.5;
+  ctx.beginPath(); ctx.moveTo(cx+sc*4.5,cy); ctx.lineTo(cx+sc*7,cy+sc*4); ctx.stroke();
+  ctx.fillStyle='#aaa';
+  ctx.beginPath(); ctx.ellipse(cx+sc*7,cy+sc*4,sc*1.8,sc*.7,-.4,0,Math.PI*2); ctx.fill();
+
+  // Testa (pelle diversa)
+  const skinTones=['#c8a060','#a06030','#7a4020','#d4a870'];
+  ctx.fillStyle=skinTones[Math.floor(Math.abs(cx+cy))%skinTones.length];
+  ctx.beginPath(); ctx.ellipse(cx,cy-sc*9,sc*3.2,sc*3.5,0,0,Math.PI*2); ctx.fill();
+
+  // Occhi stanchi
+  ctx.fillStyle='#1a0a00';
+  ctx.beginPath(); ctx.arc(cx-sc*1,cy-sc*9.5,sc*.6,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx+sc*1,cy-sc*9.5,sc*.6,0,Math.PI*2); ctx.fill();
+
+  // Bocca (triste o neutra)
+  ctx.strokeStyle='rgba(100,40,20,.75)'; ctx.lineWidth=.8;
+  ctx.beginPath();
+  if(felicita>60){ ctx.arc(cx,cy-sc*8,sc*1.2,.15,Math.PI-.15,false); }
+  else { ctx.arc(cx,cy-sc*7.2,sc*1.2,Math.PI+.2,-.2,false); }
+  ctx.stroke();
+
+  // Bandana in testa (colore felicità)
+  ctx.fillStyle=felCol;
+  ctx.beginPath();
+  ctx.ellipse(cx,cy-sc*11.5,sc*3.4,sc*1.2,0,Math.PI,0,true); ctx.fill();
+  ctx.fillRect(cx-sc*3.4,cy-sc*11.5,sc*6.8,sc*1.5);
+
+  // Indicatore felicità (pallino sopra la testa)
+  ctx.fillStyle='rgba(0,0,0,.5)';
+  ctx.beginPath(); ctx.arc(cx,cy-sc*14,sc*2,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=felCol;
+  ctx.beginPath(); ctx.arc(cx,cy-sc*14,sc*1.5,0,Math.PI*2); ctx.fill();
+}
+
+
 
 // ═══════════════════════════════════════
 // MODULO: RENDERER_SCENE
@@ -2979,6 +3058,17 @@ function disegnaScena(dt=0.016){
     const proj = isoProj(col, row);
     oggetti.push({ depth: row*2+col*2+0.5, tipo:'pirata', data:p, px:proj.x, py:proj.y });
   }
+  // Schiavi (stessa logica pirati, taglia più piccola)
+  for (const s of G.schiavi||[]){
+    const proj = isoProj(s.mc, s.mr);
+    oggetti.push({ depth: s.mr*2+s.mc*2+0.3, tipo:'schiavo', data:s, px:proj.x, py:proj.y });
+  }
+  // Schiavi (vagano vicino agli edifici)
+  for (const sv of G.schiavi||[]){
+    if(!isFinite(sv.mc)||!isFinite(sv.mr)) continue;
+    const proj=isoProj(sv.mc,sv.mr);
+    oggetti.push({depth:sv.mr*2+sv.mc*2+0.3,tipo:"schiavo",data:sv,px:proj.x,py:proj.y});
+  }
   // POI
   for (const poi of G.pois||[]){
     const p = isoProj(poi.c, poi.r);
@@ -3004,22 +3094,21 @@ function disegnaScena(dt=0.016){
       case 'edificio':
         disegnaEdificio(data.tipo, cx, cy, s); break;
       case 'pirata':
-        disegnaPirataIso(cx, cy, G.pirataSelezionato===data.id, data.umore, data.ruolo, s);
-        if (!G.battagliaAttiva) muoviPirata(data, dt * G.velocita);
+        disegnaPirataIso(cx,cy,G.pirataSelezionato===data.id,data.umore,data.ruolo,s);
+        if(!G.battagliaAttiva) muoviPirata(data,dt*G.velocita);
+        break;
+      case 'schiavo':
+        if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s);
+        break;
+      case 'schiavo':
+        disegnaSchiavoIso(cx, cy, data.felicita, s);
         break;
       case 'poi':
         disegnaPOI(data, cx, cy, s); break;
     }
   }
 
-  // ── 6. Navi in mare (fuori dalla griglia, in alto-destra) ──
-  for (const n of G.navi){
-    if (n.inMare){
-      const ox = canvas.width*.82 + Math.sin(frame*.015+n.id)*18*s;
-      const oy = canvas.height*.18 + n.id*55*s + Math.cos(frame*.012+n.id)*10*s;
-      disegnaNav(ox, oy, '#5c3a1a', s);
-    }
-  }
+  // ── 6. Navi: vedi disegnaNaviMare() ──
 
   // ── 7. Hover costruzione ──
   if (G.modalitaCostruzione && G.modalitaCostruzione!=='sentiero' && G.hoverC>=0 && G.hoverR>=0){
@@ -3041,6 +3130,21 @@ function disegnaScena(dt=0.016){
     }
   }
 
+  // ── 7a. Movimento schiavi (una volta sola per frame) ──
+  if(typeof muoviSchiavi==='function') muoviSchiavi(dt * G.velocita);
+
+  // ── 7b. Indicatori edifici (bolle produzione) ──
+  if(typeof disegnaIndicatoriEdifici === "function") disegnaIndicatoriEdifici(s);
+
+  // ── 7c. Navi animate in mare ──
+  if(typeof disegnaNaviMare === "function") disegnaNaviMare(s);
+
+  // ── 7a. Movimento schiavi (una volta per frame) ──
+  if(typeof muoviSchiavi==="function") muoviSchiavi(dt*G.velocita);
+  // ── 7b. Indicatori edifici ──
+  if(typeof disegnaIndicatoriEdifici==="function") disegnaIndicatoriEdifici(s);
+  // ── 7c. Navi animate ──
+  if(typeof disegnaNaviMare==="function") disegnaNaviMare(s);
   // ── 8. Ombra globale drammatica (sole NW a ~45°) ──
   // Disegnata come ellisse allungata verso SE per ogni oggetto alto
   ctx.save();
@@ -3090,9 +3194,513 @@ function disegnaPOI(poi, cx, cy, s){
 function coloreUmore(u){ return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b'; }
 
 
+
 // ═══════════════════════════════════════
-// MODULO: GAME
+// MODULO: SCHIAVI
 // ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// SISTEMA SCHIAVI — stile Tropico 2
+//
+// In Tropico 2 i PIRATI sono i padroni: bevono, combattono,
+// si divertono. Sono gli SCHIAVI (prigionieri catturati e
+// messi a lavorare) che producono risorse negli edifici.
+//
+// Struttura:
+//   G.schiavi[] — lista schiavi attivi
+//   Ogni schiavo: { id, nome, fazione, edificio, produzione,
+//                   felicita(0-100), giorni, mr, mc, _stato }
+//
+// Flusso:
+//   1. Cattura → prigioniero
+//   2. "Metti al lavoro" → diventa schiavo assegnato a edificio
+//   3. Ogni tick → produce risorse in base all'edificio
+//   4. Felicità scende → produzione cala → può ribellarsi
+//   5. Opzioni: riscatta, recluta come pirata, libera
+// ═══════════════════════════════════════════════════
+
+// Edifici che possono usare schiavi e cosa producono
+const LAVORO_SCHIAVI = {
+  fattoria:    { risorsa:'cibo',   base:12, icona:'🍖' },
+  segheria:    { risorsa:'legno',  base:10, icona:'🪵' },
+  distilleria: { risorsa:'rum',    base:8,  icona:'🍺' },
+  miniera:     { risorsa:'oro',    base:8,  icona:'💰' },
+  cantiere:    { risorsa:'legno',  base:6,  icona:'🪵' },
+  casapirata:  { risorsa:'oro',    base:5,  icona:'💰' },
+};
+
+const NOMI_SCHIAVI_M = ['Thomas','William','James','Robert','Edward','Henry',
+  'George','Charles','Richard','John','Miguel','Pedro','Hans','François'];
+const NOMI_SCHIAVI_F = ['Mary','Anne','Elizabeth','Catherine','Margaret',
+  'Isabella','Sofia','Clara','Maria','Rose'];
+
+// ── Inizializza array schiavi se non esiste ──
+if(!G.schiavi) G.schiavi=[];
+
+// ── Crea uno schiavo da un prigioniero ──
+function mettiAlLavoro(prigionieroId, edificioR, edificioC){
+  const p = G.prigionieri.find(x=>x.id===prigionieroId);
+  if(!p){ aggMsg('Prigioniero non trovato!','male'); return; }
+
+  const edificio = G.edifici.find(b=>b.r===edificioR&&b.c===edificioC);
+  if(!edificio){ aggMsg('Edificio non trovato!','male'); return; }
+
+  if(!LAVORO_SCHIAVI[edificio.tipo]){
+    aggMsg('Questo edificio non usa schiavi!','male'); return;
+  }
+
+  // Quanti schiavi già lavorano in questo edificio?
+  const giaPresenti = G.schiavi.filter(s=>s.edificioR===edificioR&&s.edificioC===edificioC).length;
+  const maxPerEdificio = 3;
+  if(giaPresenti>=maxPerEdificio){
+    aggMsg(`Max ${maxPerEdificio} schiavi per edificio!`,'male'); return;
+  }
+
+  // Rimuove dal carcere e crea schiavo
+  G.prigionieri = G.prigionieri.filter(x=>x.id!==prigionieroId);
+
+  const lavoro = LAVORO_SCHIAVI[edificio.tipo];
+  const schiavo = {
+    id: p.id,
+    nome: p.nome,
+    fazione: p.fazione,
+    edificioR: edificioR,
+    edificioC: edificioC,
+    edificioTipo: edificio.tipo,
+    produzione: lavoro,
+    felicita: 50,  // parte neutro
+    giorni: 0,
+    // posizione visiva: parte dall'edificio
+    mc: edificioC + 0.5,
+    mr: edificioR + 0.5,
+    _stato: 'lavora',
+    _vagaDx: 0, _vagaDy: 0,
+  };
+
+  G.schiavi.push(schiavo);
+  aggMsg(`⛏ ${schiavo.nome} messo al lavoro in ${ED[edificio.tipo].nome}!`,'bene');
+  aggiornaUI();
+}
+
+// ── Tick schiavi: produzione + calo felicità ──
+function tickSchiavi(){
+  if(!G.schiavi || G.schiavi.length===0) return;
+
+  const daRimuovere = [];
+
+  for(const s of G.schiavi){
+    s.giorni++;
+
+    // Produzione in base a felicità (50% = piena, 0% = niente)
+    const lav = LAVORO_SCHIAVI[s.edificioTipo];
+    if(!lav) continue;
+
+    // Verifica che l'edificio esista ancora
+    const edificioEsiste = G.edifici.find(b=>b.r===s.edificioR&&b.c===s.edificioC);
+    if(!edificioEsiste){
+      daRimuovere.push(s.id);
+      continue;
+    }
+
+    // Moltiplicatore felicità: da 0.2 (infelice) a 1.2 (felice)
+    const multFel = 0.2 + (s.felicita/100)*1.0;
+
+    // Effetti taverna/rum sulla felicità schiavi
+    const haTaverna = G.edifici.find(b=>b.tipo==='taverna');
+    const felBon = haTaverna ? 2 : 0;
+    const felCost = 3; // cala ogni tick
+
+    // Produzione
+    const produzione = Math.floor(lav.base * multFel);
+    if(produzione > 0){
+      if(lav.risorsa==='cibo')  G.cibo  = Math.min(999, G.cibo  + produzione);
+      if(lav.risorsa==='legno') G.legno = Math.min(999, G.legno + produzione);
+      if(lav.risorsa==='rum')   G.rum   = Math.min(999, G.rum   + produzione);
+      if(lav.risorsa==='oro')   G.oro   = Math.min(9999,G.oro   + produzione);
+    }
+
+    // Felicità: cala nel tempo, migliorata da edifici bisogni
+    s.felicita = Math.max(0, Math.min(100,
+      s.felicita
+      - felCost
+      + felBon
+      + (G.bisogni.salute>60 ? 1 : 0)  // infermeria aiuta
+    ));
+
+    // Rivolta: felicità a 0 → fuga o sabotaggio
+    if(s.felicita<=0 && Math.random()<0.15){
+      aggMsg(`💢 ${s.nome} si è ribellato e fuggito!`,'male');
+      // Sabotaggio: distrugge un po' di risorse
+      G.cibo  = Math.max(0, G.cibo  - Math.floor(Math.random()*20));
+      G.legno = Math.max(0, G.legno - Math.floor(Math.random()*15));
+      daRimuovere.push(s.id);
+
+      // Rep: se era Marina Reale, la Marina approva la fuga
+      if(s.fazione==='Marina Reale')
+        G.fazioni.reale.rep = Math.min(100, G.fazioni.reale.rep+3);
+    }
+  }
+
+  if(daRimuovere.length>0)
+    G.schiavi = G.schiavi.filter(s=>!daRimuovere.includes(s.id));
+}
+
+// ── Libera uno schiavo (guadagno rep, perdi produzione) ──
+function liberaSchiavo(id){
+  const s = G.schiavi.find(x=>x.id===id);
+  if(!s) return;
+  G.schiavi = G.schiavi.filter(x=>x.id!==id);
+
+  // Guadagno reputazione
+  if(s.fazione==='Marina Reale') G.fazioni.reale.rep = Math.min(100, G.fazioni.reale.rep+15);
+  if(s.fazione==='Mercante')     G.fazioni.mercante.rep = Math.min(100, G.fazioni.mercante.rep+10);
+
+  notifica('⛓ Schiavo Liberato', s.nome+' è libero. La tua reputazione migliora.','bene');
+  chiudiModale();
+  aggiornaUI();
+}
+
+// ── Riscatta schiavo (tornano ad essere prigionieri → riscatto) ──
+function riscattaSchiavo(id){
+  const s = G.schiavi.find(x=>x.id===id);
+  if(!s) return;
+  const riscatto = 80 + Math.floor(Math.random()*120);
+  G.schiavi = G.schiavi.filter(x=>x.id!==id);
+  G.oro += riscatto;
+  aggMsg(`💰 ${s.nome} riscattato per ${riscatto} oro!`,'bene');
+  chiudiModale();
+  aggiornaUI();
+}
+
+// ── Recluta schiavo come pirata (se morale pirata è alto) ──
+function reclutaSchiavo(id){
+  const s = G.schiavi.find(x=>x.id===id);
+  if(!s) return;
+  G.schiavi = G.schiavi.filter(x=>x.id!==id);
+  creaaPirata({ nome: s.nome });
+  aggMsg(`⚔ ${s.nome} si unisce alla ciurma!`,'bene');
+  chiudiModale();
+  aggiornaUI();
+}
+
+// ── UI: pannello schiavi ──
+function apriGestioneSchiavi(){
+  const haPrigione = G.edifici.find(b=>b.tipo==='prigione');
+  const edificiLavoro = G.edifici.filter(b=>LAVORO_SCHIAVI[b.tipo]);
+
+  let html = `
+    <p style="font-size:.8rem;color:var(--sabbia);margin-bottom:10px">
+      Gli schiavi lavorano negli edifici produttivi. Più sono felici, più producono.
+      La felicità cala nel tempo — costruisci edifici di benessere per mantenerla alta.
+    </p>`;
+
+  // Prigionieri disponibili da mettere al lavoro
+  if(G.prigionieri.length>0){
+    html += `<div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--oro);
+      letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">
+      Prigionieri disponibili (${G.prigionieri.length})</div>`;
+
+    for(const p of G.prigionieri){
+      html += `<div style="background:rgba(139,26,26,.15);border:1px solid rgba(192,57,43,.3);
+        border-radius:5px;padding:7px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:#ffbbbb;font-size:.8rem">⛓ ${p.nome}
+            <span style="color:var(--sabbia);font-size:.68rem">(${p.fazione})</span></span>
+          <span style="font-size:.68rem;color:var(--oro)">${p.riscatto}💰</span>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
+          ${edificiLavoro.map(b=>`
+            <button class="btn-piccolo" onclick="mettiAlLavoro(${p.id},${b.r},${b.c})">
+              ${ED[b.tipo].icona} ${ED[b.tipo].nome}
+            </button>`).join('')}
+          <button class="mbtn primario" style="padding:3px 8px;font-size:.65rem;margin:0"
+            onclick="riscattaPrigioniero(${p.id});chiudiModale()">💰 Riscatta</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  // Schiavi al lavoro
+  if(G.schiavi.length>0){
+    html += `<div style="font-family:'Cinzel',serif;font-size:.68rem;color:var(--oro);
+      letter-spacing:1px;text-transform:uppercase;margin:10px 0 6px">
+      Al lavoro (${G.schiavi.length})</div>`;
+
+    for(const s of G.schiavi){
+      const felCol = s.felicita>60?'var(--verde-ch)':s.felicita>30?'var(--oro)':'var(--rum-chiaro)';
+      const lav = LAVORO_SCHIAVI[s.edificioTipo]||{};
+      const multFel = 0.2 + (s.felicita/100)*1.0;
+      const prodEff = Math.floor((lav.base||0)*multFel);
+
+      html += `<div style="background:rgba(255,255,255,.05);border:1px solid var(--bordo);
+        border-radius:5px;padding:7px 10px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div style="font-size:.8rem;color:var(--pergamena)">⛏ ${s.nome}</div>
+            <div style="font-size:.65rem;color:var(--sabbia)">${ED[s.edificioTipo]?.icona} ${ED[s.edificioTipo]?.nome}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:.7rem;color:${felCol}">😊 ${s.felicita}%</div>
+            <div style="font-size:.65rem;color:${lav.icona?'#aaffaa':'#666'}">
+              ${lav.icona||''} +${prodEff}/${lav.risorsa||''} /g</div>
+          </div>
+        </div>
+        <div style="height:3px;background:#1a2a1a;border-radius:2px;margin:4px 0">
+          <div style="height:100%;width:${s.felicita}%;background:${felCol};border-radius:2px;transition:width .5s"></div>
+        </div>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          <button class="btn-piccolo" onclick="liberaSchiavo(${s.id})">🕊 Libera</button>
+          <button class="btn-piccolo" onclick="riscattaSchiavo(${s.id})">💰 Riscatta</button>
+          <button class="btn-piccolo" onclick="reclutaSchiavo(${s.id})">⚔ Recluta</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  if(G.prigionieri.length===0 && G.schiavi.length===0){
+    html += `<p style="color:#666;font-style:italic;text-align:center;margin-top:10px">
+      Nessun prigioniero o schiavo. Fai un raid per catturarne!</p>`;
+  }
+
+  if(edificiLavoro.length===0){
+    html += `<p style="color:#ffaaaa;margin-top:8px">
+      ⚠ Costruisci fattorie, segherie o distillerie per usare gli schiavi.</p>`;
+  }
+
+  apriModale('⛓ Schiavi & Lavoro', html);
+}
+
+// ── Movimento visivo schiavi: vagano vicino all'edificio ──
+function muoviSchiavi(dt){
+  for(const s of G.schiavi){
+    if(!isFinite(s.mc)||!isFinite(s.mr)){
+      s.mc=s.edificioC+0.5; s.mr=s.edificioR+0.5; continue;
+    }
+    // Piccoli movimenti intorno all'edificio (raggio ~1 tile)
+    if(!s._vagaDx || Math.random()<0.005){
+      const a = Math.random()*Math.PI*2;
+      const r = 0.3 + Math.random()*0.5;
+      s._targetC = s.edificioC + 0.5 + Math.cos(a)*r;
+      s._targetR = s.edificioR + 0.5 + Math.sin(a)*r*0.5;
+      s._vagaDx = 1; // flag attivo
+    }
+    if(s._targetC!==undefined){
+      const dx = s._targetC - s.mc;
+      const dy = s._targetR - s.mr;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist>0.05){
+        const speed = 0.4*dt;
+        s.mc += dx/dist*speed;
+        s.mr += dy/dist*speed;
+      }
+    }
+    // Bounds vicino all'edificio
+    s.mc = Math.max(s.edificioC-1, Math.min(s.edificioC+2, s.mc));
+    s.mr = Math.max(s.edificioR-1, Math.min(s.edificioR+2, s.mr));
+  }
+}
+
+
+
+// ═══════════════════════════════════════
+// MODULO: EDIFICI_HUD
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// EDIFICI HUD — stile Tropico 2
+// ═══════════════════════════════════════════════════
+
+const EDIFICIO_PRODUZIONE = {
+  fattoria:    { icona:'🍖', risorsa:'cibo',    valore:9,  colore:'#4fc04f' },
+  distilleria: { icona:'🍺', risorsa:'rum',     valore:6,  colore:'#c07830' },
+  segheria:    { icona:'🪵', risorsa:'legno',   valore:7,  colore:'#8b5e3c' },
+  osservatorio:{ icona:'🔭', risorsa:'ricerca', valore:3,  colore:'#6ab4ff' },
+  casapirata:  { icona:'💰', risorsa:'oro',     valore:6,  colore:'#f0c040' },
+  sarto:       { icona:'💰', risorsa:'oro',     valore:10, colore:'#f0c040' },
+  taverna:     { icona:'😊', risorsa:'morale',  valore:5,  colore:'#ff8888' },
+  bordello:    { icona:'💋', risorsa:'diverte', valore:20, colore:'#ff69b4' },
+  arena:       { icona:'⚔',  risorsa:'diverte', valore:12, colore:'#ff6644' },
+  infermeria:  { icona:'❤',  risorsa:'salute',  valore:20, colore:'#ff4444' },
+  cappella:    { icona:'✝',  risorsa:'spirito', valore:18, colore:'#ffffaa' },
+  guardia:     { icona:'🛡',  risorsa:'sicur.',  valore:15, colore:'#88ccff' },
+  caserma:     { icona:'⚔',  risorsa:'combatt.',valore:1,  colore:'#ff8844' },
+  cantiere:    { icona:'⚓',  risorsa:'navi',    valore:0,  colore:'#8888ff' },
+  fortezza:    { icona:'🏰', risorsa:'difesa',  valore:0,  colore:'#aaaaaa' },
+  prigione:    { icona:'⛓',  risorsa:'riscatti',valore:0,  colore:'#888888' },
+  mercatonero: { icona:'🛒', risorsa:'+20%',    valore:0,  colore:'#ffaa00' },
+  bagni:       { icona:'🛁', risorsa:'salute',  valore:12, colore:'#88ddff' },
+  cantastorie: { icona:'🎭', risorsa:'diverte', valore:8,  colore:'#dd88ff' },
+};
+
+function disegnaIndicatoriEdifici(s){
+  if(!G.edifici||G.edifici.length===0) return;
+  const IH=G.ISO_H*s, IW=G.ISO_W*s;
+  const alture={fortezza:2.2,guardia:2.8,osservatorio:2.5,cantiere:1.8,cappella:2.3,caserma:1.6};
+
+  for(const b of G.edifici){
+    const p=isoProj(b.c,b.r);
+    const cx=p.x, cy=p.y+IH*0.5;
+    const altH=(alture[b.tipo]||1.2)*IH;
+    const ix=cx, iy=cy-altH;
+    const prod=EDIFICIO_PRODUZIONE[b.tipo];
+    const schiaviQui=(G.schiavi||[]).filter(sv=>sv.edificioR===b.r&&sv.edificioC===b.c).length;
+
+    ctx.save();
+    const bw=54*s, bh=18*s, bx=ix-bw/2, by=iy-bh-4*s;
+
+    ctx.fillStyle='rgba(0,0,0,0.75)';
+    ctx.beginPath();
+    if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,4*s); else ctx.rect(bx,by,bw,bh);
+    ctx.fill();
+
+    if(prod){ ctx.strokeStyle=prod.colore+'99'; ctx.lineWidth=1*s; ctx.stroke(); }
+
+    ctx.font=(10*s)+'px serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillStyle='white';
+    ctx.fillText(ED[b.tipo]?.icona||'🏠', bx+3*s, by+bh/2);
+
+    if(prod&&prod.valore>0){
+      ctx.fillStyle=prod.colore; ctx.font='bold '+(8*s)+'px sans-serif';
+      ctx.fillText('+'+prod.valore, bx+16*s, by+bh/2-2*s);
+      ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font=(6*s)+'px sans-serif';
+      ctx.fillText(prod.risorsa, bx+16*s, by+bh/2+5*s);
+    } else if(prod){
+      ctx.fillStyle=prod.colore; ctx.font=(7*s)+'px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(prod.risorsa, bx+bw/2+4*s, by+bh/2);
+    }
+
+    if(schiaviQui>0){
+      ctx.fillStyle='#ffbbbb'; ctx.font='bold '+(7*s)+'px sans-serif'; ctx.textAlign='right';
+      ctx.fillText('⛏'+schiaviQui, bx+bw-2*s, by+bh/2);
+    }
+
+    ctx.fillStyle='rgba(0,0,0,0.75)';
+    ctx.beginPath();
+    ctx.moveTo(ix-3*s,by+bh); ctx.lineTo(ix+3*s,by+bh); ctx.lineTo(ix,by+bh+4*s);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function apriPopupEdificio(edificio){
+  const def=ED[edificio.tipo];
+  if(!def) return;
+  const prod=EDIFICIO_PRODUZIONE[edificio.tipo];
+  const schiaviQui=(G.schiavi||[]).filter(s=>s.edificioR===edificio.r&&s.edificioC===edificio.c);
+  const accettaSchiavi=typeof LAVORO_SCHIAVI!=='undefined'&&!!LAVORO_SCHIAVI[edificio.tipo];
+  const lav=accettaSchiavi?LAVORO_SCHIAVI[edificio.tipo]:null;
+
+  let h='<div style="text-align:center;margin-bottom:12px">';
+  h+='<div style="font-size:2.5rem">'+def.icona+'</div>';
+  h+='<div style="font-family:\'Pirata One\',cursive;color:var(--oro);font-size:1.2rem">'+def.nome+'</div>';
+  h+='<div style="font-size:.72rem;color:var(--sabbia);font-style:italic;margin-top:3px">'+def.effetto+'</div>';
+  h+='</div>';
+
+  if(prod&&prod.valore>0){
+    h+='<div style="display:flex;justify-content:center;gap:16px;background:rgba(255,255,255,.05);';
+    h+='border-radius:6px;padding:8px;margin-bottom:10px;border:1px solid var(--bordo)">';
+    h+='<div style="text-align:center">';
+    h+='<div style="font-size:1.4rem">'+prod.icona+'</div>';
+    h+='<div style="font-family:\'Cinzel\',serif;font-size:1rem;color:'+prod.colore+'">+'+prod.valore+'</div>';
+    h+='<div style="font-size:.62rem;color:var(--sabbia)">'+prod.risorsa+'/giorno</div>';
+    h+='</div></div>';
+  }
+
+  if(accettaSchiavi&&lav){
+    h+='<div style="background:rgba(192,57,43,.12);border:1px solid rgba(192,57,43,.3);';
+    h+='border-radius:5px;padding:8px 10px;margin-bottom:10px">';
+    h+='<div style="font-size:.7rem;color:#ffbbbb;margin-bottom:5px">';
+    h+='⛏ Schiavi: <strong>'+schiaviQui.length+'</strong> / 3 max</div>';
+
+    for(const sv of schiaviQui){
+      const fc=sv.felicita>60?'#4fc04f':sv.felicita>30?'#f0c040':'#c0392b';
+      const pe=Math.floor((lav.base||0)*(0.2+sv.felicita/100));
+      h+='<div style="display:flex;justify-content:space-between;font-size:.68rem;';
+      h+='color:var(--sabbia);margin-bottom:2px">';
+      h+='<span>⛓ '+sv.nome+'</span>';
+      h+='<span style="color:'+fc+'">😊'+sv.felicita+'% '+(lav.icona||'')+pe+'/g</span></div>';
+      h+='<div style="height:3px;background:#1a2a1a;border-radius:2px;margin-bottom:3px">';
+      h+='<div style="height:100%;width:'+sv.felicita+'%;background:'+fc+';border-radius:2px"></div></div>';
+    }
+    if(schiaviQui.length===0)
+      h+='<div style="font-size:.68rem;color:#666;font-style:italic">Nessuno schiavo assegnato</div>';
+    if((G.prigionieri||[]).length>0&&schiaviQui.length<3)
+      h+='<button class="btn-piccolo" style="margin-top:5px" onclick="chiudiModale();apriGestioneSchiavi()">+ Assegna schiavo</button>';
+    h+='</div>';
+  }
+
+  h+='<div style="display:flex;gap:6px;margin-top:10px">';
+  h+='<button class="mbtn pericolo" onclick="demolisciEdificio('+edificio.r+','+edificio.c+')">🔨 Demolisci</button>';
+  h+='<button class="mbtn secondario" onclick="chiudiModale()">Chiudi</button>';
+  h+='</div>';
+
+  apriModale(def.icona+' '+def.nome, h);
+}
+
+function demolisciEdificio(r,c){
+  G.edifici=G.edifici.filter(b=>!(b.r===r&&b.c===c));
+  if(G.schiavi) G.schiavi=G.schiavi.filter(s=>!(s.edificioR===r&&s.edificioC===c));
+  chiudiModale();
+  aggMsg('🔨 Edificio demolito','male');
+  aggiornaUI();
+}
+
+// ── NAVI ANIMATE ──
+const _naviMare={};
+
+function inizializzaNaveMare(nave){
+  if(_naviMare[nave.id]) return;
+  const cantiere=G.edifici.find(b=>b.tipo==='cantiere');
+  let sx=canvas?canvas.width*0.1:100, sy=canvas?canvas.height*0.3:200;
+  if(cantiere&&canvas){ const p=isoProj(cantiere.c,cantiere.r); sx=p.x; sy=p.y; }
+  _naviMare[nave.id]={x:sx,y:sy,ondaOffset:Math.random()*Math.PI*2,angolo:0};
+}
+
+function disegnaNaviMare(s){
+  if(!G.navi||!canvas) return;
+  for(const nave of G.navi){
+    if(!nave.inMare){ delete _naviMare[nave.id]; continue; }
+    inizializzaNaveMare(nave);
+    const nm=_naviMare[nave.id];
+    const tx=canvas.width*(0.72+nave.id*0.06), ty=canvas.height*(0.12+nave.id*0.08);
+    nm.x+=(tx-nm.x)*0.008; nm.y+=(ty-nm.y)*0.008;
+    const onda=Math.sin(frame*0.02+nm.ondaOffset)*6*s;
+    const ondaH=Math.cos(frame*0.015+nm.ondaOffset)*3*s;
+    const dx=tx-nm.x, dy=ty-nm.y, dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>2) nm.angolo=Math.atan2(dy,dx)*0.15+nm.angolo*0.85;
+
+    ctx.save();
+    ctx.globalAlpha=0.18; ctx.strokeStyle='#aaddff'; ctx.lineWidth=3*s;
+    ctx.beginPath();
+    ctx.moveTo(nm.x,nm.y+onda);
+    ctx.quadraticCurveTo(nm.x-40*s,nm.y+onda+8*s,nm.x-80*s,nm.y+onda+4*s);
+    ctx.stroke(); ctx.restore();
+
+    ctx.save();
+    ctx.translate(nm.x,nm.y+onda);
+    ctx.rotate(nm.angolo*0.3+Math.sin(frame*0.025+nm.ondaOffset)*0.04);
+    disegnaNav(0,ondaH,nave.livCannoni>0?'#5c3e2a':'#5c3a1a',s);
+    ctx.restore();
+
+    if(s>0.5){
+      ctx.save();
+      ctx.fillStyle='rgba(0,0,0,0.65)';
+      const lw=90*s,lx=nm.x-lw/2,ly=nm.y+onda+28*s;
+      ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(lx,ly,lw,16*s,3*s); else ctx.rect(lx,ly,lw,16*s);
+      ctx.fill();
+      ctx.fillStyle='#f0c040'; ctx.font='bold '+(7*s)+'px Cinzel,serif'; ctx.textAlign='center';
+      ctx.fillText(nave.nome.substring(0,12),nm.x,ly+7*s);
+      ctx.fillStyle='#aaddff'; ctx.font=(6*s)+'px sans-serif';
+      ctx.fillText('⚓ rientra in '+nave.timerRaid+'g',nm.x,ly+13*s);
+      ctx.restore();
+    }
+  }
+}
+
+
+// ═══════════════════════════════════════
+// MODULO: AVVIO_GIOCO
+// ═══════════════════════════════════════
+// ── AVVIO GIOCO, PIRATI, CAPITANI ──
 function avviaGioco(){
   document.getElementById('schermata-titolo').style.display='none';
   document.getElementById('barra-sup').style.display='flex';
@@ -3179,6 +3787,13 @@ function reclutaCapitano(id){
 // ═══════════════════════════════════════════════════
 // COSTRUZIONE
 // ═══════════════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════
+// MODULO: COSTRUZIONE
+// ═══════════════════════════════════════
+// ── COSTRUZIONE EDIFICI & SENTIERI ──
 function selezionaSentiero(){
   G.modalitaCostruzione='sentiero';
   document.querySelectorAll('.btn-costruisci').forEach(b=>b.classList.remove('attivo-strumento'));
@@ -3245,6 +3860,13 @@ function piazzaEdificio(r,c){
 // NAVI
 // ═══════════════════════════════════════════════════
 // factory con tutti i campi
+
+
+
+// ═══════════════════════════════════════
+// MODULO: NAVI_RAID
+// ═══════════════════════════════════════
+// ── NAVI & PIANIFICAZIONE RAID ──
 function creaNave(id, nome){
   const nomi=['Serpente di Ferro','Burrasca Nera','Scia del Diavolo','Orizzonte Insanguinato','Mietitore dei Mari','Crimson Dawn'];
   const n = nome || nomi[id % nomi.length];
@@ -3507,8 +4129,9 @@ function lanciaRaidTattico(){
 
 
 
+
 // ═══════════════════════════════════════
-// MODULO: RAID
+// MODULO: RAID_SEQUENCE
 // ═══════════════════════════════════════
 // ═══════════════════════════════════════════════════
 // SEQUENZA RAID — stile Tropico 2
@@ -3708,8 +4331,15 @@ function rientroNave(nave){
       }
     }
 
-    // Possibile prigioniero
-    if(Math.random()<.4) catturaPrigioniero(bersaglio.rep.reale<0?'Marina Reale':'Mercante');
+    // Cattura prigionieri — numero basato su difficoltà
+    const _faz=bersaglio.rep.reale<0?'Marina Reale':'Mercante';
+    const _nMin=bersaglio.difficolta<=2?1:2;
+    const _nMax=bersaglio.difficolta<=2?3:5;
+    const _nCat=_nMin+Math.floor(Math.random()*(_nMax-_nMin+1));
+    for(let _i=0;_i<_nCat;_i++){ if(Math.random()<0.75) catturaPrigioniero(_faz); }
+    if(bersaglio.id==='galeone_reale'||bersaglio.id==='porto_coloniale'){
+      catturaPrigioniero('Marina Reale'); catturaPrigioniero('Mercante');
+    }
 
     // Evento speciale porto coloniale
     if(bersaglio.id==='porto_coloniale'){
@@ -3734,6 +4364,7 @@ function rientroNave(nave){
 
   } else {
     for(const p of G.pirati) p.umore=Math.max(5,p.umore-18);
+    if(Math.random()<0.35) catturaPrigioniero(bersaglio.rep.reale<0?'Marina Reale':'Mercante');
     notifica('💀 Raid Fallito',
       bersaglio.icona+' '+bersaglio.nome+' ha respinto l\'attacco. '+nave.nome+' rientra danneggiata.','male');
     aggMsg('💀 Raid fallito — nave -'+dannoNave+' HP','male');
@@ -3758,6 +4389,13 @@ function chiudiBattaglia(){ chiudiBattegliaTattica(); }
 function iniziaBattaglia(nave,em){ avviaSequenzaRaid(nave,BERSAGLI_RAID[em?0:2],TATTICHE_RAID[0]); }
 
 // ── PRIGIONIERI ──
+
+
+
+// ═══════════════════════════════════════
+// MODULO: PRIGIONE_COMMERCIO
+// ═══════════════════════════════════════
+// ── PRIGIONIERI, RICERCA, COMMERCIO, EDITTI ──
 function catturaPrigioniero(fazione){
   const nome=NOMI_PRIGIONIERI[Math.floor(Math.random()*NOMI_PRIGIONIERI.length)];
   const riscatto=100+Math.floor(Math.random()*200);
@@ -3886,6 +4524,13 @@ function editto(tipo){
 // ═══════════════════════════════════════════════════
 // TICK — avanzamento tempo
 // ═══════════════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════
+// MODULO: TICK
+// ═══════════════════════════════════════
+// ── TICK — avanzamento tempo ──
 function tick(){
   G.tick++; G.giorno++;
 
@@ -4011,6 +4656,8 @@ function tick(){
   }
 
   for(const p of G.prigionieri){p.giorni++;G.cibo=Math.max(0,G.cibo-1);}
+  // Schiavi al lavoro
+  if(typeof tickSchiavi==='function') tickSchiavi();
 
   if(G.cooldownRaid>0) G.cooldownRaid--;
   G.fazioni.reale.rep  =Math.max(-100,Math.min(100,G.fazioni.reale.rep+.5));
@@ -4028,8 +4675,9 @@ function tick(){
 // ═══════════════════════════════════════════════════
 
 
+
 // ═══════════════════════════════════════
-// MODULO: EVENTS_DATA
+// MODULO: EVENTS_MARE
 // ═══════════════════════════════════════
 G.eventoAttivo=false;
 G.cooldownEvento=0;
@@ -4124,6 +4772,16 @@ const EVENTI_NARRATIVI=[
     ]
   },
 
+];
+const COOLDOWN_EVENTO_MIN=8;
+
+
+
+// ═══════════════════════════════════════
+// MODULO: EVENTS_CIURMA
+// ═══════════════════════════════════════
+// ── EVENTI CIURMA & ISOLA ──
+EVENTI_NARRATIVI.push(
   // ── CIURMA ──
   {
     id:'rivolta_ciurma', tag:'Ciurma', peso:2,
@@ -4335,8 +4993,16 @@ const EVENTI_NARRATIVI=[
         esito:'Era effettivamente buona. La metà sacra non dimentica. Una tensione sottile avvelena l\'isola per settimane.',
         tipo:'male', fn:()=>{G.cibo+=30;for(const p of G.pirati)p.umore=Math.max(10,p.umore-15);}},
     ]
-  },
+  }
+);
 
+
+
+// ═══════════════════════════════════════
+// MODULO: EVENTS_POLITICA
+// ═══════════════════════════════════════
+// ── EVENTI COMMERCIO, NATURA & MISTERO ──
+EVENTI_NARRATIVI.push(
   // ── COMMERCIO ──
   {
     id:'carico_misterioso', tag:'Commercio', peso:2,
@@ -4534,12 +5200,8 @@ const EVENTI_NARRATIVI=[
         esito:'È simpatico. Storie straordinarie. Ordina rum come se fosse la sua ultima notte. Accordo raggiunto a metà cena, tra risate e qualcosa che sembrava una promessa.',
         tipo:'bene', fn:()=>{G.rum=Math.max(0,G.rum-20);G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+15);for(const p of G.pirati)p.umore=Math.min(100,p.umore+10);}},
     ]
-  },
-
-];
-
-// cooldown minimo tra eventi narrativi (in tick)
-const COOLDOWN_EVENTO_MIN=8;
+  }
+);
 
 
 
@@ -4688,6 +5350,7 @@ function controllaMissione(tipo,val){
 // ═══════════════════════════════════════════════════
 
 
+
 // ═══════════════════════════════════════
 // MODULO: UI_PANEL
 // ═══════════════════════════════════════
@@ -4790,6 +5453,7 @@ function statEffettiva(p, stat){
   if(p.oggetto&&p.oggetto.bonus&&p.oggetto.bonus[stat]) val+=p.oggetto.bonus[stat];
   return Math.max(1,Math.min(100,Math.floor(val)));
 }
+
 
 
 
@@ -4982,6 +5646,7 @@ function apriCapitani(){
 
 
 
+
 // ═══════════════════════════════════════
 // MODULO: UI_VIEWS
 // ═══════════════════════════════════════
@@ -5162,6 +5827,7 @@ function selPirata(id){apriProfiloPirata(id);}
 function riparaNave(id){
   apriGestioneNave(id);
 }
+
 
 
 
@@ -5353,6 +6019,7 @@ function aggiornaUI(){
 
 
 
+
 // ═══════════════════════════════════════
 // MODULO: INPUT
 // ═══════════════════════════════════════
@@ -5396,6 +6063,7 @@ function impostaMobile(){
 // ═══════════════════════════════════════════════════
 // PATHFINDING A* — movimento pirati verso edifici
 // ═══════════════════════════════════════════════════
+
 
 
 
@@ -5590,6 +6258,7 @@ function rimuoviSentiero(r,c){
     for(const p of G.pirati){ p.percorso=null; p.percorsoIdx=0; }
   }
 }
+
 
 
 // ═══════════════════════════════════════
@@ -5853,6 +6522,7 @@ function tickPortrait(){
 }
 
 
+
 // ═══════════════════════════════════════
 // MODULO: CORE
 // ═══════════════════════════════════════
@@ -6014,25 +6684,32 @@ function cliccaMappa(e){
   if(G.modalitaCostruzione==='sentiero'){piazzaSentiero(r,c);return;}
   if(G.modalitaCostruzione){piazzaEdificio(r,c);return;}
 
-  // Controlla click su pirata (area ~1 tile intorno alla sua posizione)
-  const rect=e.target.getBoundingClientRect();
-  const mx=(e.clientX-rect.left-G.camX)/G.zoom;
-  const my=(e.clientY-rect.top -G.camY)/G.zoom;
-  const S=G.TILE;
+  // 1. Edificio sul tile cliccato — priorità massima
+  const b=G.edifici.find(x=>x.r===r&&x.c===c);
+  if(b){
+    if(typeof apriPopupEdificio==='function') apriPopupEdificio(b);
+    return;
+  }
+
+  // 2. Pirata vicino al punto cliccato (coordinate schermo iso)
+  const rect=canvas.getBoundingClientRect();
+  const clickX=e.clientX-rect.left;
+  const clickY=e.clientY-rect.top;
+  const s=G.ISO_SCALE, IW=G.ISO_W*s, IH=G.ISO_H*s;
   for(const p of G.pirati){
-    const px2=p.mc*S+S/2, py2=p.mr*S+S/2;
-    if(Math.abs(mx-px2)<S*.6&&Math.abs(my-py2)<S*.8){
+    const proj=isoProj(p.mc,p.mr);
+    const px=proj.x, py=proj.y+IH/2;
+    if(Math.abs(clickX-px)<IW*0.5&&Math.abs(clickY-py)<IH*1.5){
       apriProfiloPirata(p.id);
       return;
     }
   }
 
+  // 3. Info tile
   const t=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
   if(t===undefined) return;
-  const b=G.edifici.find(x=>x.r===r&&x.c===c);
   const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
-  if(b) aggMsg(ED[b.tipo].icona+' '+ED[b.tipo].nome+' — '+ED[b.tipo].effetto,'info');
-  else aggMsg('📍 '+(nomi[t]||'?'));
+  aggMsg('📍 '+(nomi[t]||'?'));
 }
 
 // ── MODALE ──
@@ -6114,6 +6791,7 @@ function avviaMusicaAlPrimoClick(){
   if(btn) btn.textContent = '🔊';
   document.removeEventListener('click', avviaMusicaAlPrimoClick);
 }
+
 
 
 // ═══════════════════════════════════════
@@ -6274,6 +6952,8 @@ function cicloGioco(ts=0){
     }
   }
 }
+
+
 
 
 
