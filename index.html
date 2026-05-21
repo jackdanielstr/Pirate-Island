@@ -658,7 +658,7 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   <h1>Isla del Diablo</h1>
   <div class="sub">Una Colonia di Pirati</div>
   <div class="motto">"Costruisci la tua fortezza. Saccheggia i mari. Governa con il terrore e il rum."</div>
-  <button id="btn-inizia" onclick="avviaGioco()">⚓ Salpa!</button>
+  <button id="btn-inizia" onclick="avviaGiocoSicuro(event)" ontouchend="avviaGiocoSicuro(event)">⚓ Salpa!</button>
 </div>
 
 <!-- BARRA SUPERIORE -->
@@ -838,6 +838,18 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 // Tonalità: Am (Minore Armonica) — tipico dei Caraibi / piratesco
 // Tempo: 92 BPM
 // ═══════════════════════════════════════════════════
+
+
+
+// ═══════════════════════════════════════
+// FASE 1 — Atmosfera viva stile Tropico 2
+// Pirati non lavorano: gli schiavi trasportano merci
+// ═══════════════════════════════════════
+
+window.FASE1 = {
+  merci: [],
+  raidAttivi: []
+};
 
 const MUSIC = (() => {
 
@@ -1316,6 +1328,7 @@ const T={OCEANO:0,SABBIA:1,ERBA:2,FORESTA:3,ROCCIA:4,BASSO:5,COLLINA:6,FIUME:7,S
 const ED={
   taverna:    {icona:'🍺',nome:'Taverna',         costo:{oro:80,legno:20},  effetto:'Morale +5/g, consuma rum'},
   cantiere:   {icona:'⚓',nome:'Cantiere Navale',  costo:{oro:120,legno:50}, effetto:'Permette costruzione navi'},
+  porto:      {icona:'🛥',nome:'Porto dei Pirati', costo:{oro:90,legno:70},  effetto:'Punto di partenza e rientro per raid e navi'},
   fortezza:   {icona:'🏰',nome:'Fortezza',         costo:{oro:180,legno:80}, effetto:'+difesa contro attacchi'},
   fattoria:   {icona:'🌿',nome:'Fattoria',          costo:{oro:60,legno:30},  effetto:'+9 cibo/giorno'},
   distilleria:{icona:'🏭',nome:'Distilleria',       costo:{oro:90,legno:40},  effetto:'+6 rum/giorno'},
@@ -2262,6 +2275,7 @@ function disegnaEdificio(tipo,cx,cy,s){
       break;
     }
 
+    case 'porto':
     case 'cantiere':{
       // molo in legno
       ctx.fillStyle='#6a4a1a';
@@ -3054,20 +3068,17 @@ function disegnaScena(dt=0.016){
   }
   // Pirati (depth = posizione float, +2 per stare sopra gli edifici)
   for (const p of G.pirati){
+    if(p.inRaid) continue;
     const col = p.mc, row = p.mr;
     const proj = isoProj(col, row);
     oggetti.push({ depth: row*2+col*2+0.5, tipo:'pirata', data:p, px:proj.x, py:proj.y });
   }
   // Schiavi (stessa logica pirati, taglia più piccola)
-  for (const s of G.schiavi||[]){
-    const proj = isoProj(s.mc, s.mr);
-    oggetti.push({ depth: s.mr*2+s.mc*2+0.3, tipo:'schiavo', data:s, px:proj.x, py:proj.y });
-  }
-  // Schiavi (vagano vicino agli edifici)
+  // Schiavi (vagano vicino agli edifici — con NaN guard)
   for (const sv of G.schiavi||[]){
     if(!isFinite(sv.mc)||!isFinite(sv.mr)) continue;
     const proj=isoProj(sv.mc,sv.mr);
-    oggetti.push({depth:sv.mr*2+sv.mc*2+0.3,tipo:"schiavo",data:sv,px:proj.x,py:proj.y});
+    oggetti.push({depth:sv.mr*2+sv.mc*2+1.4,tipo:"schiavo",data:sv,px:proj.x,py:proj.y});
   }
   // POI
   for (const poi of G.pois||[]){
@@ -3100,9 +3111,6 @@ function disegnaScena(dt=0.016){
       case 'schiavo':
         if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s);
         break;
-      case 'schiavo':
-        disegnaSchiavoIso(cx, cy, data.felicita, s);
-        break;
       case 'poi':
         disegnaPOI(data, cx, cy, s); break;
     }
@@ -3130,14 +3138,6 @@ function disegnaScena(dt=0.016){
     }
   }
 
-  // ── 7a. Movimento schiavi (una volta sola per frame) ──
-  if(typeof muoviSchiavi==='function') muoviSchiavi(dt * G.velocita);
-
-  // ── 7b. Indicatori edifici (bolle produzione) ──
-  if(typeof disegnaIndicatoriEdifici === "function") disegnaIndicatoriEdifici(s);
-
-  // ── 7c. Navi animate in mare ──
-  if(typeof disegnaNaviMare === "function") disegnaNaviMare(s);
 
   // ── 7a. Movimento schiavi (una volta per frame) ──
   if(typeof muoviSchiavi==="function") muoviSchiavi(dt*G.velocita);
@@ -3145,6 +3145,7 @@ function disegnaScena(dt=0.016){
   if(typeof disegnaIndicatoriEdifici==="function") disegnaIndicatoriEdifici(s);
   // ── 7c. Navi animate ──
   if(typeof disegnaNaviMare==="function") disegnaNaviMare(s);
+
   // ── 8. Ombra globale drammatica (sole NW a ~45°) ──
   // Disegnata come ellisse allungata verso SE per ogni oggetto alto
   ctx.save();
@@ -3236,6 +3237,17 @@ const NOMI_SCHIAVI_F = ['Mary','Anne','Elizabeth','Catherine','Margaret',
 // ── Inizializza array schiavi se non esiste ──
 if(!G.schiavi) G.schiavi=[];
 
+// ID prigionieri robusti: Date.now() da solo può duplicare più catture
+// nello stesso millisecondo, facendo sparire più prigionieri/schiavi insieme.
+let __seqPrigionieri = 1;
+function nuovoIdPrigioniero(){
+  return Date.now() * 1000 + (__seqPrigionieri++);
+}
+function rimuoviUnPrigioniero(id){
+  const idx = G.prigionieri.findIndex(x=>x.id===id);
+  if(idx>=0) G.prigionieri.splice(idx,1);
+}
+
 // ── Crea uno schiavo da un prigioniero ──
 function mettiAlLavoro(prigionieroId, edificioR, edificioC){
   const p = G.prigionieri.find(x=>x.id===prigionieroId);
@@ -3256,7 +3268,7 @@ function mettiAlLavoro(prigionieroId, edificioR, edificioC){
   }
 
   // Rimuove dal carcere e crea schiavo
-  G.prigionieri = G.prigionieri.filter(x=>x.id!==prigionieroId);
+  rimuoviUnPrigioniero(prigionieroId);
 
   const lavoro = LAVORO_SCHIAVI[edificio.tipo];
   const schiavo = {
@@ -3277,7 +3289,15 @@ function mettiAlLavoro(prigionieroId, edificioR, edificioC){
   };
 
   G.schiavi.push(schiavo);
+
+  // Chiude il menu assegnazione per evitare stati UI bloccati
+  // su mobile e forza il refresh immediato della mappa.
+  chiudiModale();
+
   aggMsg(`⛏ ${schiavo.nome} messo al lavoro in ${ED[edificio.tipo].nome}!`,'bene');
+
+  // Refresh UI senza alterare le coordinate originali
+  // degli altri schiavi presenti sulla mappa.
   aggiornaUI();
 }
 
@@ -3466,7 +3486,7 @@ function apriGestioneSchiavi(){
       ⚠ Costruisci fattorie, segherie o distillerie per usare gli schiavi.</p>`;
   }
 
-  apriModale('⛓ Schiavi & Lavoro', html);
+  apriModale('⛓ Schiavi & Trasporto & Lavoro', html);
 }
 
 // ── Movimento visivo schiavi: vagano vicino all'edificio ──
@@ -3648,9 +3668,9 @@ const _naviMare={};
 
 function inizializzaNaveMare(nave){
   if(_naviMare[nave.id]) return;
-  const cantiere=G.edifici.find(b=>b.tipo==='cantiere');
+  const puntoPorto=typeof trovaPortoRaid==='function'?trovaPortoRaid():null;
   let sx=canvas?canvas.width*0.1:100, sy=canvas?canvas.height*0.3:200;
-  if(cantiere&&canvas){ const p=isoProj(cantiere.c,cantiere.r); sx=p.x; sy=p.y; }
+  if(puntoPorto&&canvas){ const p=isoProj(puntoPorto.c,puntoPorto.r); sx=p.x; sy=p.y; }
   _naviMare[nave.id]={x:sx,y:sy,ondaOffset:Math.random()*Math.PI*2,angolo:0};
 }
 
@@ -3701,6 +3721,24 @@ function disegnaNaviMare(s){
 // MODULO: AVVIO_GIOCO
 // ═══════════════════════════════════════
 // ── AVVIO GIOCO, PIRATI, CAPITANI ──
+
+function avviaGiocoSicuro(ev){
+  if(ev){
+    try{ ev.preventDefault(); }catch(e){}
+    try{ ev.stopPropagation(); }catch(e){}
+  }
+  if(window.__giocoAvviato) return;
+  window.__giocoAvviato=true;
+  try{
+    avviaGioco();
+  }catch(err){
+    window.__giocoAvviato=false;
+    console.error('Errore avvio gioco:', err);
+    const msg = err && err.message ? err.message : String(err);
+    alert('Errore avvio gioco: ' + msg);
+  }
+}
+
 function avviaGioco(){
   document.getElementById('schermata-titolo').style.display='none';
   document.getElementById('barra-sup').style.display='flex';
@@ -3827,8 +3865,8 @@ function puoCostruire(r,c){
   const t=G.mappa[r][c];
   if(t!==T.SABBIA&&t!==T.ERBA&&t!==T.COLLINA&&t!==T.SENTIERO) return false;
   if(G.edifici.find(b=>b.r===r&&b.c===c)) return false;
-  // cantiere navale: deve essere adiacente (anche diagonale) a spiaggia o acque basse
-  if(G.modalitaCostruzione==='cantiere'){
+  // cantiere/porto: devono essere adiacenti (anche diagonale) a spiaggia o acque basse
+  if(G.modalitaCostruzione==='cantiere'||G.modalitaCostruzione==='porto'){
     const vicini=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1],[-2,0],[2,0],[0,-2],[0,2]];
     const hasSpiaggia=vicini.some(([dr,dc])=>{
       const nr=r+dr,nc=c+dc;
@@ -4147,23 +4185,49 @@ function lanciaRaidTattico(){
 //      e si mostra la notifica con il risultato
 // ═══════════════════════════════════════════════════
 
-function avviaSequenzaRaid(nave, bersaglio, tattica){
-  // 1. Trova punto di imbarco (cantiere o spiaggia vicina all'oceano)
+
+function trovaPortoRaid(){
+  // Priorità: Porto dei Pirati -> Cantiere Navale -> prima spiaggia disponibile
+  const porto=G.edifici.find(b=>b.tipo==='porto');
+  if(porto) return {r:porto.r,c:porto.c,tipo:'porto'};
   const cantiere=G.edifici.find(b=>b.tipo==='cantiere');
-  let destR, destC;
-  if(cantiere){
-    destR=cantiere.r; destC=cantiere.c;
-  } else {
-    // Fallback: trova qualsiasi tile di sabbia
-    let trovato=false;
-    for(let r=0;r<G.RIGHE&&!trovato;r++) for(let c=0;c<G.COLS&&!trovato;c++){
-      if(G.mappa[r][c]===T.SABBIA){ destR=r; destC=c; trovato=true; }
-    }
-    if(!trovato){ destR=Math.floor(G.RIGHE/2); destC=Math.floor(G.COLS/2); }
+  if(cantiere) return {r:cantiere.r,c:cantiere.c,tipo:'cantiere'};
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    if(G.mappa[r][c]===T.SABBIA) return {r,c,tipo:'spiaggia'};
+  }
+  return {r:Math.floor(G.RIGHE/2),c:Math.floor(G.COLS/2),tipo:'centro'};
+}
+
+function piratiPerRaid(nave){
+  // Se ci sono pirati assegnati alla nave, parte solo quell'equipaggio.
+  // Se nessuno è assegnato, mantiene il comportamento precedente: si raduna tutta la ciurma.
+  // Esclude chi è già in raid o già in fase di imbarco.
+  const libero=p=>!p.inRaid && p._stato!=='in_partenza';
+  const assegnati=G.pirati.filter(p=>p.naveId===nave.id && libero(p));
+  return assegnati.length>0 ? assegnati : G.pirati.filter(libero);
+}
+
+function avviaSequenzaRaid(nave, bersaglio, tattica){
+  if(nave.raidPreparazione || nave.inMare){
+    aggMsg('Questa nave è già impegnata in un raid.','male');
+    return;
   }
 
-  // 2. Manda i pirati verso il porto (con fallback se astar fallisce)
-  for(const p of G.pirati){
+  // 1. Trova punto di imbarco: Porto dei Pirati, Cantiere o spiaggia.
+  const puntoPorto=trovaPortoRaid();
+  const destR=puntoPorto.r, destC=puntoPorto.c;
+  const equipaggioRaid=piratiPerRaid(nave);
+
+  if(equipaggioRaid.length<2){
+    aggMsg('Servono almeno 2 pirati liberi per salpare.','male');
+    return;
+  }
+
+  nave.raidPreparazione=true;
+  nave.crewRaidIds=equipaggioRaid.map(p=>p.id);
+
+  // 2. Manda i pirati verso il porto: restano visibili sulla mappa finché non arrivano.
+  for(const p of equipaggioRaid){
     try{
       const sr=Math.max(0,Math.min(G.RIGHE-1,Math.round(p.mr)));
       const sc=Math.max(0,Math.min(G.COLS-1,Math.round(p.mc)));
@@ -4172,52 +4236,58 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
     } catch(e){
       p.percorso=[{r:destR,c:destC}];
     }
-    p._stato="cammina"; p.percorsoIdx=0; p.dest={r:destR,c:destC};
+    p._stato='in_partenza';
+    p.percorsoIdx=0;
+    p.dest={r:destR,c:destC};
+    p.inRaidNaveId=nave.id;
   }
 
-  // 3. Mostra overlay campana
+  // 3. Overlay campana non blocca la simulazione: mostra il raduno reale al porto.
   const ov=document.getElementById('overlay-campana');
-  document.getElementById('campana-icona').textContent='🔔';
-  document.getElementById('campana-titolo').textContent='⚔ '+bersaglio.icona+' '+bersaglio.nome;
-  document.getElementById('campana-msg').textContent='La ciurma si raduna al porto...';
-  document.getElementById('campana-barra').style.width='0%';
-  ov.classList.add('aperto');
-
-  // 4. Anima marcia (3 secondi) — con timeout di sicurezza
-  const totalDur=3000;
-  const startTs=performance.now();
   const barEl=document.getElementById('campana-barra');
   const msgEl=document.getElementById('campana-msg');
+  document.getElementById('campana-icona').textContent='🔔';
+  document.getElementById('campana-titolo').textContent='⚔ '+bersaglio.icona+' '+bersaglio.nome;
+  msgEl.textContent='La ciurma si dirige al porto...';
+  barEl.style.width='0%';
+  ov.classList.add('aperto');
+
   const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0));
-  let completato=false;
+  const started=performance.now();
+  const timeoutMs=14000; // sicurezza: se qualcuno resta bloccato, salpa comunque
 
-  // Sicurezza: se l'animazione non completa entro 5s, forza il completamento
-  const safetyTimer=setTimeout(()=>{
-    if(!completato){ completato=true; ov.classList.remove('aperto'); salpaNave(nave,bersaglio,tattica,durata); }
-  }, 5000);
-
-  function animaMarcia(ts){
-    if(completato) return;
-    const progress=Math.min(100,(ts-startTs)/totalDur*100);
-    barEl.style.width=progress+'%';
-
-    if(progress<33)       msgEl.textContent='🏃 La ciurma marcia verso il porto...';
-    else if(progress<66)  msgEl.textContent='⛵ I pirati salgono a bordo di '+nave.nome+'...';
-    else                  msgEl.textContent='🌊 Salpa verso '+bersaglio.nome+' ('+durata+' giorni)...';
-
-    if(progress<100){
-      requestAnimationFrame(animaMarcia);
-    } else {
-      completato=true;
-      clearTimeout(safetyTimer);
-      setTimeout(()=>{ ov.classList.remove('aperto'); salpaNave(nave,bersaglio,tattica,durata); }, 300);
-    }
+  function distanzaDalPorto(p){
+    const dx=(destC+0.5)-p.mc;
+    const dy=(destR+0.5)-p.mr;
+    return Math.sqrt(dx*dx+dy*dy);
   }
-  requestAnimationFrame(animaMarcia);
-}
 
+  function controllaImbarco(){
+    if(!nave.raidPreparazione) return;
+
+    const crew=G.pirati.filter(p=>nave.crewRaidIds.includes(p.id));
+    const arrivati=crew.filter(p=>distanzaDalPorto(p)<0.9 || (p.percorso && p.percorsoIdx>=p.percorso.length));
+    const pct=crew.length ? Math.round(arrivati.length/crew.length*100) : 100;
+    barEl.style.width=pct+'%';
+
+    if(pct<50) msgEl.textContent='🏃 I pirati marciano verso il porto...';
+    else if(pct<100) msgEl.textContent='⛵ La ciurma si sta imbarcando su '+nave.nome+'...';
+    else msgEl.textContent='🌊 Tutti a bordo! '+nave.nome+' salpa verso '+bersaglio.nome+'...';
+
+    if(arrivati.length>=crew.length || performance.now()-started>timeoutMs){
+      ov.classList.remove('aperto');
+      salpaNave(nave,bersaglio,tattica,durata);
+      return;
+    }
+
+    requestAnimationFrame(controllaImbarco);
+  }
+
+  requestAnimationFrame(controllaImbarco);
+}
 // Nave parte: salva i dati del raid, attiva il timer
 function salpaNave(nave, bersaglio, tattica, durata){
+  nave.raidPreparazione=false;
   nave.inMare    = true;
   nave.timerRaid = durata;
   nave.raidData  = { bersaglio, tattica };
@@ -4225,13 +4295,18 @@ function salpaNave(nave, bersaglio, tattica, durata){
   G.cooldownRaid  = 4;
   G.contatori.raid++;
 
-  // Pirati tornano a vagare liberamente
+  // I pirati imbarcati spariscono dalla mappa finché la nave è in mare.
+  const crewIds=new Set(nave.crewRaidIds||[]);
   for(const p of G.pirati){
-    p._stato="vaga"; p._vagaTimer=10+Math.floor(Math.random()*30);
-    p.dest=null; p.percorso=null; p.percorsoIdx=0;
+    if(crewIds.has(p.id)){
+      p.inRaid=true;
+      p.inRaidNaveId=nave.id;
+      p._stato='in_raid';
+      p.dest=null; p.percorso=null; p.percorsoIdx=0;
+    }
   }
 
-  aggMsg('⛵ '+nave.nome+' salpa! Rientro tra '+durata+' giorni.','bene');
+  aggMsg('⛵ '+nave.nome+' salpa dal porto! Rientro tra '+durata+' giorni.','bene');
   controllaMissione('raid', G.contatori.raid);
   aggiornaUI();
 }
@@ -4239,6 +4314,23 @@ function salpaNave(nave, bersaglio, tattica, durata){
 // Chiamata dal tick quando timerRaid arriva a 0
 function rientroNave(nave){
   nave.inMare=false;
+  nave.raidPreparazione=false;
+
+  // Al rientro la ciurma riappare al porto insieme alla nave.
+  const puntoPorto=trovaPortoRaid();
+  const crewIds=new Set(nave.crewRaidIds||[]);
+  for(const p of G.pirati){
+    if(crewIds.has(p.id)||p.inRaidNaveId===nave.id){
+      p.inRaid=false;
+      p.inRaidNaveId=null;
+      p.mc=puntoPorto.c+0.5+(Math.random()-.5)*0.4;
+      p.mr=puntoPorto.r+0.5+(Math.random()-.5)*0.4;
+      p._stato='pausa';
+      p._pausaSec=2+Math.random()*3;
+      p.dest=null; p.percorso=null; p.percorsoIdx=0;
+    }
+  }
+  nave.crewRaidIds=[];
 
   const rd=nave.raidData||null;
   nave.raidData=null;
@@ -4399,7 +4491,7 @@ function iniziaBattaglia(nave,em){ avviaSequenzaRaid(nave,BERSAGLI_RAID[em?0:2],
 function catturaPrigioniero(fazione){
   const nome=NOMI_PRIGIONIERI[Math.floor(Math.random()*NOMI_PRIGIONIERI.length)];
   const riscatto=100+Math.floor(Math.random()*200);
-  G.prigionieri.push({id:Date.now(),nome,fazione,riscatto,giorni:0});
+  G.prigionieri.push({id:nuovoIdPrigioniero(),nome,fazione,riscatto,giorni:0});
   aggMsg(`⛓ Catturato: ${nome} (${fazione})!`,'info');
 }
 function riscattaPrigioniero(id){
@@ -4407,7 +4499,7 @@ function riscattaPrigioniero(id){
   if(!p) return;
   if(!G.edifici.find(b=>b.tipo==='prigione')){aggMsg('Costruisci prima una Prigione!','male');return;}
   G.oro+=p.riscatto;
-  G.prigionieri=G.prigionieri.filter(x=>x.id!==id);
+  rimuoviUnPrigioniero(id);
   G.contatori.riscatti++;
   if(p.fazione==='Marina Reale') G.fazioni.reale.rep=Math.min(100,G.fazioni.reale.rep+8);
   if(p.fazione==='Mercante') G.fazioni.mercante.rep=Math.min(100,G.fazioni.mercante.rep+10);
@@ -4418,7 +4510,7 @@ function riscattaPrigioniero(id){
 function reclutaPrigioniero(id){
   const p=G.prigionieri.find(x=>x.id===id);
   if(!p) return;
-  G.prigionieri=G.prigionieri.filter(x=>x.id!==id);
+  rimuoviUnPrigioniero(id);
   creaaPirata();
   aggMsg(`⚔ ${p.nome} si unisce alla ciurma!`,'bene');
   aggiornaUI();
@@ -5431,7 +5523,7 @@ function cartaPirata(p){
         <div class="ruolo-p">${p.ruolo}${p.titolo?' · '+p.titolo:''}</div>
       </div>
       <div style="text-align:right;font-size:.6rem;color:var(--sabbia)">
-        ${nave?`<div style="color:#6af">⛵${nave.nome.split(' ')[0]}</div>`:'<div style="color:#666">• a terra</div>'}
+        ${p.inRaid?'<div style="color:#6af">🌊 in raid</div>':(p._stato==='in_partenza'?'<div style="color:var(--oro)">⚓ al porto</div>':(nave?`<div style="color:#6af">⛵${nave.nome.split(' ')[0]}</div>`:'<div style="color:#666">• a terra</div>'))}
         <div style="color:var(--oro)">Lv${lv}</div>
       </div>
     </div>
@@ -6147,7 +6239,8 @@ function aggiornaPirata(p){
   }
 
   // Se sta camminando e ha finito il percorso → pausa
-  if(p._stato==='cammina' && p.percorso && p.percorsoIdx>=(p.percorso.length||0)){
+  if((p._stato==='cammina' || p._stato==='in_partenza') && p.percorso && p.percorsoIdx>=(p.percorso.length||0)){
+    if(p._stato==='in_partenza') return; // resta al porto finché la nave salpa
     p._stato='pausa';
     p._pausaSec = 3 + Math.random()*5; // 3-8 secondi reali di pausa
     return;
@@ -6200,7 +6293,7 @@ function muoviPirata(p, dt){
     return;
   }
 
-  if(p._stato==='cammina' && p.percorso && p.percorsoIdx<p.percorso.length){
+  if((p._stato==='cammina' || p._stato==='in_partenza') && p.percorso && p.percorsoIdx<p.percorso.length){
     const target=p.percorso[p.percorsoIdx];
     const tx=target.c+.5, ty=target.r+.5;
     const dx=tx-p.mc, dy=ty-p.mr;
@@ -6600,9 +6693,20 @@ function impostaInput(){
     } else {
       pinch.attivo=false;
       const t=e.touches[0];
-      pan.attivo=true; pan.mosso=false;
-      pan.startX=t.clientX; pan.startY=t.clientY;
-      pan.camStartX=G.camX; pan.camStartY=G.camY;
+
+      // In modalità costruzione su mobile privilegia il tap
+      // evitando che piccoli movimenti blocchino il piazzamento.
+      if(G.modalitaCostruzione){
+        pan.attivo=false;
+        pan.mosso=false;
+      }else{
+        pan.attivo=true;
+        pan.mosso=false;
+        pan.startX=t.clientX;
+        pan.startY=t.clientY;
+        pan.camStartX=G.camX;
+        pan.camStartY=G.camY;
+      }
     }
   },{passive:false});
 
@@ -6630,14 +6734,15 @@ function impostaInput(){
       const t=e.touches[0];
       const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
       const rect=canvas.getBoundingClientRect();
-      const eff=G.TILE*G.zoom;
-      G.hoverR=Math.floor(((t.clientY-rect.top)-G.camY)/eff);
-      G.hoverC=Math.floor(((t.clientX-rect.left)-G.camX)/eff);
+      const _s=G.ISO_SCALE, _IW=G.ISO_W*_s, _IH=G.ISO_H*_s;
+      const _lx=(t.clientX-rect.left)-G.camX, _ly=(t.clientY-rect.top)-G.camY;
+      G.hoverC=Math.floor((_lx/_IW*2+_ly/_IH*2)/2-.5);
+      G.hoverR=Math.floor((_ly/_IH*2-_lx/_IW*2)/2+.5);
       // Sentiero drag-paint su touch
       if(G.modalitaCostruzione==='sentiero'){
         piazzaSentiero(G.hoverR,G.hoverC); return;
       }
-      if(Math.abs(dx)>6||Math.abs(dy)>6) pan.mosso=true;
+      if(Math.abs(dx)>12||Math.abs(dy)>12) pan.mosso=true;
       if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
     }
   },{passive:false});
@@ -6647,19 +6752,21 @@ function impostaInput(){
     if(!pinch.attivo && !pan.mosso && e.changedTouches.length>0){
       const t=e.changedTouches[0];
       const rect=canvas.getBoundingClientRect();
-      const eff=G.TILE*G.zoom;
-      const r=Math.floor(((t.clientY-rect.top)-G.camY)/eff);
-      const c=Math.floor(((t.clientX-rect.left)-G.camX)/eff);
+      const _s2=G.ISO_SCALE,_IW2=G.ISO_W*_s2,_IH2=G.ISO_H*_s2;
+      const _lx2=(t.clientX-rect.left)-G.camX, _ly2=(t.clientY-rect.top)-G.camY;
+      const r=Math.floor((_ly2/_IH2*2-_lx2/_IW2*2)/2+.5);
+      const c=Math.floor((_lx2/_IW2*2+_ly2/_IH2*2)/2-.5);
       G.hoverR=r; G.hoverC=c;
       if(G.modalitaCostruzione==='sentiero') piazzaSentiero(r,c);
-      else if(G.modalitaCostruzione) piazzaEdificio(r,c);
+      else if(G.modalitaCostruzione){ piazzaEdificio(r,c); }
       else{
+        // Controlla edificio sul tile
+        const b=G.edifici.find(x=>x.r===r&&x.c===c);
+        if(b){ if(typeof apriPopupEdificio==='function') apriPopupEdificio(b); return; }
         const tt=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
         if(tt===undefined) return;
-        const b=G.edifici.find(x=>x.r===r&&x.c===c);
         const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
-        if(b) aggMsg(ED[b.tipo].icona+' '+ED[b.tipo].nome+' — '+ED[b.tipo].effetto,'info');
-        else aggMsg('📍 '+(nomi[tt]||'?'));
+        aggMsg('📍 '+(nomi[tt]||'?'));
       }
     }
     if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; }
@@ -6956,6 +7063,16 @@ function cicloGioco(ts=0){
 
 
 
+
+
+// Fallback mobile: assicura che il pulsante Salpa risponda anche su touch browser.
+window.addEventListener('DOMContentLoaded', ()=>{
+  const btn=document.getElementById('btn-inizia');
+  if(!btn || btn.__salpaMobileFix) return;
+  btn.__salpaMobileFix=true;
+  btn.addEventListener('touchend', avviaGiocoSicuro, {passive:false});
+  btn.addEventListener('click', avviaGiocoSicuro, false);
+});
 
 </script>
 </body>
