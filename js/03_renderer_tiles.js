@@ -30,8 +30,9 @@ function isoProj(col, row) {
 // ── Zoom con pivot ──
 function applicaZoom(delta, pivotX, pivotY) {
   const oldScale = G.ISO_SCALE;
-  G.ISO_SCALE = Math.max(0.35, Math.min(2.5, G.ISO_SCALE * delta));
+  G.ISO_SCALE = Math.max(G.ZOOM_MIN||0.35, Math.min(G.ZOOM_MAX||2.5, G.ISO_SCALE * delta));
   if (G.ISO_SCALE === oldScale) return;
+  G.zoom = G.ISO_SCALE; // compatibilità con input touch e vecchi riferimenti
   const r = G.ISO_SCALE / oldScale;
   G.camX = pivotX - (pivotX - G.camX) * r;
   G.camY = pivotY - (pivotY - G.camY) * r;

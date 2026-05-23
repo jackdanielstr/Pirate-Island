@@ -14,6 +14,7 @@ function limiteCamera(){
 }
 
 function impostaInput(){
+  canvas.style.touchAction='none';
   // Mouse pan
   canvas.addEventListener('mousedown',e=>{
     if(e.button!==0) return;
@@ -55,7 +56,7 @@ function impostaInput(){
   },{passive:false});
 
   // ── TOUCH: pan + pinch-to-zoom ──
-  let pinch={attivo:false, dist0:0, zoom0:1, midX:0, midY:0, camX0:0, camY0:0};
+  let pinch={attivo:false, wasPinching:false, dist0:0, zoom0:1, midX:0, midY:0, camX0:0, camY0:0};
 
   function distTocchi(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
   function midTocchi(t,rect){ return {x:(t[0].clientX+t[1].clientX)/2-rect.left, y:(t[0].clientY+t[1].clientY)/2-rect.top}; }
@@ -67,8 +68,9 @@ function impostaInput(){
       pan.attivo=false;
       const rect=canvas.getBoundingClientRect();
       pinch.attivo=true;
+      pinch.wasPinching=true;
       pinch.dist0=distTocchi(e.touches);
-      pinch.zoom0=G.zoom;
+      pinch.zoom0=G.ISO_SCALE;
       const mid=midTocchi(e.touches,rect);
       pinch.midX=mid.x; pinch.midY=mid.y;
       pinch.camX0=G.camX; pinch.camY0=G.camY;
@@ -99,11 +101,14 @@ function impostaInput(){
       const dist=distTocchi(e.touches);
       const scale=dist/pinch.dist0;
       const newZoom=Math.max(G.ZOOM_MIN, Math.min(G.ZOOM_MAX, pinch.zoom0*scale));
-      // zoom centrato sul punto di pinch
-      const ratio=newZoom/G.zoom;
-      G.camX=pinch.midX-(pinch.midX-pinch.camX0)*ratio;
-      G.camY=pinch.midY-(pinch.midY-pinch.camY0)*ratio;
-      G.zoom=newZoom;
+      // zoom centrato sul punto di pinch: il renderer usa G.ISO_SCALE, non G.zoom
+      const oldScale=G.ISO_SCALE || 1;
+      const ratio=newZoom/oldScale;
+      G.camX=pinch.midX-(pinch.midX-G.camX)*ratio;
+      G.camY=pinch.midY-(pinch.midY-G.camY)*ratio;
+      G.ISO_SCALE=newZoom;
+      G.zoom=newZoom; // compatibilità con vecchi riferimenti
+      _tileCache=null;
       limiteCamera();
       // aggiorna punto di partenza continuo per pan durante pinch
       const mid=midTocchi(e.touches,rect);
@@ -112,6 +117,7 @@ function impostaInput(){
       pinch.midX=mid.x; pinch.midY=mid.y;
       pinch.camX0=G.camX; pinch.camY0=G.camY;
       pinch.dist0=dist;
+      pinch.zoom0=G.ISO_SCALE;
     } else if(pan.attivo && e.touches.length===1){
       const t=e.touches[0];
       const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
@@ -131,6 +137,11 @@ function impostaInput(){
 
   canvas.addEventListener('touchend',e=>{
     if(pinch.attivo && e.touches.length<2){ pinch.attivo=false; }
+    // Dopo un pinch non deve partire anche un tap/click fantasma sul tile.
+    if(pinch.wasPinching){
+      if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; setTimeout(()=>{pinch.wasPinching=false;},60); }
+      return;
+    }
     if(!pinch.attivo && !pan.mosso && e.changedTouches.length>0){
       const t=e.changedTouches[0];
       const rect=canvas.getBoundingClientRect();
