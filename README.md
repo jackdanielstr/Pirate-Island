@@ -64,3 +64,12 @@ Così le funzioni globali richiamate dall'HTML restano compatibili.
 - Anche la produzione degli schiavi usa l'efficienza della rete stradale.
 - Gli schiavi trasportatori seguono percorsi A* e preferiscono i sentieri invece di tagliare in linea retta.
 - Popup e indicatori edificio mostrano lo stato della rete sentieri.
+
+## v20.14 — Stabilizzazione
+- Aggiunto `js/30_stability.js` con guardie runtime anti-crash.
+- Prevenuto doppio avvio della partita da tap/click ripetuti.
+- Sincronizzato zoom (`G.zoom` / `G.ISO_SCALE`).
+- Normalizzazione periodica di pirati/schiavi fuori mappa o finiti su tile non camminabili.
+- Normalizzazione navi con coordinate corrotte.
+- Error handler globale con messaggio in-game e log console.
+- Debug leggero attivabile da console: `ISLA_DEBUG.enable()`.
