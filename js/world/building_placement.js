@@ -5,18 +5,26 @@
 // MODULO: COSTRUZIONE
 // ═══════════════════════════════════════
 // ── COSTRUZIONE EDIFICI & SENTIERI ──
+function resetInputCostruzione(){
+  if(typeof window.__islaResetTouchInputState==='function') window.__islaResetTouchInputState();
+}
+
 function selezionaSentiero(){
+  resetInputCostruzione();
   G.modalitaCostruzione='sentiero';
   document.querySelectorAll('.btn-costruisci').forEach(b=>b.classList.remove('attivo-strumento'));
   const btn=document.getElementById('b-sentiero');
   if(btn) btn.classList.add('attivo-strumento');
   document.getElementById('btn-annulla').classList.add('mostra');
   document.getElementById('mappa-wrap').classList.add('modalita-costruzione');
-  aggMsg('Trascina sulla mappa per costruire sentieri (2 oro/tile)','info');
+  aggMsg(isMobile()&&!isLandscapeMobile()?'Sentiero: tap = 1 tile, tieni premuto e trascina = strada continua, trascina normale = muovi mappa':'Trascina sulla mappa per costruire sentieri (2 oro/tile)','info');
   if(isMobile()&&!isLandscapeMobile()) chiudiPannelloMobile();
 }
 
 function selezionaCostruzione(tipo){
+  resetInputCostruzione();
+  // Cambio strumento esplicito: chiude sempre lo stato speciale del sentiero
+  // prima di armare il piazzamento edificio.
   G.modalitaCostruzione=tipo;
   document.querySelectorAll('.btn-costruisci').forEach(b=>b.classList.remove('attivo-strumento'));
   const btn=document.getElementById('b-'+tipo);
@@ -28,6 +36,7 @@ function selezionaCostruzione(tipo){
   if(isMobile() && !isLandscapeMobile()) chiudiPannelloMobile();
 }
 function annullaCostruzione(){
+  resetInputCostruzione();
   G.modalitaCostruzione=null;
   document.querySelectorAll('.btn-costruisci').forEach(b=>b.classList.remove('attivo-strumento'));
   document.getElementById('btn-annulla').classList.remove('mostra');
@@ -51,7 +60,12 @@ function puoCostruire(r,c){
   return true;
 }
 function piazzaEdificio(r,c){
-  const tipo=G.modalitaCostruzione, def=ED[tipo];
+  const tipo=G.modalitaCostruzione;
+  if(!tipo || tipo==='sentiero' || !ED[tipo]){
+    aggMsg('Seleziona prima un edificio da costruire.','male');
+    return;
+  }
+  const def=ED[tipo];
   if(!puoCostruire(r,c)){aggMsg('Non puoi costruire qui!','male');return;}
   if(G.oro<def.costo.oro||G.legno<def.costo.legno){
     aggMsg(`Servono ${def.costo.oro} oro e ${def.costo.legno} legno.`,'male');return;
