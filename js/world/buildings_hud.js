@@ -31,62 +31,86 @@ const EDIFICIO_PRODUZIONE = {
 };
 
 function disegnaIndicatoriEdifici(s){
+  // v20.38: le finestrelle bonus sopra gli edifici non restano più persistenti.
+  // Mostra al massimo l'indicatore dell'edificio sotto l'ultimo hover/touch,
+  // poi lo chiude automaticamente dopo pochi secondi.
   if(!G.edifici||G.edifici.length===0) return;
-  const IH=G.ISO_H*s, IW=G.ISO_W*s;
-  const alture={fortezza:2.2,guardia:2.8,osservatorio:2.5,cantiere:1.8,cappella:2.3,caserma:1.6};
+  if(G.modalitaCostruzione) return;
+  const modale=document.getElementById('overlay-modale');
+  if(modale && modale.classList.contains('aperto')) return;
 
-  for(const b of G.edifici){
-    const p=isoProj(b.c,b.r);
-    const cx=p.x, cy=p.y+IH*0.5;
-    const altH=(alture[b.tipo]||1.2)*IH;
-    const ix=cx, iy=cy-altH;
-    const prod=EDIFICIO_PRODUZIONE[b.tipo];
-    const schiaviQui=(G.schiavi||[]).filter(sv=>sv.edificioR===b.r&&sv.edificioC===b.c).length;
-
-    ctx.save();
-    const bw=54*s, bh=18*s, bx=ix-bw/2, by=iy-bh-4*s;
-
-    ctx.fillStyle='rgba(0,0,0,0.75)';
-    ctx.beginPath();
-    if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,4*s); else ctx.rect(bx,by,bw,bh);
-    ctx.fill();
-
-    if(prod){ ctx.strokeStyle=prod.colore+'99'; ctx.lineWidth=1*s; ctx.stroke(); }
-
-    ctx.font=(10*s)+'px serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
-    ctx.fillStyle='white';
-    ctx.fillText(ED[b.tipo]?.icona||'🏠', bx+3*s, by+bh/2);
-
-    if(prod&&prod.valore>0){
-      ctx.fillStyle=prod.colore; ctx.font='bold '+(8*s)+'px sans-serif';
-      ctx.fillText('+'+prod.valore, bx+16*s, by+bh/2-2*s);
-      ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font=(6*s)+'px sans-serif';
-      ctx.fillText(prod.risorsa, bx+16*s, by+bh/2+5*s);
-    } else if(prod){
-      ctx.fillStyle=prod.colore; ctx.font=(7*s)+'px sans-serif'; ctx.textAlign='center';
-      ctx.fillText(prod.risorsa, bx+bw/2+4*s, by+bh/2);
-    }
-
-    if(schiaviQui>0){
-      ctx.fillStyle='#ffbbbb'; ctx.font='bold '+(7*s)+'px sans-serif'; ctx.textAlign='right';
-      ctx.fillText('⛏'+schiaviQui, bx+bw-2*s, by+bh/2);
-    }
-
-    // Indicatore rete sentieri: verde = collegato a porto/palazzo, giallo = strada vicina,
-    // rosso = isolato. Piccolo, ma rende chiaro che i sentieri contano davvero.
-    if(typeof efficienzaStradaEdificio==='function' && b.tipo!=='governatore'){
-      const eff=efficienzaStradaEdificio(b);
-      ctx.fillStyle=eff>=1?'#4fc04f':eff>=0.7?'#f0c040':'#c0392b';
-      ctx.font='bold '+(7*s)+'px sans-serif'; ctx.textAlign='right';
-      ctx.fillText('🛤', bx+bw-3*s, by+5*s);
-    }
-
-    ctx.fillStyle='rgba(0,0,0,0.75)';
-    ctx.beginPath();
-    ctx.moveTo(ix-3*s,by+bh); ctx.lineTo(ix+3*s,by+bh); ctx.lineTo(ix,by+bh+4*s);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
+  const hoverR=Number.isFinite(G.hoverR)?G.hoverR:-1;
+  const hoverC=Number.isFinite(G.hoverC)?G.hoverC:-1;
+  const b=G.edifici.find(ed=>ed.r===hoverR&&ed.c===hoverC);
+  if(!b){
+    disegnaIndicatoriEdifici._key='';
+    return;
   }
+
+  const key=b.r+','+b.c+','+b.tipo;
+  const now=(typeof performance!=='undefined' && performance.now) ? performance.now() : Date.now();
+  const DURATA_INDICATORE_MS=2600;
+  if(disegnaIndicatoriEdifici._key!==key){
+    disegnaIndicatoriEdifici._key=key;
+    disegnaIndicatoriEdifici._until=now+DURATA_INDICATORE_MS;
+  }
+  if(now>(disegnaIndicatoriEdifici._until||0)) return;
+
+  // Fade leggero nell'ultimo mezzo secondo: meno brusco e più pulito su mobile.
+  const remain=(disegnaIndicatoriEdifici._until||0)-now;
+  const alpha=Math.max(0,Math.min(1,remain<500 ? remain/500 : 1));
+
+  const IH=G.ISO_H*s;
+  const alture={fortezza:2.2,guardia:2.8,osservatorio:2.5,cantiere:1.8,cappella:2.3,caserma:1.6};
+  const p=isoProj(b.c,b.r);
+  const cx=p.x, cy=p.y+IH*0.5;
+  const altH=(alture[b.tipo]||1.2)*IH;
+  const ix=cx, iy=cy-altH;
+  const prod=EDIFICIO_PRODUZIONE[b.tipo];
+  const schiaviQui=(G.schiavi||[]).filter(sv=>sv.edificioR===b.r&&sv.edificioC===b.c).length;
+
+  ctx.save();
+  ctx.globalAlpha=alpha;
+  const bw=54*s, bh=18*s, bx=ix-bw/2, by=iy-bh-4*s;
+
+  ctx.fillStyle='rgba(0,0,0,0.75)';
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(bx,by,bw,bh,4*s); else ctx.rect(bx,by,bw,bh);
+  ctx.fill();
+
+  if(prod){ ctx.strokeStyle=prod.colore+'99'; ctx.lineWidth=1*s; ctx.stroke(); }
+
+  ctx.font=(10*s)+'px serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillStyle='white';
+  ctx.fillText(ED[b.tipo]?.icona||'🏠', bx+3*s, by+bh/2);
+
+  if(prod&&prod.valore>0){
+    ctx.fillStyle=prod.colore; ctx.font='bold '+(8*s)+'px sans-serif';
+    ctx.fillText('+'+prod.valore, bx+16*s, by+bh/2-2*s);
+    ctx.fillStyle='rgba(255,255,255,0.55)'; ctx.font=(6*s)+'px sans-serif';
+    ctx.fillText(prod.risorsa, bx+16*s, by+bh/2+5*s);
+  } else if(prod){
+    ctx.fillStyle=prod.colore; ctx.font=(7*s)+'px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(prod.risorsa, bx+bw/2+4*s, by+bh/2);
+  }
+
+  if(schiaviQui>0){
+    ctx.fillStyle='#ffbbbb'; ctx.font='bold '+(7*s)+'px sans-serif'; ctx.textAlign='right';
+    ctx.fillText('⛏'+schiaviQui, bx+bw-2*s, by+bh/2);
+  }
+
+  if(typeof efficienzaStradaEdificio==='function' && b.tipo!=='governatore'){
+    const eff=efficienzaStradaEdificio(b);
+    ctx.fillStyle=eff>=1?'#4fc04f':eff>=0.7?'#f0c040':'#c0392b';
+    ctx.font='bold '+(7*s)+'px sans-serif'; ctx.textAlign='right';
+    ctx.fillText('🛤', bx+bw-3*s, by+5*s);
+  }
+
+  ctx.fillStyle='rgba(0,0,0,0.75)';
+  ctx.beginPath();
+  ctx.moveTo(ix-3*s,by+bh); ctx.lineTo(ix+3*s,by+bh); ctx.lineTo(ix,by+bh+4*s);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
 }
 
 function apriPopupEdificio(edificio){
@@ -385,40 +409,6 @@ function aggiornaTargetTrasportoSchiavo(sv){
 }
 
 
-function creaScaricoRaidPorto(nave,bottino){
-  assicuraPortoVivo();
-  const porto=puntoPortoVivo();
-  const totale=(bottino.oro||0)+(bottino.cibo||0)+(bottino.legno||0)+(bottino.rum||0);
-  const n=Math.max(3,Math.min(12,Math.floor(totale/70)+3));
-  const tipi=[];
-  if((bottino.oro||0)>0) tipi.push('cassa');
-  if((bottino.legno||0)>0) tipi.push('palo');
-  if((bottino.rum||0)>0) tipi.push('botte');
-  if((bottino.cibo||0)>0) tipi.push('rete');
-  if(tipi.length===0) tipi.push('cassa');
-  const baseId=Date.now()%100000;
-  for(let i=0;i<n;i++){
-    const ang=i*1.9+Math.random()*.5;
-    const rad=.35+Math.random()*.9;
-    const rr=porto.r+.5+Math.sin(ang)*rad*.55;
-    const cc=porto.c+.5+Math.cos(ang)*rad;
-    const tr=Math.max(0,Math.min(G.RIGHE-1,Math.floor(rr)));
-    const tc=Math.max(0,Math.min(G.COLS-1,Math.floor(cc)));
-    const t=G.mappa[tr]&&G.mappa[tr][tc];
-    if(t===T.OCEANO||t===T.BASSO||t===T.FIUME) continue;
-    G.portoProps.push({
-      id:baseId+i,
-      tipo:tipi[i%tipi.length],
-      r:rr,c:cc,
-      scala:.9+Math.random()*.45,
-      rot:Math.random()*Math.PI,
-      vicino:'scarico_raid'
-    });
-  }
-  // Mantiene il porto ricco ma non infinito.
-  if(G.portoProps.length>70) G.portoProps=G.portoProps.slice(G.portoProps.length-70);
-}
-
 function screenToIsoApprox(x,y){
   const W=G.ISO_W*G.ISO_SCALE, H=G.ISO_H*G.ISO_SCALE;
   const yy=y-G.camY, xx=x-G.camX;
@@ -464,10 +454,6 @@ function disegnaNaviMare(s){
 
     let targetX, targetY, label='';
     if(nave.inMare){
-      if(nave._faseRaid==='salpando'){
-        nave._faseRaidTick=(nave._faseRaidTick||0)+1;
-        if(nave._faseRaidTick>140) nave._faseRaid='in_mare';
-      }
       // Navi in raid: restano su acqua. Usiamo un tile di oceano vicino al bordo
       // invece di una coordinata schermo generica, così non attraversano l'isola.
       if(!nm._raidWater || frame%180===0){
@@ -481,7 +467,7 @@ function disegnaNaviMare(s){
       }
       const wp=isoProj(nm._raidWater.c,nm._raidWater.r);
       targetX=wp.x; targetY=wp.y+G.ISO_H*s*.7;
-      label=(nave._faseRaid==='salpando'?'⛵ salpa':('⚓ rientra in '+nave.timerRaid+'g'));
+      label='⚓ rientra in '+nave.timerRaid+'g';
       nm.x+=(targetX-nm.x)*0.012;
       nm.y+=(targetY-nm.y)*0.012;
       correggiNaveSuAcqua(nm,0.09);
@@ -491,7 +477,7 @@ function disegnaNaviMare(s){
       const p=isoProj(slot.c,slot.r);
       targetX=p.x;
       targetY=p.y+G.ISO_H*s*.55;
-      label=nave._faseRaid==='scarico'?'📦 scarico bottino':'⚓ attraccata';
+      label='⚓ attraccata';
       if(!nm._dockInit){
         nm.x=targetX+(Math.random()-.5)*30*s;
         nm.y=targetY+(Math.random()-.5)*18*s;
@@ -499,10 +485,6 @@ function disegnaNaviMare(s){
       }
       nm.x+=(targetX-nm.x)*0.045;
       nm.y+=(targetY-nm.y)*0.045;
-      if(nave._faseRaid==='scarico'){
-        nave._faseRaidTick=(nave._faseRaidTick||0)-1;
-        if(nave._faseRaidTick<=0) nave._faseRaid='attraccata';
-      }
     }
 
     if(!nave.inMare) correggiNaveSuAcqua(nm,0.18);

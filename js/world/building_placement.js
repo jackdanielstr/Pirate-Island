@@ -7,6 +7,9 @@
 // ── COSTRUZIONE EDIFICI & SENTIERI ──
 function resetInputCostruzione(){
   if(typeof window.__islaResetTouchInputState==='function') window.__islaResetTouchInputState();
+  if(typeof pan!=='undefined'){ pan.attivo=false; pan.mosso=false; }
+  const c=window.canvas||document.getElementById('mappa-canvas');
+  if(c) c.__islaSuppressClickUntil=0;
 }
 
 function selezionaSentiero(){
@@ -34,6 +37,7 @@ function selezionaCostruzione(tipo){
   aggMsg(`Seleziona un tile di terra per costruire ${ED[tipo].nome}.`,'info');
   // Su mobile chiudi il drawer e porta il giocatore sulla mappa
   if(isMobile() && !isLandscapeMobile()) chiudiPannelloMobile();
+  setTimeout(()=>resetInputCostruzione(),0);
 }
 function annullaCostruzione(){
   resetInputCostruzione();
@@ -72,9 +76,9 @@ function piazzaEdificio(r,c){
   }
   G.oro-=def.costo.oro; G.legno-=def.costo.legno;
   G.edifici.push({tipo,r,c});
-  // FASE 2C: ogni edificio nuovo prova a collegarsi al sentiero più vicino.
-  // Il sentiero diventa infrastruttura centrale, non solo decorazione.
-  if(typeof collegaEdificioAlSentiero==='function') collegaEdificioAlSentiero({r,c});
+  // v20.31: non creare più sentieri automaticamente quando si piazza un edificio.
+  // Prima l'edificio generava strada insieme a lui, creando confusione e bug visivi.
+  // Il collegamento resta una scelta del giocatore: i sentieri sono importanti, ma manuali.
   if((tipo==='porto'||tipo==='cantiere') && typeof rigeneraPortoVivo==='function') rigeneraPortoVivo();
   // rimuovi alberi/rocce in quel tile
   G.alberi=G.alberi.filter(a=>!(a.r===r&&a.c===c));
