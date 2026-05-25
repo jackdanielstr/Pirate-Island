@@ -83,22 +83,6 @@ function impostaInput(){
   };
 
   // Collega i tasti anche via JS, così non dipendiamo solo dagli onclick inline.
-  function collegaBottoneZoom(id,delta){
-    const btn=document.getElementById(id);
-    if(!btn||btn.__islaZoomBound) return;
-    btn.__islaZoomBound=true;
-    btn.type='button';
-    const h=(ev)=>{
-      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-      return window.zoomMobile(delta);
-    };
-    btn.onclick=h;
-    btn.addEventListener('touchstart',h,{passive:false});
-    btn.addEventListener('pointerdown',h,{passive:false});
-    btn.addEventListener('mousedown',h,{passive:false});
-  }
-  collegaBottoneZoom('zoom-plus',1.18);
-  collegaBottoneZoom('zoom-minus',0.85);
 
   // Mouse pan
   canvas.addEventListener('mousedown',e=>{
@@ -157,7 +141,6 @@ function impostaInput(){
   }
 
   touchTarget.addEventListener('touchstart',e=>{
-    if(e.target && e.target.closest && e.target.closest('#zoom-mobile')) return;
     if(e.touches.length===2){
       e.preventDefault();
       pan.attivo=false;
@@ -181,7 +164,6 @@ function impostaInput(){
   },{passive:false});
 
   touchTarget.addEventListener('touchmove',e=>{
-    if(e.target && e.target.closest && e.target.closest('#zoom-mobile')) return;
     if(e.touches.length===2){
       e.preventDefault();
       const d=distTocchi(e.touches);
