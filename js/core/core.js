@@ -40,82 +40,65 @@ window.zoomMobile = function(delta){
 
 function impostaInput(){
   if(!canvas) return;
-
-  const wrap = document.getElementById('mappa-wrap') || canvas;
-  const zoomPlus = document.getElementById('zoom-plus');
-  const zoomMinus = document.getElementById('zoom-minus');
-
-  // Evita doppia inizializzazione, ma consente di ripristinare i bottoni se il DOM cambia.
-  if(canvas.__islaInputInizializzato){
-    collegaBottoniZoomMobile();
-    return;
-  }
+  if(canvas.__islaInputInizializzato) return;
   canvas.__islaInputInizializzato=true;
 
+  const wrap=document.getElementById('mappa-wrap') || canvas;
   canvas.style.touchAction='none';
-  wrap.style.touchAction='none';
   canvas.style.webkitUserSelect='none';
-  wrap.style.webkitUserSelect='none';
-  canvas.style.userSelect='none';
-  wrap.style.userSelect='none';
+  if(wrap){ wrap.style.touchAction='none'; wrap.style.webkitUserSelect='none'; }
 
-  function clampZoom(v){
-    const min = G.ZOOM_MIN || 0.35;
-    const max = G.ZOOM_MAX || 2.5;
-    return Math.max(min, Math.min(max, v));
+  function canvasRect(){ return canvas.getBoundingClientRect(); }
+  function normalizzaPivot(x,y){
+    const rect=canvasRect();
+    return {
+      x:isFinite(x)?x:(rect.width/2),
+      y:isFinite(y)?y:(rect.height/2),
+    };
   }
-
   function zoomCanvas(delta, x, y){
-    if(!isFinite(delta) || delta<=0) return false;
-    if(!canvas) return false;
-
-    const rect = canvas.getBoundingClientRect();
-    const px = isFinite(x) ? x : rect.width/2;
-    const py = isFinite(y) ? y : rect.height/2;
-    const oldScale = (isFinite(G.ISO_SCALE) && G.ISO_SCALE>0) ? G.ISO_SCALE : 1;
-    const targetScale = clampZoom(oldScale * delta);
-    if(Math.abs(targetScale-oldScale) < 0.0001) return false;
-
-    // Pivot zoom robusto. Preferisce applicaZoom se presente, altrimenti fa il calcolo qui.
-    if(typeof applicaZoom === 'function'){
-      applicaZoom(targetScale / oldScale, px, py);
-    }else{
-      G.ISO_SCALE = targetScale;
-      const ratio = targetScale / oldScale;
-      G.camX = px - (px - G.camX) * ratio;
-      G.camY = py - (py - G.camY) * ratio;
-      if(typeof limiteCamera === 'function') limiteCamera();
-    }
-
-    G.zoom = G.ISO_SCALE;
-    if(typeof _tileCache !== 'undefined') _tileCache = null;
+    delta=Number(delta);
+    if(!isFinite(delta)||delta<=0||!canvas||!G) return false;
+    const p=normalizzaPivot(x,y);
+    // Applica direttamente la trasformazione per non dipendere da wrapper esterni.
+    const oldScale=(isFinite(G.ISO_SCALE)&&G.ISO_SCALE>0)?G.ISO_SCALE:1;
+    const min=G.ZOOM_MIN||0.35, max=G.ZOOM_MAX||2.5;
+    const newScale=Math.max(min,Math.min(max,oldScale*delta));
+    if(Math.abs(newScale-oldScale)<0.0001) return false;
+    const ratio=newScale/oldScale;
+    G.ISO_SCALE=newScale;
+    G.zoom=newScale;
+    G.camX=p.x-(p.x-G.camX)*ratio;
+    G.camY=p.y-(p.y-G.camY)*ratio;
+    limiteCamera();
+    if(typeof _tileCache!=='undefined') _tileCache=null;
     return false;
   }
 
-  // Funzione globale usata anche dall'HTML inline: ritorna sempre false per bloccare tap/click fantasma.
-  window.zoomMobile = function(delta){
-    const rect = canvas.getBoundingClientRect();
-    zoomCanvas(delta, rect.width/2, rect.height/2);
+  // API globale per i pulsanti + / - in index.html.
+  window.zoomMobile=function(delta){
+    const rect=canvasRect();
+    zoomCanvas(delta,rect.width/2,rect.height/2);
     return false;
   };
 
-  function collegaBottoniZoomMobile(){
-    const bind = (btn, delta) => {
-      if(!btn || btn.__islaZoomBound) return;
-      btn.__islaZoomBound = true;
-      const handler = (ev) => {
-        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
-        window.zoomMobile(delta);
-        return false;
-      };
-      btn.addEventListener('click', handler, {passive:false});
-      btn.addEventListener('touchstart', handler, {passive:false});
-      btn.addEventListener('pointerdown', handler, {passive:false});
+  // Collega i tasti anche via JS, così non dipendiamo solo dagli onclick inline.
+  function collegaBottoneZoom(id,delta){
+    const btn=document.getElementById(id);
+    if(!btn||btn.__islaZoomBound) return;
+    btn.__islaZoomBound=true;
+    btn.type='button';
+    const h=(ev)=>{
+      if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+      return window.zoomMobile(delta);
     };
-    bind(zoomPlus, 1.18);
-    bind(zoomMinus, 0.85);
+    btn.onclick=h;
+    btn.addEventListener('touchstart',h,{passive:false});
+    btn.addEventListener('pointerdown',h,{passive:false});
+    btn.addEventListener('mousedown',h,{passive:false});
   }
-  collegaBottoniZoomMobile();
+  collegaBottoneZoom('zoom-plus',1.18);
+  collegaBottoneZoom('zoom-minus',0.85);
 
   // Mouse pan
   canvas.addEventListener('mousedown',e=>{
@@ -126,7 +109,7 @@ function impostaInput(){
     canvas.style.cursor='grabbing';
   });
   canvas.addEventListener('mousemove',e=>{
-    const rect=canvas.getBoundingClientRect();
+    const rect=canvasRect();
     const mx=e.clientX-rect.left, my=e.clientY-rect.top;
     const s=G.ISO_SCALE, IW=G.ISO_W*s, IH=G.ISO_H*s;
     const lx=mx-G.camX, ly=my-G.camY;
@@ -144,163 +127,142 @@ function impostaInput(){
     if(pan.attivo){ pan.attivo=false; canvas.style.cursor=''; if(typeof sentieroDrag!=='undefined') sentieroDrag=false; }
   });
   canvas.addEventListener('click',e=>{
+    if(Date.now()<(canvas.__islaSuppressClickUntil||0)) return;
     if(pan.mosso) return;
     cliccaMappa(e);
   });
-
-  // Scroll wheel zoom desktop
   canvas.addEventListener('wheel',e=>{
     e.preventDefault();
-    const rect=canvas.getBoundingClientRect();
-    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
-    zoomCanvas(e.deltaY<0?1.1:0.91, mx, my);
+    const rect=canvasRect();
+    zoomCanvas(e.deltaY<0?1.1:0.91,e.clientX-rect.left,e.clientY-rect.top);
   },{passive:false});
 
-  // TOUCH/PINCH robusto su wrapper + canvas. Usiamo changedTouches solo per tap, touches per pan/pinch.
-  let pinch={attivo:false, wasPinching:false, dist:0, midX:0, midY:0};
-
-  function touchRect(){ return canvas.getBoundingClientRect(); }
-  function distTocchi(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
-  function midTocchi(t,rect){ return {x:(t[0].clientX+t[1].clientX)/2-rect.left, y:(t[0].clientY+t[1].clientY)/2-rect.top}; }
-  function aggiornaHoverDaClient(clientX, clientY){
-    const rect=touchRect();
+  // TOUCH: pan + pinch-to-zoom. Gestito sul wrapper perché su mobile il canvas può non ricevere
+  // tutti gli eventi quando ci sono overlay/HUD sopra la mappa.
+  const touchTarget=wrap||canvas;
+  let pinch={attivo:false,wasPinching:false,dist0:0,midX:0,midY:0};
+  function distTocchi(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
+  function midTocchi(t){
+    const rect=canvasRect();
+    return {x:(t[0].clientX+t[1].clientX)/2-rect.left,y:(t[0].clientY+t[1].clientY)/2-rect.top};
+  }
+  function tileDaClient(x,y){
+    const rect=canvasRect();
     const s=G.ISO_SCALE, IW=G.ISO_W*s, IH=G.ISO_H*s;
-    const lx=(clientX-rect.left)-G.camX, ly=(clientY-rect.top)-G.camY;
-    G.hoverC=Math.floor((lx/IW*2+ly/IH*2)/2-.5);
-    G.hoverR=Math.floor((ly/IH*2-lx/IW*2)/2+.5);
+    const lx=(x-rect.left)-G.camX, ly=(y-rect.top)-G.camY;
+    return {
+      r:Math.floor((ly/IH*2-lx/IW*2)/2+.5),
+      c:Math.floor((lx/IW*2+ly/IH*2)/2-.5),
+    };
   }
 
-  function onTouchStart(e){
-    if(!e.touches || e.touches.length===0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    if(e.touches.length>=2){
+  touchTarget.addEventListener('touchstart',e=>{
+    if(e.target && e.target.closest && e.target.closest('#zoom-mobile')) return;
+    if(e.touches.length===2){
+      e.preventDefault();
       pan.attivo=false;
-      const rect=touchRect();
-      pinch.attivo=true;
-      pinch.wasPinching=true;
-      pinch.dist=distTocchi(e.touches);
-      const mid=midTocchi(e.touches,rect);
-      pinch.midX=mid.x; pinch.midY=mid.y;
+      pinch.attivo=true; pinch.wasPinching=true;
+      pinch.dist0=distTocchi(e.touches);
+      const m=midTocchi(e.touches); pinch.midX=m.x; pinch.midY=m.y;
+      canvas.__islaSuppressClickUntil=Date.now()+400;
       return;
     }
-
+    if(e.touches.length!==1) return;
+    e.preventDefault();
     pinch.attivo=false;
     const t=e.touches[0];
     if(G.modalitaCostruzione){
-      pan.attivo=false;
-      pan.mosso=false;
+      pan.attivo=false; pan.mosso=false;
     }else{
-      pan.attivo=true;
-      pan.mosso=false;
-      pan.startX=t.clientX;
-      pan.startY=t.clientY;
-      pan.camStartX=G.camX;
-      pan.camStartY=G.camY;
+      pan.attivo=true; pan.mosso=false;
+      pan.startX=t.clientX; pan.startY=t.clientY;
+      pan.camStartX=G.camX; pan.camStartY=G.camY;
     }
-  }
+  },{passive:false});
 
-  function onTouchMove(e){
-    if(!e.touches || e.touches.length===0) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    if(e.touches.length>=2){
-      const rect=touchRect();
-      const dist=distTocchi(e.touches);
-      if(!pinch.attivo || !pinch.dist){
-        pinch.attivo=true;
-        pinch.wasPinching=true;
-        pinch.dist=dist;
-        const mid0=midTocchi(e.touches,rect);
-        pinch.midX=mid0.x; pinch.midY=mid0.y;
-        return;
-      }
-      if(dist<8) return;
-      const mid=midTocchi(e.touches,rect);
-      const scale=dist/pinch.dist;
-      zoomCanvas(scale, mid.x, mid.y);
-
-      // Consenti anche trascinamento del baricentro durante il pinch.
-      const dxPan=mid.x-pinch.midX, dyPan=mid.y-pinch.midY;
-      if(Math.abs(dxPan)>0.1 || Math.abs(dyPan)>0.1){
-        G.camX+=dxPan; G.camY+=dyPan; limiteCamera();
-      }
-      pinch.midX=mid.x; pinch.midY=mid.y; pinch.dist=dist;
+  touchTarget.addEventListener('touchmove',e=>{
+    if(e.target && e.target.closest && e.target.closest('#zoom-mobile')) return;
+    if(e.touches.length===2){
+      e.preventDefault();
+      const d=distTocchi(e.touches);
+      if(!pinch.attivo||!pinch.dist0){ pinch.attivo=true; pinch.dist0=d; const m=midTocchi(e.touches); pinch.midX=m.x; pinch.midY=m.y; return; }
+      if(d<8) return;
+      const m=midTocchi(e.touches);
+      zoomCanvas(d/pinch.dist0,m.x,m.y);
+      const dx=m.x-pinch.midX, dy=m.y-pinch.midY;
+      if(Math.abs(dx)>0.1||Math.abs(dy)>0.1){ G.camX+=dx; G.camY+=dy; limiteCamera(); }
+      pinch.dist0=d; pinch.midX=m.x; pinch.midY=m.y;
+      canvas.__islaSuppressClickUntil=Date.now()+400;
       return;
     }
-
-    if(pan.attivo && e.touches.length===1){
-      const t=e.touches[0];
-      aggiornaHoverDaClient(t.clientX,t.clientY);
-      if(G.modalitaCostruzione==='sentiero'){
-        piazzaSentiero(G.hoverR,G.hoverC); return;
-      }
-      const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
-      if(Math.abs(dx)>12||Math.abs(dy)>12) pan.mosso=true;
-      if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
-    }
-  }
-
-  function onTouchEnd(e){
+    if(e.touches.length!==1||!pan.attivo) return;
     e.preventDefault();
-    e.stopPropagation();
+    const t=e.touches[0];
+    const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
+    const tc=tileDaClient(t.clientX,t.clientY);
+    G.hoverR=tc.r; G.hoverC=tc.c;
+    if(G.modalitaCostruzione==='sentiero'){
+      piazzaSentiero(G.hoverR,G.hoverC); return;
+    }
+    if(Math.abs(dx)>12||Math.abs(dy)>12) pan.mosso=true;
+    if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
+  },{passive:false});
 
-    if(e.touches && e.touches.length>=2) return;
-    if(pinch.attivo || pinch.wasPinching){
-      pinch.attivo=false;
-      pan.attivo=false;
-      if(!e.touches || e.touches.length===0){ setTimeout(()=>{pinch.wasPinching=false;},120); }
+  touchTarget.addEventListener('touchend',e=>{
+    if(pinch.attivo&&e.touches.length<2){ pinch.attivo=false; }
+    if(pinch.wasPinching){
+      e.preventDefault();
+      canvas.__islaSuppressClickUntil=Date.now()+400;
+      if(e.touches.length===0){ pan.attivo=false; setTimeout(()=>{pinch.wasPinching=false;},120); }
       return;
     }
-
-    if(!pan.mosso && e.changedTouches && e.changedTouches.length>0){
+    if(!pan.mosso&&e.changedTouches.length>0){
+      e.preventDefault();
       const t=e.changedTouches[0];
-      aggiornaHoverDaClient(t.clientX,t.clientY);
-      const r=G.hoverR, c=G.hoverC;
+      const tc=tileDaClient(t.clientX,t.clientY);
+      G.hoverR=tc.r; G.hoverC=tc.c;
+      const r=tc.r,c=tc.c;
       if(G.modalitaCostruzione==='sentiero') piazzaSentiero(r,c);
-      else if(G.modalitaCostruzione){ piazzaEdificio(r,c); }
+      else if(G.modalitaCostruzione) piazzaEdificio(r,c);
       else{
         const b=G.edifici.find(x=>x.r===r&&x.c===c);
-        if(b){ if(typeof apriPopupEdificio==='function') apriPopupEdificio(b); pan.attivo=false; return; }
-        const tt=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
-        if(tt!==undefined){
-          const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
-          aggMsg('📍 '+(nomi[tt]||'?'));
+        if(b){ if(typeof apriPopupEdificio==='function') apriPopupEdificio(b); }
+        else{
+          const tt=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
+          if(tt!==undefined){
+            const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
+            aggMsg('📍 '+(nomi[tt]||'?'));
+          }
         }
       }
     }
-    if(!e.touches || e.touches.length===0){ pan.attivo=false; pinch.attivo=false; }
-  }
+    if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; }
+  },{passive:false});
 
-  const touchTarget = wrap || canvas;
-  touchTarget.addEventListener('touchstart',onTouchStart,{passive:false});
-  touchTarget.addEventListener('touchmove',onTouchMove,{passive:false});
-  touchTarget.addEventListener('touchend',onTouchEnd,{passive:false});
-  touchTarget.addEventListener('touchcancel',onTouchEnd,{passive:false});
+  touchTarget.addEventListener('touchcancel',()=>{
+    pan.attivo=false; pinch.attivo=false; pinch.wasPinching=false;
+    canvas.__islaSuppressClickUntil=Date.now()+300;
+  },{passive:false});
 
-  // iOS Safari fallback GestureEvent
+  // iOS Safari fallback: alcuni dispositivi emettono GestureEvent oltre ai touch event.
   let gestureZoom0=1;
-  touchTarget.addEventListener('gesturestart', e=>{
-    e.preventDefault(); e.stopPropagation();
-    gestureZoom0=G.ISO_SCALE||1;
-    pinch.wasPinching=true;
-  }, {passive:false});
-  touchTarget.addEventListener('gesturechange', e=>{
-    e.preventDefault(); e.stopPropagation();
-    const rect=touchRect();
-    const px=(isFinite(e.clientX)?e.clientX-rect.left:rect.width/2);
-    const py=(isFinite(e.clientY)?e.clientY-rect.top:rect.height/2);
-    const target=clampZoom(gestureZoom0*(e.scale||1));
-    zoomCanvas(target/(G.ISO_SCALE||1), px, py);
-  }, {passive:false});
-  touchTarget.addEventListener('gestureend', e=>{
-    e.preventDefault(); e.stopPropagation();
-    setTimeout(()=>{pinch.wasPinching=false;},160);
-  }, {passive:false});
+  touchTarget.addEventListener('gesturestart',e=>{
+    e.preventDefault(); gestureZoom0=G.ISO_SCALE||1; pinch.wasPinching=true;
+    canvas.__islaSuppressClickUntil=Date.now()+400;
+  },{passive:false});
+  touchTarget.addEventListener('gesturechange',e=>{
+    e.preventDefault();
+    const rect=canvasRect();
+    const px=isFinite(e.clientX)?e.clientX-rect.left:rect.width/2;
+    const py=isFinite(e.clientY)?e.clientY-rect.top:rect.height/2;
+    const target=Math.max(G.ZOOM_MIN||0.35,Math.min(G.ZOOM_MAX||2.5,gestureZoom0*(e.scale||1)));
+    zoomCanvas(target/(G.ISO_SCALE||1),px,py);
+  },{passive:false});
+  touchTarget.addEventListener('gestureend',e=>{
+    e.preventDefault(); setTimeout(()=>{pinch.wasPinching=false;},140);
+  },{passive:false});
 
-  window.addEventListener('resize', ()=>{ ridimensionaCanvas(); impostaMobile(); });
+  window.addEventListener('resize',()=>{ ridimensionaCanvas(); impostaMobile(); });
 }
 
 function getTile(e){
