@@ -103,7 +103,7 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 /* PRINCIPALE */
 #principale{display:none;flex:1;overflow:hidden;}
 #mappa-wrap{position:relative;flex:1;overflow:hidden;cursor:default;}
-#mappa-canvas{display:block;}
+#mappa-canvas{display:block;touch-action:none;-webkit-user-select:none;user-select:none;}
 #mappa-wrap.modalita-costruzione{cursor:crosshair;}
 
 /* LOG MESSAGGI */
@@ -638,3 +638,17 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   transition:all .15s;min-height:36px;
 }
 #btn-musica:hover{background:rgba(240,192,64,.18);border-color:var(--oro);}
+
+
+/* ── ZOOM MOBILE DI SICUREZZA ──
+   Fallback visibile per dispositivi dove il pinch browser/OS intercetta il gesto. */
+#zoom-mobile{display:none;position:fixed;left:10px;bottom:112px;z-index:76;gap:7px;flex-direction:column;}
+#zoom-mobile button{width:42px;height:42px;border-radius:50%;border:1px solid var(--bordo);background:linear-gradient(135deg,var(--oro-scuro),var(--oro));color:var(--inchiostro);font-family:var(--font-label);font-size:1.35rem;font-weight:900;box-shadow:0 3px 18px rgba(0,0,0,.45);}
+@media(max-width:600px) and (orientation:portrait){
+  #zoom-mobile{display:flex;}
+  body.pannello-aperto #zoom-mobile{display:none;}
+}
+@media(max-height:500px) and (orientation:landscape){
+  #zoom-mobile{display:flex;left:8px;bottom:48px;}
+  #zoom-mobile button{width:34px;height:34px;font-size:1.05rem;}
+}
