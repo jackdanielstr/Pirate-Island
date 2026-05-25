@@ -125,6 +125,33 @@ function impostaInput(){
   // tutti gli eventi quando ci sono overlay/HUD sopra la mappa.
   const touchTarget=wrap||canvas;
   let pinch={attivo:false,wasPinching:false,dist0:0,midX:0,midY:0};
+  // Mobile road tool: tap = 1 tile, normal drag = pan, long-press + drag = paint road.
+  let roadTouch={timer:null,draw:false,lastKey:'',startX:0,startY:0};
+  const LONG_PRESS_MS=320;
+  const PAN_SLOP=10;
+  function clearRoadTimer(){ if(roadTouch.timer){ clearTimeout(roadTouch.timer); roadTouch.timer=null; } }
+  function resetRoadTouch(){ clearRoadTimer(); roadTouch.draw=false; roadTouch.lastKey=''; }
+
+  // Reset pubblico usato quando si cambia strumento dal pannello costruzioni.
+  // Fix v20.27: dopo il disegno dei sentieri su mobile restavano stati touch
+  // interni (long press / draw / pan.mosso) che potevano bloccare il piazzamento
+  // dell'edificio selezionato subito dopo.
+  window.__islaResetTouchInputState=function(){
+    try{
+      resetRoadTouch();
+      pan.attivo=false;
+      pan.mosso=false;
+      pinch.attivo=false;
+      pinch.wasPinching=false;
+      if(canvas){
+        canvas.__islaSuppressClickUntil=0;
+        canvas.style.cursor='';
+      }
+    }catch(err){
+      console.warn('[Isla] reset input touch non riuscito:', err);
+    }
+  };
+
   function distTocchi(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
   function midTocchi(t){
     const rect=canvasRect();
@@ -139,10 +166,24 @@ function impostaInput(){
       c:Math.floor((lx/IW*2+ly/IH*2)/2-.5),
     };
   }
+  function setHoverDaTouch(t){
+    const tc=tileDaClient(t.clientX,t.clientY);
+    G.hoverR=tc.r; G.hoverC=tc.c;
+    return tc;
+  }
+  function paintSentieroDaTouch(t){
+    const tc=setHoverDaTouch(t);
+    const key=tc.r+','+tc.c;
+    if(key!==roadTouch.lastKey){
+      roadTouch.lastKey=key;
+      if(typeof piazzaSentiero==='function') piazzaSentiero(tc.r,tc.c);
+    }
+  }
 
   touchTarget.addEventListener('touchstart',e=>{
     if(e.touches.length===2){
       e.preventDefault();
+      resetRoadTouch();
       pan.attivo=false;
       pinch.attivo=true; pinch.wasPinching=true;
       pinch.dist0=distTocchi(e.touches);
@@ -153,19 +194,28 @@ function impostaInput(){
     if(e.touches.length!==1) return;
     e.preventDefault();
     pinch.attivo=false;
+    resetRoadTouch();
     const t=e.touches[0];
-    if(G.modalitaCostruzione){
-      pan.attivo=false; pan.mosso=false;
-    }else{
-      pan.attivo=true; pan.mosso=false;
-      pan.startX=t.clientX; pan.startY=t.clientY;
-      pan.camStartX=G.camX; pan.camStartY=G.camY;
+    pan.attivo=true; pan.mosso=false;
+    pan.startX=t.clientX; pan.startY=t.clientY;
+    pan.camStartX=G.camX; pan.camStartY=G.camY;
+    roadTouch.startX=t.clientX; roadTouch.startY=t.clientY;
+    setHoverDaTouch(t);
+    if(G.modalitaCostruzione==='sentiero'){
+      roadTouch.timer=setTimeout(()=>{
+        roadTouch.draw=true;
+        pan.mosso=true; // evita che il touchend piazzi due volte lo stesso tile
+        const fake={clientX:roadTouch.startX,clientY:roadTouch.startY};
+        paintSentieroDaTouch(fake);
+        aggMsg('🛤 Disegno sentiero: trascina sul percorso','info');
+      },LONG_PRESS_MS);
     }
   },{passive:false});
 
   touchTarget.addEventListener('touchmove',e=>{
     if(e.touches.length===2){
       e.preventDefault();
+      resetRoadTouch();
       const d=distTocchi(e.touches);
       if(!pinch.attivo||!pinch.dist0){ pinch.attivo=true; pinch.dist0=d; const m=midTocchi(e.touches); pinch.midX=m.x; pinch.midY=m.y; return; }
       if(d<8) return;
@@ -181,32 +231,57 @@ function impostaInput(){
     e.preventDefault();
     const t=e.touches[0];
     const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
-    const tc=tileDaClient(t.clientX,t.clientY);
-    G.hoverR=tc.r; G.hoverC=tc.c;
-    if(G.modalitaCostruzione==='sentiero'){
-      piazzaSentiero(G.hoverR,G.hoverC); return;
+    const moved=Math.abs(dx)>PAN_SLOP||Math.abs(dy)>PAN_SLOP;
+    setHoverDaTouch(t);
+
+    if(G.modalitaCostruzione!=='sentiero' && roadTouch.draw){
+      // Cambio strumento mentre un long-press sentiero era attivo: annulla il draw.
+      resetRoadTouch();
     }
-    if(Math.abs(dx)>12||Math.abs(dy)>12) pan.mosso=true;
-    if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
+
+    if(G.modalitaCostruzione==='sentiero' && roadTouch.draw){
+      paintSentieroDaTouch(t);
+      canvas.__islaSuppressClickUntil=Date.now()+250;
+      return;
+    }
+
+    // Se l'utente trascina prima del long-press, è pan della mappa, non costruzione.
+    if(moved){
+      clearRoadTimer();
+      pan.mosso=true;
+      G.camX=pan.camStartX+dx;
+      G.camY=pan.camStartY+dy;
+      limiteCamera();
+    }
   },{passive:false});
 
   touchTarget.addEventListener('touchend',e=>{
     if(pinch.attivo&&e.touches.length<2){ pinch.attivo=false; }
+    clearRoadTimer();
     if(pinch.wasPinching){
       e.preventDefault();
+      resetRoadTouch();
       canvas.__islaSuppressClickUntil=Date.now()+400;
       if(e.touches.length===0){ pan.attivo=false; setTimeout(()=>{pinch.wasPinching=false;},120); }
       return;
     }
-    if(!pan.mosso&&e.changedTouches.length>0){
+    if(e.changedTouches.length>0){
       e.preventDefault();
       const t=e.changedTouches[0];
       const tc=tileDaClient(t.clientX,t.clientY);
       G.hoverR=tc.r; G.hoverC=tc.c;
       const r=tc.r,c=tc.c;
-      if(G.modalitaCostruzione==='sentiero') piazzaSentiero(r,c);
-      else if(G.modalitaCostruzione) piazzaEdificio(r,c);
-      else{
+      if(G.modalitaCostruzione!=='sentiero' && roadTouch.draw){
+        resetRoadTouch();
+      }
+      if(G.modalitaCostruzione==='sentiero'){
+        // Tap breve = un solo tile. Drag normale = pan. Long-press aveva già disegnato.
+        if(!pan.mosso && !roadTouch.draw) piazzaSentiero(r,c);
+      }
+      else if(G.modalitaCostruzione){
+        if(!pan.mosso) piazzaEdificio(r,c);
+      }
+      else if(!pan.mosso){
         const b=G.edifici.find(x=>x.r===r&&x.c===c);
         if(b){ if(typeof apriPopupEdificio==='function') apriPopupEdificio(b); }
         else{
@@ -218,7 +293,7 @@ function impostaInput(){
         }
       }
     }
-    if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; }
+    if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; resetRoadTouch(); }
   },{passive:false});
 
   touchTarget.addEventListener('touchcancel',()=>{
