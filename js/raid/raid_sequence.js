@@ -32,20 +32,62 @@ function trovaPortoRaid(){
 }
 
 function piratiPerRaid(nave){
-  // Se ci sono pirati assegnati alla nave, parte solo quell'equipaggio.
-  // Se nessuno è assegnato, mantiene il comportamento precedente: si raduna tutta la ciurma.
-  const assegnati=G.pirati.filter(p=>p.naveId===nave.id && !p.inRaid);
-  return assegnati.length>0 ? assegnati : G.pirati.filter(p=>!p.inRaid);
+  // Tropico 2 style: non parte tutta la colonia.
+  // Priorità: pirati assegnati alla nave dal pannello ciurma.
+  // Fallback: migliore squadra disponibile, entro capienza nave.
+  const disponibili=G.pirati.filter(p=>!p.inRaid && isFinite(p.mr) && isFinite(p.mc));
+  const assegnati=disponibili.filter(p=>p.naveId===nave.id);
+  const capienza=nave.capienza||6;
+  const pool=(assegnati.length>=2 ? assegnati : disponibili)
+    .slice()
+    .sort((a,b)=>{
+      const sb=(b.combattimento||0)*1.15+(b.navigazione||0)+(b.umore||50)*.25+(b.capitano?35:0);
+      const sa=(a.combattimento||0)*1.15+(a.navigazione||0)+(a.umore||50)*.25+(a.capitano?35:0);
+      return sb-sa;
+    });
+  return pool.slice(0,Math.max(2,capienza));
+}
+
+function puntoImbarcoRaid(){
+  const porto=trovaPortoRaid();
+  const ed=G.edifici.find(b=>b.r===porto.r&&b.c===porto.c) || {r:porto.r,c:porto.c,tipo:porto.tipo||'porto'};
+  if(typeof accessoMiglioreEdificio==='function'){
+    const acc=accessoMiglioreEdificio(ed,porto.r,porto.c);
+    if(acc) return {r:acc.r,c:acc.c,tipo:porto.tipo||'porto'};
+  }
+  return porto;
+}
+
+function distanzaTile(a,b){
+  return Math.abs((a.mr||0)-(b.r+.5))+Math.abs((a.mc||0)-(b.c+.5));
+}
+
+function forzaEquipaggioRaid(nave, crew){
+  const c=crew&&crew.length?crew:[];
+  const n=Math.max(1,c.length);
+  const comb=c.reduce((a,p)=>a+(p.combattimento||0),0)/n;
+  const nav=c.reduce((a,p)=>a+(p.navigazione||0),0)/n;
+  const morale=c.reduce((a,p)=>a+(p.umore||50),0)/n;
+  const capitano=c.find(p=>p.capitano)||null;
+  return {comb,nav,morale,capitano,count:c.length};
 }
 
 function avviaSequenzaRaid(nave, bersaglio, tattica){
-  // 1. Trova punto di imbarco: Porto dei Pirati, Cantiere o spiaggia.
-  const puntoPorto=trovaPortoRaid();
+  const puntoPorto=puntoImbarcoRaid();
   const destR=puntoPorto.r, destC=puntoPorto.c;
   const equipaggioRaid=piratiPerRaid(nave);
-  nave.crewRaidIds=equipaggioRaid.map(p=>p.id);
 
-  // 2. Manda i pirati verso il porto (con fallback se astar fallisce)
+  if(equipaggioRaid.length<2){
+    aggMsg('Servono almeno 2 pirati disponibili per imbarcarsi.','male');
+    return;
+  }
+
+  nave.crewRaidIds=equipaggioRaid.map(p=>p.id);
+  nave._raidTarget={r:destR,c:destC};
+  nave._faseRaid='raduno';
+
+  // Manda davvero i pirati al punto d'imbarco. Il raid parte quando sono arrivati
+  // oppure dopo un timeout di sicurezza: su mobile/pathfinding non deve bloccarsi.
   for(const p of equipaggioRaid){
     try{
       const sr=Math.max(0,Math.min(G.RIGHE-1,Math.round(p.mr)));
@@ -55,72 +97,92 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
     } catch(e){
       p.percorso=[{r:destR,c:destC}];
     }
-    p._stato="cammina"; p.percorsoIdx=0; p.dest={r:destR,c:destC};
+    p._stato='raduno_raid';
+    p.percorsoIdx=0;
+    p.dest={r:destR,c:destC};
+    p._raidBoarding=true;
   }
 
-  // 3. Mostra overlay campana
   const ov=document.getElementById('overlay-campana');
-  document.getElementById('campana-icona').textContent='🔔';
-  document.getElementById('campana-titolo').textContent='⚔ '+bersaglio.icona+' '+bersaglio.nome;
-  document.getElementById('campana-msg').textContent='La ciurma si raduna al porto...';
-  document.getElementById('campana-barra').style.width='0%';
-  ov.classList.add('aperto');
-
-  // 4. Anima marcia (3 secondi) — con timeout di sicurezza
-  const totalDur=3000;
-  const startTs=performance.now();
   const barEl=document.getElementById('campana-barra');
   const msgEl=document.getElementById('campana-msg');
+  document.getElementById('campana-icona').textContent='🔔';
+  document.getElementById('campana-titolo').textContent='⚔ '+bersaglio.icona+' '+bersaglio.nome;
+  msgEl.textContent='La ciurma corre al porto seguendo i sentieri...';
+  barEl.style.width='0%';
+  ov.classList.add('aperto');
+
   const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0));
+  const startTs=performance.now();
+  const maxDur=8500;
   let completato=false;
 
-  // Sicurezza: se l'animazione non completa entro 5s, forza il completamento
-  const safetyTimer=setTimeout(()=>{
-    if(!completato){ completato=true; ov.classList.remove('aperto'); salpaNave(nave,bersaglio,tattica,durata); }
-  }, 5000);
-
-  function animaMarcia(ts){
+  function completaImbarco(){
     if(completato) return;
-    const progress=Math.min(100,(ts-startTs)/totalDur*100);
-    barEl.style.width=progress+'%';
-
-    if(progress<33)       msgEl.textContent='🏃 La ciurma marcia verso il porto...';
-    else if(progress<66)  msgEl.textContent='⛵ I pirati salgono a bordo di '+nave.nome+'...';
-    else                  msgEl.textContent='🌊 Salpa verso '+bersaglio.nome+' ('+durata+' giorni)...';
-
-    if(progress<100){
-      requestAnimationFrame(animaMarcia);
-    } else {
-      completato=true;
-      clearTimeout(safetyTimer);
-      setTimeout(()=>{ ov.classList.remove('aperto'); salpaNave(nave,bersaglio,tattica,durata); }, 300);
-    }
+    completato=true;
+    barEl.style.width='100%';
+    msgEl.textContent='⛵ '+nave.nome+' molla gli ormeggi!';
+    setTimeout(()=>{
+      ov.classList.remove('aperto');
+      salpaNave(nave,bersaglio,tattica,durata,equipaggioRaid);
+    },350);
   }
-  requestAnimationFrame(animaMarcia);
+
+  function animaRaduno(ts){
+    if(completato) return;
+    const elapsed=ts-startTs;
+    const arrivati=equipaggioRaid.filter(p=>distanzaTile(p,{r:destR,c:destC})<1.25).length;
+    const quota=arrivati/Math.max(1,equipaggioRaid.length);
+    const timeQuota=Math.min(1,elapsed/maxDur);
+    const progress=Math.max(timeQuota*.65,quota*.95)*100;
+    barEl.style.width=Math.min(99,progress)+'%';
+
+    if(quota<.35)      msgEl.textContent='🏃 La ciurma si raduna al porto... '+arrivati+'/'+equipaggioRaid.length;
+    else if(quota<.85) msgEl.textContent='🪵 Casse, rum e polvere da sparo vengono caricati a bordo...';
+    else               msgEl.textContent='⛵ Gli ultimi pirati salgono su '+nave.nome+'...';
+
+    if(quota>=.82 || elapsed>=maxDur) completaImbarco();
+    else requestAnimationFrame(animaRaduno);
+  }
+  requestAnimationFrame(animaRaduno);
 }
 
 // Nave parte: salva i dati del raid, attiva il timer
-function salpaNave(nave, bersaglio, tattica, durata){
+function salpaNave(nave, bersaglio, tattica, durata, equipaggioRaid){
+  const crew=equipaggioRaid&&equipaggioRaid.length ? equipaggioRaid : G.pirati.filter(p=>(nave.crewRaidIds||[]).includes(p.id));
+  const forza=forzaEquipaggioRaid(nave,crew);
   nave.inMare    = true;
   nave.timerRaid = durata;
-  nave.raidData  = { bersaglio, tattica };
-  if(_naviMare[nave.id]) _naviMare[nave.id]._dockInit=false;
+  nave.raidData  = {
+    bersaglio,
+    tattica,
+    crewIds:(nave.crewRaidIds||[]).slice(),
+    forza,
+    giornoPartenza:G.giorno,
+    log:['La nave lascia il molo con '+crew.length+' pirati a bordo.']
+  };
+  nave._faseRaid='salpando';
+  nave._faseRaidTick=0;
+  if(typeof _naviMare!=='undefined' && _naviMare[nave.id]){
+    _naviMare[nave.id]._dockInit=false;
+    _naviMare[nave.id]._raidWater=null;
+  }
 
   G.cooldownRaid  = 4;
   G.contatori.raid++;
 
-  // I pirati imbarcati spariscono dalla mappa finché la nave è in mare.
   const crewIds=new Set(nave.crewRaidIds||[]);
   for(const p of G.pirati){
     if(crewIds.has(p.id)){
       p.inRaid=true;
       p.inRaidNaveId=nave.id;
       p._stato='in_raid';
+      p._raidBoarding=false;
       p.dest=null; p.percorso=null; p.percorsoIdx=0;
     }
   }
 
-  aggMsg('⛵ '+nave.nome+' salpa dal porto! Rientro tra '+durata+' giorni.','bene');
+  aggMsg('⛵ '+nave.nome+' salpa con '+crew.length+' pirati. Rientro tra '+durata+' giorni.','bene');
   controllaMissione('raid', G.contatori.raid);
   aggiornaUI();
 }
@@ -128,7 +190,9 @@ function salpaNave(nave, bersaglio, tattica, durata){
 // Chiamata dal tick quando timerRaid arriva a 0
 function rientroNave(nave){
   nave.inMare=false;
-  if(_naviMare[nave.id]) _naviMare[nave.id]._dockInit=false;
+  nave._faseRaid='scarico';
+  nave._faseRaidTick=90;
+  if(typeof _naviMare!=='undefined' && _naviMare[nave.id]) _naviMare[nave.id]._dockInit=false;
 
   // Al rientro la ciurma riappare al porto insieme alla nave.
   const puntoPorto=trovaPortoRaid();
@@ -162,11 +226,17 @@ function rientroNave(nave){
 
   const {bersaglio, tattica}=rd;
 
-  // Calcola esito
-  const mediaCombo=G.pirati.reduce((a,p)=>a+p.combattimento,0)/Math.max(G.pirati.length,1);
+  // Calcola esito usando SOLO la ciurma imbarcata, non tutta l'isola.
+  const crew=G.pirati.filter(p=>(rd.crewIds||[]).includes(p.id));
+  const f=rd.forza||forzaEquipaggioRaid(nave,crew);
+  const mediaCombo=f.comb||50;
+  const mediaNav=f.nav||50;
+  const mediaMorale=f.morale||50;
   const forzaAtk=Math.floor(
     8
     + mediaCombo*.12
+    + mediaNav*.035
+    + (mediaMorale-50)*.04
     + (nave.livCannoni||0)*4
     + (tattica.bonus.atk||0)
     + (G.ricerca.completate.has('cannoni')?8:0)
@@ -223,9 +293,9 @@ function rientroNave(nave){
     if(grazia){ const extra=Math.floor(oroFinale*.15); G.oro+=extra; }
 
     // XP e morale
-    for(const p of G.pirati){
+    for(const p of crew){
       p.umore=Math.min(100,p.umore+16);
-      if(p.naveId===nave.id){
+      if(true){
         p.xp=(p.xp||0)+20;
         const xpN=(p.livello||1)*100;
         if(p.xp>=xpN){
@@ -267,9 +337,10 @@ function rientroNave(nave){
 
     notifica('⚔ Raid Riuscito!', bersaglio.icona+' '+bersaglio.nome+' saccheggiata! '+bottinoStr);
     aggMsg('💰 '+nave.nome+' rientra: '+bottinoStr+' (danno -'+dannoNave+'hp)','bene');
+    if(typeof creaScaricoRaidPorto==='function') creaScaricoRaidPorto(nave,{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ric});
 
   } else {
-    for(const p of G.pirati) p.umore=Math.max(5,p.umore-18);
+    for(const p of crew) p.umore=Math.max(5,p.umore-18);
     if(Math.random()<0.35) catturaPrigioniero(bersaglio.rep.reale<0?'Marina Reale':'Mercante');
     notifica('💀 Raid Fallito',
       bersaglio.icona+' '+bersaglio.nome+' ha respinto l\'attacco. '+nave.nome+' rientra danneggiata.','male');
@@ -280,6 +351,7 @@ function rientroNave(nave){
 // Compatibilità
 function lanciaRaid(nave){
   nave.inMare=true;
+  nave._faseRaid='salpando';
   const durata=Math.max(1,2+Math.floor(Math.random()*2)-(nave.livVelocita||0));
   nave.timerRaid=durata;
   nave.raidData=null;

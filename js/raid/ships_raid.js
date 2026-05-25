@@ -17,6 +17,7 @@ function creaNave(id, nome){
     livVelocita:0,  // -1 giorno raid per livello (min 1)
     livStiva:0,     // +20% bottino cibo/risorse per livello
     inMare:false, timerRaid:0,
+    capienza:6,       // Tropico 2 style: ogni nave porta una ciurma limitata
     usura:0,        // 0-100, aumenta in mare, riduce hpMax
   };
 }
@@ -211,6 +212,18 @@ function selTatticaRaid(id){
   aggiornaPianoRiepilogo();
 }
 
+function equipaggioStimatoRaid(nave){
+  if(!nave) return [];
+  if(typeof piratiPerRaid==='function') return piratiPerRaid(nave);
+  return G.pirati.filter(p=>!p.inRaid).slice(0,nave.capienza||6);
+}
+function testoEquipaggioRaid(nave){
+  const crew=equipaggioStimatoRaid(nave);
+  if(crew.length===0) return 'nessun pirata disponibile';
+  const nomi=crew.slice(0,4).map(p=>p.nome.split(' ')[0]).join(', ');
+  return `${crew.length}/${nave.capienza||6} — ${nomi}${crew.length>4?'…':''}`;
+}
+
 function aggiornaPianoRiepilogo(){
   const {nave, bersaglio, tattica}=statoPianificazione;
   const riep=document.getElementById('piano-riepilogo');
@@ -218,9 +231,12 @@ function aggiornaPianoRiepilogo(){
   if(!riep||!btn) return;
 
   if(nave&&bersaglio&&tattica){
-    // Calcola forza stimata
-    const mediaCombo=G.pirati.reduce((a,p)=>a+p.combattimento,0)/Math.max(G.pirati.length,1);
-    const forzaAtk=Math.floor(8+(mediaCombo*.12)+(nave.livCannoni||0)*4+(tattica.bonus.atk||0));
+    // Calcola forza stimata usando la ciurma che partirà davvero.
+    const crew=equipaggioStimatoRaid(nave);
+    const mediaCombo=crew.reduce((a,p)=>a+(p.combattimento||0),0)/Math.max(crew.length,1);
+    const mediaNav=crew.reduce((a,p)=>a+(p.navigazione||0),0)/Math.max(crew.length,1);
+    const mediaMorale=crew.reduce((a,p)=>a+(p.umore||50),0)/Math.max(crew.length,1);
+    const forzaAtk=Math.floor(8+(mediaCombo*.12)+(mediaNav*.035)+(mediaMorale-50)*.04+(nave.livCannoni||0)*4+(tattica.bonus.atk||0));
     const nemHp=bersaglio.nemico.hp;
     const nemAtk=bersaglio.nemico.atk-(nave.livVelocita||0)*2;
     const chVitt=Math.min(95,Math.max(15,Math.round(55+(forzaAtk-nemAtk)*2.5)));
@@ -234,6 +250,7 @@ function aggiornaPianoRiepilogo(){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:.7rem">
         <span>🎯 Bersaglio:</span><span style="color:var(--pergamena)">${bersaglio.icona} ${bersaglio.nome}</span>
         <span>⛵ Nave:</span><span style="color:var(--pergamena)">${nave.nome}</span>
+        <span>☠ Ciurma:</span><span style="color:var(--pergamena);font-size:.62rem">${testoEquipaggioRaid(nave)}</span>
         <span>⚔ Tattica:</span><span style="color:var(--pergamena)">${tattica.icona} ${tattica.nome}</span>
         <span>📊 Vitt. stimata:</span><span style="color:${chVitt>60?'var(--verde-ch)':chVitt>40?'var(--oro)':'var(--rum-chiaro)'}">${chVitt}%</span>
         <span>🌐 Rep.:</span><span style="color:var(--sabbia);font-size:.62rem">${repStr||'nessuna'}</span>
@@ -251,6 +268,12 @@ function aggiornaPianoRiepilogo(){
 function lanciaRaidTattico(){
   const {nave, bersaglio, tattica}=statoPianificazione;
   if(!nave||!bersaglio||!tattica) return;
+
+  const crew=equipaggioStimatoRaid(nave);
+  if(crew.length<2){
+    aggMsg('Servono almeno 2 pirati disponibili per imbarcarsi.','male');
+    return;
+  }
 
   if(tattica.cost_rum>0&&G.rum<tattica.cost_rum){
     aggMsg(`Servono ${tattica.cost_rum} rum per questa tattica!`,'male'); return;
