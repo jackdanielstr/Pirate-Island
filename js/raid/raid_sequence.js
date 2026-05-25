@@ -9,9 +9,9 @@
 //
 // Flusso:
 //   1. Pianifica (modale) → lanciaRaidTattico()
-//   2. Chiudi modale → campana appare
-//   3. Pirati marciano verso il cantiere (3 sec)
-//   4. Fine marcia → campana sparisce, nave parte (inMare=true)
+//   2. Chiudi modale → campana suona come notifica in-game NON bloccante
+//   3. Pirati marciano verso il porto mentre il gioco continua
+//   4. Quando abbastanza pirati sono arrivati, la nave parte (inMare=true)
 //      I dati del raid vengono salvati su nave.raidData
 //   5. Il tick fa scorrere i giorni normalmente
 //   6. Al rientro (timerRaid === 0) si calcola l'esito
@@ -103,29 +103,24 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
     p._raidBoarding=true;
   }
 
+  // Campana non bloccante: niente overlay a schermo intero.
+  // Il gioco continua, il giocatore può costruire/pannare/gestire mentre la ciurma corre al porto.
   const ov=document.getElementById('overlay-campana');
-  const barEl=document.getElementById('campana-barra');
-  const msgEl=document.getElementById('campana-msg');
-  document.getElementById('campana-icona').textContent='🔔';
-  document.getElementById('campana-titolo').textContent='🔔 '+(bersaglio.missione?.icona||'⚔')+' '+bersaglio.nome;
-  msgEl.textContent='La campana suona: la ciurma corre al porto seguendo i sentieri...';
-  barEl.style.width='0%';
-  ov.classList.add('aperto');
+  if(ov) ov.classList.remove('aperto');
+  notifica('🔔 Campana del Porto', (bersaglio.missione?.icona||'⚔')+' '+bersaglio.nome+' — la ciurma si imbarca.');
+  aggMsg('🔔 La campana suona: '+nave.nome+' prepara il raid.','info');
 
   const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0));
   const startTs=performance.now();
   const maxDur=8500;
   let completato=false;
+  let ultimoMsg=-1;
 
   function completaImbarco(){
     if(completato) return;
     completato=true;
-    barEl.style.width='100%';
-    msgEl.textContent='⛵ '+nave.nome+' molla gli ormeggi!';
-    setTimeout(()=>{
-      ov.classList.remove('aperto');
-      salpaNave(nave,bersaglio,tattica,durata,equipaggioRaid);
-    },350);
+    aggMsg('⛵ '+nave.nome+' molla gli ormeggi!','bene');
+    salpaNave(nave,bersaglio,tattica,durata,equipaggioRaid);
   }
 
   function animaRaduno(ts){
@@ -133,13 +128,15 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
     const elapsed=ts-startTs;
     const arrivati=equipaggioRaid.filter(p=>distanzaTile(p,{r:destR,c:destC})<1.25).length;
     const quota=arrivati/Math.max(1,equipaggioRaid.length);
-    const timeQuota=Math.min(1,elapsed/maxDur);
-    const progress=Math.max(timeQuota*.65,quota*.95)*100;
-    barEl.style.width=Math.min(99,progress)+'%';
 
-    if(quota<.35)      msgEl.textContent='🏃 La ciurma si raduna al porto... '+arrivati+'/'+equipaggioRaid.length;
-    else if(quota<.85) msgEl.textContent='🪵 Casse, rum e polvere da sparo vengono caricati a bordo...';
-    else               msgEl.textContent='⛵ Gli ultimi pirati salgono su '+nave.nome+'...';
+    // Messaggi radi, non overlay: non blocchiamo il gameplay e non spammiamo il log.
+    const fase = quota<.35 ? 0 : quota<.85 ? 1 : 2;
+    if(fase!==ultimoMsg){
+      ultimoMsg=fase;
+      if(fase===0)      aggMsg('🏃 La ciurma corre al porto... '+arrivati+'/'+equipaggioRaid.length,'info');
+      else if(fase===1) aggMsg('🪵 Caricamento di rum, polvere e provviste su '+nave.nome+'...','info');
+      else              aggMsg('⛵ Gli ultimi pirati salgono a bordo...','info');
+    }
 
     if(quota>=.82 || elapsed>=maxDur) completaImbarco();
     else requestAnimationFrame(animaRaduno);
@@ -362,7 +359,7 @@ function lanciaRaid(nave){
   aggiornaUI();
 }
 function iniziaBattegliaTattica(nave,bersaglio,tattica){ avviaSequenzaRaid(nave,bersaglio,tattica); }
-function chiudiBattegliaTattica(){ document.getElementById('overlay-campana').classList.remove('aperto'); }
+function chiudiBattegliaTattica(){ const ov=document.getElementById('overlay-campana'); if(ov) ov.classList.remove('aperto'); }
 function chiudiBattaglia(){ chiudiBattegliaTattica(); }
 function iniziaBattaglia(nave,em){ avviaSequenzaRaid(nave,BERSAGLI_RAID[em?0:2],TATTICHE_RAID[0]); }
 
