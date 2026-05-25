@@ -1,3 +1,6 @@
+// Isla del Diablo — audio/music.js
+// Estratto da 00_music.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: MUSIC
 // ═══════════════════════════════════════
@@ -451,6 +454,11 @@ const MUSIC = (() => {
   return { start, stop, toggle, setVolume, isRunning };
 
 })();
+
+
+// Isla del Diablo — core/state.js
+// Estratto da 01_state.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: STATE
 // ═══════════════════════════════════════
@@ -628,6 +636,11 @@ const NOMI_PRIGIONIERI=['Ten. Belfair','Cap. Sterling','Gov. Blackwell','Amm. Gr
 // ═══════════════════════════════════════════════════
 
 // heightmap semplice con noise
+
+
+// Isla del Diablo — world/map.js
+// Estratto da 02_map.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: MAP
 // ═══════════════════════════════════════
@@ -793,6 +806,11 @@ function generaMappa(){
 // ═══════════════════════════════════════════════════
 // CANVAS RENDERER  —  top-down dettagliato
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — rendering/tiles.js
+// Estratto da 03_renderer_tiles.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_TILES
 // ═══════════════════════════════════════
@@ -1157,6 +1175,11 @@ function disegnaTransizioni() {
     }
   }
 }
+
+
+// Isla del Diablo — rendering/nature.js
+// Estratto da 04_renderer_nature.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_NATURE
 // ═══════════════════════════════════════
@@ -1281,6 +1304,11 @@ function disegnaRocciaIso(cx, cy, scala, s){
   ctx.strokeStyle='rgba(0,0,0,.3)'; ctx.lineWidth=1.2*s;
   ctx.beginPath(); ctx.ellipse(rx, ry, w, h*.55, -.15, Math.PI*.1, Math.PI*.9); ctx.stroke();
 }
+
+
+// Isla del Diablo — rendering/iso_helpers.js
+// Estratto da 05_renderer_iso.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_ISO
 // ═══════════════════════════════════════
@@ -1400,6 +1428,11 @@ function isoWindow(bx,by,lit,sz){
     ctx.beginPath();ctx.moveTo(bx-w/2,by-h/2);ctx.lineTo(bx+w/2,by-h/2);ctx.stroke();
   }
 }
+
+
+// Isla del Diablo — rendering/buildings.js
+// Estratto da 06_renderer_buildings.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_BUILDINGS
 // ═══════════════════════════════════════
@@ -1920,6 +1953,11 @@ function disegnaEdificio(tipo,cx,cy,s){
   }
   ctx.restore();
 }
+
+
+// Isla del Diablo — rendering/units.js
+// Estratto da 07_renderer_units.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_UNITS
 // ═══════════════════════════════════════
@@ -2206,6 +2244,11 @@ function disegnaSchiavoIso(cx, cy, felicita, s){
   ctx.fillStyle=felCol;
   ctx.beginPath(); ctx.arc(cx,cy-sc*14,sc*1.5,0,Math.PI*2); ctx.fill();
 }
+
+
+// Isla del Diablo — rendering/scene.js
+// Estratto da 08_renderer_scene.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RENDERER_SCENE
 // ═══════════════════════════════════════
@@ -2405,6 +2448,11 @@ function disegnaPOI(poi, cx, cy, s){
 }
 
 function coloreUmore(u){ return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b'; }
+
+
+// Isla del Diablo — simulation/slaves.js
+// Estratto da 09_schiavi.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: SCHIAVI
 // ═══════════════════════════════════════
@@ -2792,6 +2840,11 @@ function muoviSchiavi(dt){
     s.mr = Math.max(1, Math.min(G.RIGHE-1, s.mr));
   }
 }
+
+
+// Isla del Diablo — world/buildings_hud.js
+// Estratto da 10_edifici_hud.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: EDIFICI_HUD
 // ═══════════════════════════════════════
@@ -3149,7 +3202,8 @@ function disegnaCaricoSchiavo(sv,cx,cy,s){
 
 function aggiornaTargetTrasportoSchiavo(sv){
   const porto=puntoPortoVivo();
-  const edificio={r:sv.edificioR,c:sv.edificioC};
+  const edificio=G.edifici.find(b=>b.r===sv.edificioR&&b.c===sv.edificioC) || {r:sv.edificioR,c:sv.edificioC,tipo:sv.edificioTipo};
+  const portoEd=G.edifici.find(b=>b.r===porto.r&&b.c===porto.c) || {r:porto.r,c:porto.c,tipo:porto.tipo||'porto'};
   if(!sv._trasporto){
     sv._trasporto={
       fase:'a_edificio',
@@ -3161,8 +3215,16 @@ function aggiornaTargetTrasportoSchiavo(sv){
   const tr=sv._trasporto;
   if(tr.attesa>0) return null;
 
-  if(tr.fase==='a_edificio') return {r:edificio.r+.5,c:edificio.c+.5};
-  if(tr.fase==='a_porto') return {r:porto.r+.5+(Math.random()-.5)*.25,c:porto.c+.5+(Math.random()-.5)*.25};
+  // FASE 2E: anche gli schiavi puntano agli ingressi su sentiero, non al centro dell'edificio.
+  if(tr.fase==='a_edificio'){
+    const acc=(typeof accessoMiglioreEdificio==='function') ? accessoMiglioreEdificio(edificio,Math.floor(sv.mr),Math.floor(sv.mc)) : null;
+    return acc ? {r:acc.r+.5,c:acc.c+.5} : {r:edificio.r+.5,c:edificio.c+.5};
+  }
+  if(tr.fase==='a_porto'){
+    const acc=(typeof accessoMiglioreEdificio==='function') ? accessoMiglioreEdificio(portoEd,Math.floor(sv.mr),Math.floor(sv.mc)) : null;
+    if(acc) return {r:acc.r+.5+(Math.random()-.5)*.12,c:acc.c+.5+(Math.random()-.5)*.12};
+    return {r:porto.r+.5+(Math.random()-.5)*.25,c:porto.c+.5+(Math.random()-.5)*.25};
+  }
   return null;
 }
 
@@ -3415,6 +3477,11 @@ function inizializzaScenarioTropico2(){
   // posiziona la ciurma iniziale intorno al palazzo, non nel centro astratto della mappa
   G._spawnScenario={r:palazzo.r,c:palazzo.c};
 }
+
+
+// Isla del Diablo — core/startup.js
+// Estratto da 11_avvio_gioco.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: AVVIO_GIOCO
 // ═══════════════════════════════════════
@@ -3649,6 +3716,11 @@ function collegaConSentieroDrittoSicuro(a,b){
 // ═══════════════════════════════════════════════════
 // COSTRUZIONE
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — world/building_placement.js
+// Estratto da 12_costruzione.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: COSTRUZIONE
 // ═══════════════════════════════════════
@@ -3723,6 +3795,11 @@ function piazzaEdificio(r,c){
 // NAVI
 // ═══════════════════════════════════════════════════
 // factory con tutti i campi
+
+
+// Isla del Diablo — raid/ships_raid.js
+// Estratto da 13_navi_raid.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: NAVI_RAID
 // ═══════════════════════════════════════
@@ -3986,6 +4063,11 @@ function lanciaRaidTattico(){
 // ═══════════════════════════════════════════════════
 // SEQUENZA RAID CINEMATICA — stile Tropico 2
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — raid/raid_sequence.js
+// Estratto da 14_raid_sequence.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: RAID_SEQUENCE
 // ═══════════════════════════════════════
@@ -4280,6 +4362,11 @@ function chiudiBattaglia(){ chiudiBattegliaTattica(); }
 function iniziaBattaglia(nave,em){ avviaSequenzaRaid(nave,BERSAGLI_RAID[em?0:2],TATTICHE_RAID[0]); }
 
 // ── PRIGIONIERI ──
+
+
+// Isla del Diablo — simulation/prison_trade.js
+// Estratto da 15_prigione_commercio.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: PRIGIONE_COMMERCIO
 // ═══════════════════════════════════════
@@ -4412,6 +4499,11 @@ function editto(tipo){
 // ═══════════════════════════════════════════════════
 // TICK — avanzamento tempo
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — core/tick.js
+// Estratto da 16_tick.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: TICK
 // ═══════════════════════════════════════
@@ -4561,6 +4653,11 @@ function tick(){
 // ═══════════════════════════════════════════════════
 // EVENTI NARRATIVI
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — events/sea_events.js
+// Estratto da 17_events_mare.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: EVENTS_MARE
 // ═══════════════════════════════════════
@@ -4659,6 +4756,11 @@ const EVENTI_NARRATIVI=[
 
 ];
 const COOLDOWN_EVENTO_MIN=8;
+
+
+// Isla del Diablo — events/crew_events.js
+// Estratto da 18_events_ciurma.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: EVENTS_CIURMA
 // ═══════════════════════════════════════
@@ -4877,6 +4979,11 @@ EVENTI_NARRATIVI.push(
     ]
   }
 );
+
+
+// Isla del Diablo — events/political_events.js
+// Estratto da 19_events_politica.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: EVENTS_POLITICA
 // ═══════════════════════════════════════
@@ -5081,6 +5188,11 @@ EVENTI_NARRATIVI.push(
     ]
   }
 );
+
+
+// Isla del Diablo — events/events_logic.js
+// Estratto da 20_events_logic.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: EVENTS_LOGIC
 // ═══════════════════════════════════════
@@ -5224,6 +5336,11 @@ function controllaMissione(tipo,val){
 // ═══════════════════════════════════════════════════
 // RENDER PANNELLO
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — ui/panel.js
+// Estratto da 21_ui_panel.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: UI_PANEL
 // ═══════════════════════════════════════
@@ -5327,6 +5444,11 @@ function statEffettiva(p, stat){
   if(p.oggetto&&p.oggetto.bonus&&p.oggetto.bonus[stat]) val+=p.oggetto.bonus[stat];
   return Math.max(1,Math.min(100,Math.floor(val)));
 }
+
+
+// Isla del Diablo — ui/pirate_cards.js
+// Estratto da 22_ui_pirate.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: UI_PIRATE
 // ═══════════════════════════════════════
@@ -5513,6 +5635,11 @@ function apriCapitani(){
   }
   apriModale('⭐ Capitani Famosi', html);
 }
+
+
+// Isla del Diablo — ui/views.js
+// Estratto da 23_ui_views.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: UI_VIEWS
 // ═══════════════════════════════════════
@@ -5693,6 +5820,11 @@ function selPirata(id){apriProfiloPirata(id);}
 function riparaNave(id){
   apriGestioneNave(id);
 }
+
+
+// Isla del Diablo — ui/manage.js
+// Estratto da 24_ui_manage.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: UI_MANAGE
 // ═══════════════════════════════════════
@@ -5878,6 +6010,11 @@ function aggiornaUI(){
   document.getElementById('rep-corsaro').textContent=`☠ ${Math.floor(G.fazioni.corsaro.rep)}`;
   renderPannello();
 }
+
+
+// Isla del Diablo — input/input.js
+// Estratto da 25_input.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: INPUT
 // ═══════════════════════════════════════
@@ -5921,6 +6058,11 @@ function impostaMobile(){
 // ═══════════════════════════════════════════════════
 // PATHFINDING A* — movimento pirati verso edifici
 // ═══════════════════════════════════════════════════
+
+
+// Isla del Diablo — core/pathfinding.js
+// Estratto da 26_pathfinding.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: PATHFINDING
 // ═══════════════════════════════════════
@@ -5962,7 +6104,89 @@ function trovaTileCamminabileVicino(r,c,raggio=6){
 function bonusSentieroPer(r,c){
   const rr=Math.floor(r), cc=Math.floor(c);
   const t=G.mappa[rr]&&G.mappa[rr][cc];
-  return t===T.SENTIERO ? 1.45 : 0.72;
+  return t===T.SENTIERO ? 1.55 : 0.60;
+}
+
+// ═══════════════════════════════════════════════════
+// FASE 2E — NPC sui sentieri
+// I personaggi non puntano più al centro degli edifici: cercano l'accesso
+// su sentiero più vicino, così il traffico visibile passa dalla rete viaria.
+// ═══════════════════════════════════════════════════
+const EDIFICI_SOCIALI_PIRATI = ['taverna','bordello','arena','cantastorie','porto','governatore','casapirata'];
+
+function edificioA(r,c){
+  return G.edifici && G.edifici.find(b=>b.r===r && b.c===c);
+}
+function tileCamminabilePersona(r,c){
+  if(!tileCamminabile(r,c)) return false;
+  // Evita di attraversare gli edifici: gli NPC devono fermarsi all'ingresso.
+  return !edificioA(Math.floor(r),Math.floor(c));
+}
+function accessiCamminabiliEdificio(ed){
+  if(!ed) return [];
+  const out=[];
+  const dirs=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
+  for(const [dr,dc] of dirs){
+    const r=ed.r+dr,c=ed.c+dc;
+    if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) continue;
+    if(tileCamminabilePersona(r,c)) out.push({r,c,sentiero:G.mappa[r][c]===T.SENTIERO});
+  }
+  out.sort((a,b)=>(b.sentiero?1:0)-(a.sentiero?1:0));
+  return out;
+}
+function accessoMiglioreEdificio(ed, daR=null, daC=null){
+  const acc=accessiCamminabiliEdificio(ed);
+  if(!acc.length) return ed ? {r:ed.r,c:ed.c} : null;
+  if(daR===null) return acc[0];
+  acc.sort((a,b)=>{
+    const sa=(a.sentiero?0:8)+heuristica(a.r,a.c,daR,daC);
+    const sb=(b.sentiero?0:8)+heuristica(b.r,b.c,daR,daC);
+    return sa-sb;
+  });
+  return acc[0];
+}
+function trovaPercorsoVersoEdificio(sr,sc,ed){
+  if(!ed) return null;
+  const start=tileCamminabilePersona(sr,sc) ? {r:sr,c:sc} : trovaTileCamminabileVicino(sr,sc,6);
+  const end=accessoMiglioreEdificio(ed,start.r,start.c);
+  if(!end) return null;
+  const path=astar(start.r,start.c,end.r,end.c);
+  return path && path.length ? {path,dest:end} : null;
+}
+function edificiPerTipo(tipi){
+  return (G.edifici||[]).filter(b=>tipi.includes(b.tipo));
+}
+function scegliDestinazioneSocialePirata(p){
+  const candidati=[];
+  const add=(tipo,peso)=>{
+    for(const b of G.edifici.filter(x=>x.tipo===tipo)){
+      const eff=typeof efficienzaStradaEdificio==='function' ? efficienzaStradaEdificio(b) : 1;
+      candidati.push({b,peso:peso*(0.45+eff)});
+    }
+  };
+  // Bisogni chiave: umore basso => servizi, umore alto => porto/palazzo/casa.
+  const u=p.umore||50;
+  add('taverna', u<65 ? 5 : 2);
+  add('bordello', G.bisogni?.divertimento<60 ? 4 : 1.5);
+  add('arena', p.combattimento<55 ? 3 : 1.2);
+  add('cantastorie', 2.5);
+  add('porto', 3.2);
+  add('governatore', 1.4);
+  add('casapirata', 1.8);
+  // Fallback: qualsiasi edificio scenario collegato.
+  if(!candidati.length) for(const b of G.edifici||[]) candidati.push({b,peso:1});
+  if(!candidati.length) return null;
+  let tot=candidati.reduce((a,x)=>a+x.peso,0);
+  let r=Math.random()*tot;
+  for(const x of candidati){ r-=x.peso; if(r<=0) return x.b; }
+  return candidati[candidati.length-1].b;
+}
+function applicaEffettoSostaPirata(p){
+  const ed=p._destEdificio ? G.edifici.find(b=>b.r===p._destEdificio.r&&b.c===p._destEdificio.c) : null;
+  if(!ed) return;
+  if(ed.tipo==='taverna' && G.rum>0){ G.rum=Math.max(0,G.rum-1); p.umore=Math.min(100,(p.umore||50)+7); }
+  else if(['bordello','arena','cantastorie'].includes(ed.tipo)){ p.umore=Math.min(100,(p.umore||50)+4); }
+  else if(ed.tipo==='porto'){ p.umore=Math.min(100,(p.umore||50)+1); }
 }
 
 function astar(sr,sc,er,ec){
@@ -6022,35 +6246,32 @@ function astar(sr,sc,er,ec){
 const PIRATA_SPEED = 1.4;
 
 function aggiornaPirata(p){
-  // Pausa all'edificio: decrementa timer in secondi
-  if(p._stato==='pausa'){
-    // la pausa viene gestita in muoviPirata con _pausaSec
-    return;
-  }
+  if(p.inRaid || p._stato==='in_raid') return;
+  // Pausa all'edificio: la durata viene gestita in muoviPirata.
+  if(p._stato==='pausa') return;
 
-  // Se sta camminando e ha finito il percorso → pausa
+  // Se ha raggiunto l'accesso dell'edificio, sosta e applica micro-effetto sociale.
   if(p._stato==='cammina' && p.percorso && p.percorsoIdx>=(p.percorso.length||0)){
     p._stato='pausa';
-    p._pausaSec = 3 + Math.random()*5; // 3-8 secondi reali di pausa
+    p._pausaSec = 4 + Math.random()*7;
+    applicaEffettoSostaPirata(p);
     return;
   }
 
-  // Se vaga, ogni tanto cerca una nuova destinazione
   if(p._stato!=='cammina'){
-    p._vagaSec = (p._vagaSec||0) - (G.tickMs/1000/G.velocita||8);
+    p._vagaSec = (p._vagaSec||0) - Math.max(1,(G.tickMs/1000)/(G.velocita||1));
     if(p._vagaSec > 0) return;
-    p._vagaSec = 6 + Math.random()*10; // nuova scelta ogni 6-16 secondi reali
+    p._vagaSec = 5 + Math.random()*9;
 
-    if(G.edifici.length>0 && Math.random()<0.7){
-      const candidati=G.edifici.filter(b=>!p.dest||(b.r!==p.dest.r||b.c!==p.dest.c));
-      const pool=candidati.length>0 ? candidati : G.edifici;
-      const target=pool[Math.floor(Math.random()*pool.length)];
-      const sr=Math.max(0,Math.min(G.RIGHE-1,Math.round(p.mr)));
-      const sc=Math.max(0,Math.min(G.COLS-1,Math.round(p.mc)));
-      const path=astar(sr,sc,target.r,target.c);
-      if(path && path.length>0){
-        p.dest={r:target.r,c:target.c};
-        p.percorso=path;
+    const target=scegliDestinazioneSocialePirata(p);
+    if(target){
+      const sr=Math.max(0,Math.min(G.RIGHE-1,Math.floor(p.mr)));
+      const sc=Math.max(0,Math.min(G.COLS-1,Math.floor(p.mc)));
+      const res=trovaPercorsoVersoEdificio(sr,sc,target);
+      if(res && res.path && res.path.length>0){
+        p.dest={r:res.dest.r,c:res.dest.c};
+        p._destEdificio={tipo:target.tipo,r:target.r,c:target.c};
+        p.percorso=res.path;
         p.percorsoIdx=0;
         p._stato='cammina';
       }
@@ -6152,6 +6373,11 @@ function rimuoviSentiero(r,c){
     for(const p of G.pirati){ p.percorso=null; p.percorsoIdx=0; }
   }
 }
+
+
+// Isla del Diablo — rendering/portrait.js
+// Estratto da 27_portrait.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: PORTRAIT
 // ═══════════════════════════════════════
@@ -6411,6 +6637,11 @@ function tickPortrait(){
   if(!p){ chiudiPortrait(); return; }
   aggiornaPortrait();
 }
+
+
+// Isla del Diablo — core/core.js
+// Estratto da 28_core.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: CORE
 // ═══════════════════════════════════════
@@ -6426,8 +6657,49 @@ function limiteCamera(){
   G.camY = Math.max(-mapH + pad, Math.min(canvas.height - pad, G.camY));
 }
 
+
+// Zoom mobile globale: deve esistere anche se il canvas/input non è ancora stato inizializzato.
+// Usato dai pulsanti + / - su mobile. Ritorna false per evitare tap/click fantasma.
+window.zoomMobile = function(delta){
+  try{
+    if(!isFinite(delta) || delta<=0) return false;
+    const c = window.canvas || document.getElementById('mappa-canvas');
+    if(!c || !window.G || typeof applicaZoom !== 'function') return false;
+    if(!window.canvas) window.canvas = c;
+    const rect = c.getBoundingClientRect();
+    const px = rect.width / 2;
+    const py = rect.height / 2;
+    applicaZoom(delta, px, py);
+    if(isFinite(G.ISO_SCALE)) G.zoom = G.ISO_SCALE;
+    if(typeof _tileCache !== 'undefined') _tileCache = null;
+    return false;
+  }catch(err){
+    console.warn('[Isla] zoomMobile bloccato:', err);
+    return false;
+  }
+};
+
 function impostaInput(){
+  if(!canvas) return;
+  if(canvas.__islaInputInizializzato) return;
+  canvas.__islaInputInizializzato=true;
   canvas.style.touchAction='none';
+  canvas.style.webkitUserSelect='none';
+
+  function zoomCanvas(delta, x, y){
+    if(!isFinite(delta) || delta<=0) return;
+    const rect=canvas.getBoundingClientRect();
+    const px=isFinite(x)?x:(rect.width/2);
+    const py=isFinite(y)?y:(rect.height/2);
+    applicaZoom(delta, px, py);
+    G.zoom=G.ISO_SCALE;
+    if(typeof _tileCache!=='undefined') _tileCache=null;
+  }
+
+  window.zoomMobile=function(delta){
+    const rect=canvas.getBoundingClientRect();
+    zoomCanvas(delta, rect.width/2, rect.height/2);
+  };
   // Mouse pan
   canvas.addEventListener('mousedown',e=>{
     if(e.button!==0) return;
@@ -6465,7 +6737,7 @@ function impostaInput(){
     const rect=canvas.getBoundingClientRect();
     const mx=e.clientX-rect.left, my=e.clientY-rect.top;
     const zoomDelta=e.deltaY<0?1.1:0.91;
-    applicaZoom(zoomDelta, mx, my);
+    zoomCanvas(zoomDelta, mx, my);
   },{passive:false});
 
   // ── TOUCH: pan + pinch-to-zoom ──
@@ -6512,23 +6784,16 @@ function impostaInput(){
     if(pinch.attivo && e.touches.length===2){
       const rect=canvas.getBoundingClientRect();
       const dist=distTocchi(e.touches);
-      const scale=dist/pinch.dist0;
-      const newZoom=Math.max(G.ZOOM_MIN, Math.min(G.ZOOM_MAX, pinch.zoom0*scale));
-      // zoom centrato sul punto di pinch: il renderer usa G.ISO_SCALE, non G.zoom
-      const oldScale=G.ISO_SCALE || 1;
-      const ratio=newZoom/oldScale;
-      G.camX=pinch.midX-(pinch.midX-G.camX)*ratio;
-      G.camY=pinch.midY-(pinch.midY-G.camY)*ratio;
-      G.ISO_SCALE=newZoom;
-      G.zoom=newZoom; // compatibilità con vecchi riferimenti
-      _tileCache=null;
-      limiteCamera();
-      // aggiorna punto di partenza continuo per pan durante pinch
+      if(!pinch.dist0 || dist<10) return;
       const mid=midTocchi(e.touches,rect);
+      const scale=dist/pinch.dist0;
+      // Zoom incrementale centrato sul baricentro attuale delle dita.
+      zoomCanvas(scale, mid.x, mid.y);
+      // Pan simultaneo: se il baricentro si sposta, trascina anche camera.
       const dxPan=mid.x-pinch.midX, dyPan=mid.y-pinch.midY;
       G.camX+=dxPan; G.camY+=dyPan;
+      limiteCamera();
       pinch.midX=mid.x; pinch.midY=mid.y;
-      pinch.camX0=G.camX; pinch.camY0=G.camY;
       pinch.dist0=dist;
       pinch.zoom0=G.ISO_SCALE;
     } else if(pan.attivo && e.touches.length===1){
@@ -6577,6 +6842,28 @@ function impostaInput(){
     }
     if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; }
   },{passive:false});
+
+
+  // iOS Safari fallback: alcuni dispositivi emettono GestureEvent oltre ai touch event.
+  let gestureZoom0=1;
+  canvas.addEventListener('gesturestart', e=>{
+    e.preventDefault();
+    gestureZoom0=G.ISO_SCALE||1;
+    pinch.wasPinching=true;
+  }, {passive:false});
+  canvas.addEventListener('gesturechange', e=>{
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    const px=(isFinite(e.clientX)?e.clientX-rect.left:rect.width/2);
+    const py=(isFinite(e.clientY)?e.clientY-rect.top:rect.height/2);
+    const target=Math.max(G.ZOOM_MIN, Math.min(G.ZOOM_MAX, gestureZoom0*(e.scale||1)));
+    const delta=target/(G.ISO_SCALE||1);
+    zoomCanvas(delta, px, py);
+  }, {passive:false});
+  canvas.addEventListener('gestureend', e=>{
+    e.preventDefault();
+    setTimeout(()=>{pinch.wasPinching=false;},120);
+  }, {passive:false});
 
   window.addEventListener('resize', ()=>{ ridimensionaCanvas(); impostaMobile(); });
 }
@@ -6704,6 +6991,11 @@ function avviaMusicaAlPrimoClick(){
   if(btn) btn.textContent = '🔊';
   document.removeEventListener('click', avviaMusicaAlPrimoClick);
 }
+
+
+// Isla del Diablo — core/main.js
+// Estratto da 29_main.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: MAIN
 // ═══════════════════════════════════════
@@ -6862,6 +7154,11 @@ function cicloGioco(ts=0){
     }
   }
 }
+
+
+// Isla del Diablo — core/stability.js
+// Estratto da 30_stability.js nella modularizzazione v20.18.
+
 // ═══════════════════════════════════════
 // MODULO: STABILITY / BUG GUARDS v20.14
 // ═══════════════════════════════════════
