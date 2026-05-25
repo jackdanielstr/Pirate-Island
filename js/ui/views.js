@@ -83,19 +83,19 @@ function renderBisogni(){
   const defs=[
     {k:'divertimento', nome:'Divertimento', icona:'💋',
      edifici:['bordello','arena','cantastorie'],
-     nota:'Bordello, Arena, Teatro'},
+     nota:'Brothel & Salon, Animal Pit, Gambling Den'},
     {k:'spirito',      nome:'Spirito',      icona:'⛪',
      edifici:['cappella'],
-     nota:'Cappella — riduce diserzione'},
+     nota:'Church — order e controllo captive'},
     {k:'salute',       nome:'Salute',       icona:'🏥',
      edifici:['infermeria','bagni'],
-     nota:'Infermeria, Bagni Pubblici'},
+     nota:'Surgery, Courtesan & Spa'},
     {k:'sicurezza',    nome:'Sicurezza',    icona:'🗼',
      edifici:['guardia','fortezza'],
-     nota:'Torre di Guardia, Fortezza'},
+     nota:'Watch Tower, Fort, Observatory'},
     {k:'lusso',        nome:'Lusso',        icona:'🧵',
      edifici:['sarto','mercatonero'],
-     nota:'Sarto, Mercato Nero'},
+     nota:'Hat Shop, Black Market'},
   ];
 
   const soddMedia=Math.floor((B.divertimento+B.spirito+B.salute+B.sicurezza+B.lusso)/5);

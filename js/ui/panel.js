@@ -36,15 +36,30 @@ function renderCostruisci(){
     <span class="costo">2o/tile</span>
   </button>`;
   h+=`<div style="border-top:1px solid var(--bordo);margin:6px 0 5px;opacity:.4"></div>`;
-  for(const[tipo,def] of Object.entries(ED)){
-    if(def.inizialeOnly) continue;
-    const puoi=G.oro>=def.costo.oro&&G.legno>=def.costo.legno;
-    const n=G.edifici.filter(b=>b.tipo===tipo).length;
-    h+=`<button class="btn-costruisci${G.modalitaCostruzione===tipo?' attivo-strumento':''}" id="b-${tipo}"
-      onclick="selezionaCostruzione('${tipo}')" ${!puoi?'disabled':''}>
-      <span>${def.icona} ${def.nome}${n>0?` <small style="color:var(--verde-ch)">(${n})</small>`:''}</span>
-      <span class="costo">${def.costo.oro}o ${def.costo.legno}l</span>
-    </button>`;
+  const gruppi=[
+    ['infrastrutture','🏴 Infrastrutture'],
+    ['nautica','⚓ Nautica'],
+    ['risorse','🌿 Risorse'],
+    ['produzione','🏭 Produzione'],
+    ['intrattenimento','🍺 Divertimento'],
+    ['controllo','⛓ Controllo prigionieri'],
+    ['addestramento','⚔ Addestramento'],
+    ['difesa','💣 Difesa'],
+    ['accessori','🎩 Accessori'],
+  ];
+  for(const [cat,titolo] of gruppi){
+    const entries=Object.entries(ED).filter(([tipo,def])=>!def.inizialeOnly && def.buildable!==false && (def.categoria||'produzione')===cat);
+    if(!entries.length) continue;
+    h+=`<div style="font-family:var(--font-label);font-size:.68rem;color:var(--sabbia);letter-spacing:1px;text-transform:uppercase;margin:8px 0 5px;opacity:.75">${titolo}</div>`;
+    for(const[tipo,def] of entries){
+      const puoi=G.oro>=def.costo.oro&&G.legno>=def.costo.legno;
+      const n=G.edifici.filter(b=>b.tipo===tipo).length;
+      h+=`<button class="btn-costruisci${G.modalitaCostruzione===tipo?' attivo-strumento':''}" id="b-${tipo}"
+        onclick="selezionaCostruzione('${tipo}')" ${!puoi?'disabled':''}>
+        <span>${def.icona} ${def.nome}${n>0?` <small style="color:var(--verde-ch)">(${n})</small>`:''}</span>
+        <span class="costo">${def.costo.oro}o ${def.costo.legno}l</span>
+      </button>`;
+    }
   }
   return h;
 }
