@@ -652,3 +652,9 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   #zoom-mobile{display:flex;left:8px;bottom:48px;}
   #zoom-mobile button{width:34px;height:34px;font-size:1.05rem;}
 }
+
+
+/* v20.20 — zoom mobile robusto */
+#zoom-mobile{pointer-events:auto !important; z-index:9999 !important;}
+#zoom-mobile button{touch-action:none !important; pointer-events:auto !important; -webkit-user-select:none !important; user-select:none !important;}
+#mappa-wrap,#mappa-canvas{touch-action:none; -ms-touch-action:none;}
