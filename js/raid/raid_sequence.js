@@ -107,8 +107,8 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
   const barEl=document.getElementById('campana-barra');
   const msgEl=document.getElementById('campana-msg');
   document.getElementById('campana-icona').textContent='🔔';
-  document.getElementById('campana-titolo').textContent='⚔ '+bersaglio.icona+' '+bersaglio.nome;
-  msgEl.textContent='La ciurma corre al porto seguendo i sentieri...';
+  document.getElementById('campana-titolo').textContent='🔔 '+(bersaglio.missione?.icona||'⚔')+' '+bersaglio.nome;
+  msgEl.textContent='La campana suona: la ciurma corre al porto seguendo i sentieri...';
   barEl.style.width='0%';
   ov.classList.add('aperto');
 
@@ -311,7 +311,7 @@ function rientroNave(nave){
     const _faz=bersaglio.rep.reale<0?'Marina Reale':'Mercante';
     const _nMin=bersaglio.difficolta<=2?1:2;
     const _nMax=bersaglio.difficolta<=2?3:5;
-    const _nCat=_nMin+Math.floor(Math.random()*(_nMax-_nMin+1));
+    const _nCat=_nMin+Math.floor(Math.random()*(_nMax-_nMin+1))+(bersaglio.prigionieriBonus||0);
     for(let _i=0;_i<_nCat;_i++){ if(Math.random()<0.75) catturaPrigioniero(_faz); }
     if(bersaglio.id==='galeone_reale'||bersaglio.id==='porto_coloniale'){
       catturaPrigioniero('Marina Reale'); catturaPrigioniero('Mercante');
