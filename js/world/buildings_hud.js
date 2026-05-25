@@ -385,6 +385,40 @@ function aggiornaTargetTrasportoSchiavo(sv){
 }
 
 
+function creaScaricoRaidPorto(nave,bottino){
+  assicuraPortoVivo();
+  const porto=puntoPortoVivo();
+  const totale=(bottino.oro||0)+(bottino.cibo||0)+(bottino.legno||0)+(bottino.rum||0);
+  const n=Math.max(3,Math.min(12,Math.floor(totale/70)+3));
+  const tipi=[];
+  if((bottino.oro||0)>0) tipi.push('cassa');
+  if((bottino.legno||0)>0) tipi.push('palo');
+  if((bottino.rum||0)>0) tipi.push('botte');
+  if((bottino.cibo||0)>0) tipi.push('rete');
+  if(tipi.length===0) tipi.push('cassa');
+  const baseId=Date.now()%100000;
+  for(let i=0;i<n;i++){
+    const ang=i*1.9+Math.random()*.5;
+    const rad=.35+Math.random()*.9;
+    const rr=porto.r+.5+Math.sin(ang)*rad*.55;
+    const cc=porto.c+.5+Math.cos(ang)*rad;
+    const tr=Math.max(0,Math.min(G.RIGHE-1,Math.floor(rr)));
+    const tc=Math.max(0,Math.min(G.COLS-1,Math.floor(cc)));
+    const t=G.mappa[tr]&&G.mappa[tr][tc];
+    if(t===T.OCEANO||t===T.BASSO||t===T.FIUME) continue;
+    G.portoProps.push({
+      id:baseId+i,
+      tipo:tipi[i%tipi.length],
+      r:rr,c:cc,
+      scala:.9+Math.random()*.45,
+      rot:Math.random()*Math.PI,
+      vicino:'scarico_raid'
+    });
+  }
+  // Mantiene il porto ricco ma non infinito.
+  if(G.portoProps.length>70) G.portoProps=G.portoProps.slice(G.portoProps.length-70);
+}
+
 function screenToIsoApprox(x,y){
   const W=G.ISO_W*G.ISO_SCALE, H=G.ISO_H*G.ISO_SCALE;
   const yy=y-G.camY, xx=x-G.camX;
@@ -430,6 +464,10 @@ function disegnaNaviMare(s){
 
     let targetX, targetY, label='';
     if(nave.inMare){
+      if(nave._faseRaid==='salpando'){
+        nave._faseRaidTick=(nave._faseRaidTick||0)+1;
+        if(nave._faseRaidTick>140) nave._faseRaid='in_mare';
+      }
       // Navi in raid: restano su acqua. Usiamo un tile di oceano vicino al bordo
       // invece di una coordinata schermo generica, così non attraversano l'isola.
       if(!nm._raidWater || frame%180===0){
@@ -443,7 +481,7 @@ function disegnaNaviMare(s){
       }
       const wp=isoProj(nm._raidWater.c,nm._raidWater.r);
       targetX=wp.x; targetY=wp.y+G.ISO_H*s*.7;
-      label='⚓ rientra in '+nave.timerRaid+'g';
+      label=(nave._faseRaid==='salpando'?'⛵ salpa':('⚓ rientra in '+nave.timerRaid+'g'));
       nm.x+=(targetX-nm.x)*0.012;
       nm.y+=(targetY-nm.y)*0.012;
       correggiNaveSuAcqua(nm,0.09);
@@ -453,7 +491,7 @@ function disegnaNaviMare(s){
       const p=isoProj(slot.c,slot.r);
       targetX=p.x;
       targetY=p.y+G.ISO_H*s*.55;
-      label='⚓ attraccata';
+      label=nave._faseRaid==='scarico'?'📦 scarico bottino':'⚓ attraccata';
       if(!nm._dockInit){
         nm.x=targetX+(Math.random()-.5)*30*s;
         nm.y=targetY+(Math.random()-.5)*18*s;
@@ -461,6 +499,10 @@ function disegnaNaviMare(s){
       }
       nm.x+=(targetX-nm.x)*0.045;
       nm.y+=(targetY-nm.y)*0.045;
+      if(nave._faseRaid==='scarico'){
+        nave._faseRaidTick=(nave._faseRaidTick||0)-1;
+        if(nave._faseRaidTick<=0) nave._faseRaid='attraccata';
+      }
     }
 
     if(!nave.inMare) correggiNaveSuAcqua(nm,0.18);
