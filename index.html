@@ -117,8 +117,8 @@
 
 <!-- ZOOM MOBILE -->
 <div id="zoom-mobile">
-  <button onclick="zoomMobile(1.18)" aria-label="Zoom avanti">＋</button>
-  <button onclick="zoomMobile(0.85)" aria-label="Zoom indietro">－</button>
+  <button type="button" id="zoom-plus" onclick="return window.zoomMobile ? window.zoomMobile(1.18) : false" aria-label="Zoom avanti">＋</button>
+  <button type="button" id="zoom-minus" onclick="return window.zoomMobile ? window.zoomMobile(0.85) : false" aria-label="Zoom indietro">－</button>
 </div>
 
 <!-- MODALE -->
@@ -184,36 +184,36 @@
 
 <!-- NOTIFICHE -->
 <div id="area-notifiche"></div>
-<script src="js/00_music.js" defer></script>
-<script src="js/01_state.js" defer></script>
-<script src="js/02_map.js" defer></script>
-<script src="js/03_renderer_tiles.js" defer></script>
-<script src="js/04_renderer_nature.js" defer></script>
-<script src="js/05_renderer_iso.js" defer></script>
-<script src="js/06_renderer_buildings.js" defer></script>
-<script src="js/07_renderer_units.js" defer></script>
-<script src="js/08_renderer_scene.js" defer></script>
-<script src="js/09_schiavi.js" defer></script>
-<script src="js/10_edifici_hud.js" defer></script>
-<script src="js/11_avvio_gioco.js" defer></script>
-<script src="js/12_costruzione.js" defer></script>
-<script src="js/13_navi_raid.js" defer></script>
-<script src="js/14_raid_sequence.js" defer></script>
-<script src="js/15_prigione_commercio.js" defer></script>
-<script src="js/16_tick.js" defer></script>
-<script src="js/17_events_mare.js" defer></script>
-<script src="js/18_events_ciurma.js" defer></script>
-<script src="js/19_events_politica.js" defer></script>
-<script src="js/20_events_logic.js" defer></script>
-<script src="js/21_ui_panel.js" defer></script>
-<script src="js/22_ui_pirate.js" defer></script>
-<script src="js/23_ui_views.js" defer></script>
-<script src="js/24_ui_manage.js" defer></script>
-<script src="js/25_input.js" defer></script>
-<script src="js/26_pathfinding.js" defer></script>
-<script src="js/27_portrait.js" defer></script>
-<script src="js/28_core.js" defer></script>
-<script src="js/29_main.js" defer></script>
-<script src="js/30_stability.js" defer></script>
+<script src="js/audio/music.js" defer></script>
+<script src="js/core/state.js" defer></script>
+<script src="js/world/map.js" defer></script>
+<script src="js/rendering/tiles.js" defer></script>
+<script src="js/rendering/nature.js" defer></script>
+<script src="js/rendering/iso_helpers.js" defer></script>
+<script src="js/rendering/buildings.js" defer></script>
+<script src="js/rendering/units.js" defer></script>
+<script src="js/rendering/scene.js" defer></script>
+<script src="js/simulation/slaves.js" defer></script>
+<script src="js/world/buildings_hud.js" defer></script>
+<script src="js/core/startup.js" defer></script>
+<script src="js/world/building_placement.js" defer></script>
+<script src="js/raid/ships_raid.js" defer></script>
+<script src="js/raid/raid_sequence.js" defer></script>
+<script src="js/simulation/prison_trade.js" defer></script>
+<script src="js/core/tick.js" defer></script>
+<script src="js/events/sea_events.js" defer></script>
+<script src="js/events/crew_events.js" defer></script>
+<script src="js/events/political_events.js" defer></script>
+<script src="js/events/events_logic.js" defer></script>
+<script src="js/ui/panel.js" defer></script>
+<script src="js/ui/pirate_cards.js" defer></script>
+<script src="js/ui/views.js" defer></script>
+<script src="js/ui/manage.js" defer></script>
+<script src="js/input/input.js" defer></script>
+<script src="js/core/pathfinding.js" defer></script>
+<script src="js/rendering/portrait.js" defer></script>
+<script src="js/core/core.js" defer></script>
+<script src="js/core/main.js" defer></script>
+<script src="js/core/stability.js" defer></script>
 </body>
 </html>
