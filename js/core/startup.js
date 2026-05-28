@@ -16,16 +16,34 @@ function avviaGioco(){
   inizializzaScenarioTropico2();
   ridimensionaCanvas();
   window.addEventListener('orientationchange',()=>setTimeout(()=>{ridimensionaCanvas();impostaMobile();},100));
-  for(let i=0;i<4;i++){
-    const p=creaaPirata();
-    if(G._spawnScenario){ p.mr=G._spawnScenario.r+(Math.random()-.5)*1.8; p.mc=G._spawnScenario.c+(Math.random()-.5)*1.8; }
+  const ruoliIniziali=['Nostromo','Cannoniere','Navigatore','Bucaniere','Cuoco','Spia','Quartier Mastro','Bucaniere'];
+  const totIniziale=G.bilanciamento?.piratiIniziali||8;
+  for(let i=0;i<totIniziale;i++){
+    const p=creaaPirata({
+      ruolo:ruoliIniziali[i%ruoliIniziali.length],
+      umore:58+Math.floor(Math.random()*24),
+      paga:i<2?3:4,
+    });
+    if(i===0){
+      p.nome='Mateo il Vecchio';
+      p.ruolo='Nostromo';
+      p.combattimento=Math.max(p.combattimento,62);
+      p.navigazione=Math.max(p.navigazione,66);
+      p.tratto={id:'veterano_cala',label:'Veterano della Cala',icona:'⚓'};
+    }
+    if(G._spawnScenario){
+      const ang=(Math.PI*2/totIniziale)*i + Math.random()*.45;
+      const rad=.7+Math.random()*1.4;
+      p.mr=G._spawnScenario.r+Math.sin(ang)*rad*.8;
+      p.mc=G._spawnScenario.c+Math.cos(ang)*rad;
+    }
   }
   G.navi.push(creaNave(0,'La Marea Maledetta'));
   if(typeof rigeneraPortoVivo==='function') rigeneraPortoVivo();
   assegnaMissioni();
   impostaInput();
   impostaMobile();
-  notifica('⚓ Benvenuto, Governatore Pirata!','Il porto, il palazzo e il primo villaggio sono pronti. Ora fai prosperare la cala.');
+  notifica('⚓ Benvenuto, Governatore Pirata!','La cala parte con una vera ciurma, scorte iniziali e una nave pronta a salpare.');
   aggiornaUI();
   cicloGioco();
   // Musica: parte al primo click (policy autoplay browser)
@@ -110,11 +128,14 @@ function collegaEdificioAlSentiero(ed){
   if(!vicino) return;
   // Collega dal tile adiacente all'edificio, evitando acqua e il tile occupato.
   let start={r:ed.r,c:ed.c};
-  const adiacenti=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
-  for(const [dr,dc] of adiacenti){
-    const r=ed.r+dr,c=ed.c+dc;
+  const adiacenti=(typeof anelloEdificio==='function')
+    ? anelloEdificio(ed)
+    : [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dr,dc])=>({r:ed.r+dr,c:ed.c+dc}));
+  for(const cell of adiacenti){
+    const r=cell.r,c=cell.c;
     if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) continue;
-    if(G.edifici.some(b=>b.r===r&&b.c===c)) continue;
+    const occupato=(typeof edificioInTile==='function') ? edificioInTile(r,c) : G.edifici.some(b=>b.r===r&&b.c===c);
+    if(occupato) continue;
     if(costoTile(r,c)<Infinity){ start={r,c}; break; }
   }
   if(typeof collegaConSentieroDrittoSicuro==='function') collegaConSentieroDrittoSicuro(start,vicino);
@@ -138,18 +159,22 @@ function isTileTerraStrada(r,c){
   return t===T.SABBIA||t===T.ERBA||t===T.FORESTA||t===T.PALUDE||t===T.COLLINA||t===T.SENTIERO;
 }
 function tileSentieroAdiacente(ed){
-  const dirs=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
-  for(const [dr,dc] of dirs){
-    const r=ed.r+dr,c=ed.c+dc;
+  const celle=(typeof anelloEdificio==='function')
+    ? anelloEdificio(ed)
+    : [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dr,dc])=>({r:ed.r+dr,c:ed.c+dc}));
+  for(const cell of celle){
+    const r=cell.r,c=cell.c;
     if(isTileSentiero(r,c)) return {r,c};
   }
   return null;
 }
 function accessiSentieroEdificio(ed){
   const out=[];
-  const dirs=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
-  for(const [dr,dc] of dirs){
-    const r=ed.r+dr,c=ed.c+dc;
+  const celle=(typeof anelloEdificio==='function')
+    ? anelloEdificio(ed)
+    : [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dr,dc])=>({r:ed.r+dr,c:ed.c+dc}));
+  for(const cell of celle){
+    const r=cell.r,c=cell.c;
     if(isTileSentiero(r,c)) out.push({r,c});
   }
   return out;
@@ -226,7 +251,7 @@ function collegaConSentieroDrittoSicuro(a,b){
     if(dr!==0) poss.push({r:r+(dr>0?1:-1),c});
     if(dc!==0&&dr!==0) poss.push({r:r+(dr>0?1:-1),c:c+(dc>0?1:-1)});
     poss.sort((x,y)=>heuristica(x.r,x.c,b.r,b.c)-heuristica(y.r,y.c,b.r,b.c));
-    const next=poss.find(p=>isTileTerraStrada(p.r,p.c) && !G.edifici.some(e=>e.r===p.r&&e.c===p.c));
+    const next=poss.find(p=>isTileTerraStrada(p.r,p.c) && !(typeof edificioInTile==='function' ? edificioInTile(p.r,p.c) : G.edifici.some(e=>e.r===p.r&&e.c===p.c)));
     if(!next) break;
     r=next.r; c=next.c;
   }

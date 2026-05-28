@@ -5,35 +5,142 @@
 // MODULO: TICK
 // ═══════════════════════════════════════
 // ── TICK — avanzamento tempo ──
+function assicuraEconomia(){
+  if(!G.scorte) G.scorte={};
+  for(const k of ['canna','tabacco','ferro','metallo','tavole','razioni','sigari','armi','cannoni']){
+    if(!isFinite(G.scorte[k])) G.scorte[k]=0;
+  }
+  if(!G.economia) G.economia={rete:100,produttivita:100,turno:[],avvisi:[]};
+  G.economia.turno=[];
+  G.economia.avvisi=[];
+}
+
+function effTipoEdifici(tipo){
+  return typeof moltiplicatoreReteEdifici==='function'
+    ? moltiplicatoreReteEdifici(tipo)
+    : G.edifici.filter(b=>b.tipo===tipo).length;
+}
+
+function aggiungiScorta(k,v){
+  if(!v || v<=0) return 0;
+  const q=Math.floor(v);
+  G.scorte[k]=Math.min(999,Math.max(0,(G.scorte[k]||0)+q));
+  return q;
+}
+
+function consumaScorta(k,v){
+  const q=Math.min(Math.floor(v),Math.floor(G.scorte[k]||0));
+  if(q>0) G.scorte[k]-=q;
+  return q;
+}
+
+function registraTurno(nome,val,icona){
+  if(!val) return;
+  G.economia.turno.push({nome,val:Math.floor(val),icona:icona||''});
+}
+
+function aggiornaIndicatoriEconomia(avvisi){
+  const edifici=G.edifici.filter(b=>b.tipo!=='governatore');
+  if(!edifici.length){
+    G.economia.rete=100;
+    G.economia.produttivita=100;
+  }else{
+    const totale=edifici.reduce((a,b)=>a+(typeof efficienzaStradaEdificio==='function'?efficienzaStradaEdificio(b):1),0);
+    G.economia.produttivita=Math.round(totale/edifici.length*100);
+    G.economia.rete=typeof reteSentieriPercentuale==='function' ? reteSentieriPercentuale() : G.economia.produttivita;
+  }
+  G.economia.avvisi=avvisi.slice(0,4);
+}
+
 function tick(){
+  assicuraEconomia();
   G.tick++; G.giorno++;
 
   for(const p of G.pirati) aggiornaPirata(p);
 
   // FASE 2D: produzione pesata dalla rete dei sentieri.
   // Edifici collegati al palazzo/porto lavorano al 100%; isolati rendono meno.
-  const nFattor  = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('fattoria') : G.edifici.filter(b=>b.tipo==='fattoria').length;
-  const nDistil  = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('distilleria') : G.edifici.filter(b=>b.tipo==='distilleria').length;
-  const nSegh    = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('segheria') : G.edifici.filter(b=>b.tipo==='segheria').length;
-  const nOsserv  = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('osservatorio') : G.edifici.filter(b=>b.tipo==='osservatorio').length;
-  const nCasa    = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('casapirata') : G.edifici.filter(b=>b.tipo==='casapirata').length;
-  const nBordello= typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('bordello') : G.edifici.filter(b=>b.tipo==='bordello').length;
-  const nArena   = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('arena') : G.edifici.filter(b=>b.tipo==='arena').length;
-  const nCanta   = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('cantastorie') : G.edifici.filter(b=>b.tipo==='cantastorie').length;
-  const nCappella= typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('cappella') : G.edifici.filter(b=>b.tipo==='cappella').length;
-  const nInferm  = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('infermeria') : G.edifici.filter(b=>b.tipo==='infermeria').length;
-  const nBagni   = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('bagni') : G.edifici.filter(b=>b.tipo==='bagni').length;
-  const nGuardia = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('guardia') : G.edifici.filter(b=>b.tipo==='guardia').length;
-  const nSarto   = typeof moltiplicatoreReteEdifici==='function' ? moltiplicatoreReteEdifici('sarto') : G.edifici.filter(b=>b.tipo==='sarto').length;
+  const nFattor  = effTipoEdifici('fattoria');
+  const nBanane  = effTipoEdifici('banane');
+  const nPapaia  = effTipoEdifici('papaia');
+  const nCanna   = effTipoEdifici('canna_zucchero');
+  const nTabacco = effTipoEdifici('tabacco');
+  const nMiniera = effTipoEdifici('miniera_ferro');
+  const nForno   = effTipoEdifici('forno');
+  const nDistil  = effTipoEdifici('distilleria');
+  const nBirra   = effTipoEdifici('birrificio');
+  const nSigari  = effTipoEdifici('fabbrica_sigari');
+  const nFonderia= effTipoEdifici('fonderia');
+  const nArmi    = effTipoEdifici('fabbrica_armi');
+  const nCannoni = effTipoEdifici('fonderia_cannoni');
+  const nRazioni = effTipoEdifici('razioni_mare');
+  const nSegh    = effTipoEdifici('segheria');
+  const nSawmill = effTipoEdifici('sawmill');
+  const nOsserv  = effTipoEdifici('osservatorio');
+  const nCasa    = effTipoEdifici('casapirata');
+  const nBordello= effTipoEdifici('bordello');
+  const nArena   = effTipoEdifici('arena');
+  const nCanta   = effTipoEdifici('cantastorie');
+  const nCappella= effTipoEdifici('cappella');
+  const nInferm  = effTipoEdifici('infermeria');
+  const nBagni   = effTipoEdifici('bagni');
+  const nGuardia = effTipoEdifici('guardia');
+  const nSarto   = effTipoEdifici('sarto');
   const haTaverna= G.edifici.find(b=>b.tipo==='taverna');
   const haCaserma= G.edifici.find(b=>b.tipo==='caserma');
 
-  // produzione risorse: Math.floor evita decimali visibili, ma mantiene il peso dei sentieri.
-  G.cibo          += 5 + Math.floor(nFattor*9);
-  G.legno         += 3 + Math.floor(nSegh*7);
-  G.rum           += Math.floor(nDistil*6);
+  const avvisiEconomia=[];
+  const ciboProd=5 + Math.floor(nFattor*9 + nBanane*6 + nPapaia*5 + nForno*4);
+  const legnoProd=3 + Math.floor(nSegh*7);
+  G.cibo += ciboProd;
+  G.legno += legnoProd;
+  registraTurno('cibo',ciboProd,'c');
+  registraTurno('legno',legnoProd,'l');
+
+  registraTurno('canna',aggiungiScorta('canna',nCanna*7),'z');
+  registraTurno('tabacco',aggiungiScorta('tabacco',nTabacco*6),'t');
+  registraTurno('ferro',aggiungiScorta('ferro',nMiniera*5),'f');
+
+  const tavoleCap=Math.floor(nSawmill*4);
+  const legnoUsato=Math.min(Math.floor(G.legno/5),tavoleCap);
+  if(legnoUsato>0){
+    G.legno-=legnoUsato*5;
+    registraTurno('tavole',aggiungiScorta('tavole',legnoUsato*3),'T');
+  }else if(tavoleCap>0) avvisiEconomia.push('La Segheria aspetta legno grezzo.');
+
+  const rumCap=Math.floor(nDistil*6);
+  const cannaUsata=consumaScorta('canna',rumCap*2);
+  const rumProd=Math.floor(cannaUsata/2) + Math.floor(nBirra*2);
+  G.rum += rumProd;
+  registraTurno('rum',rumProd,'r');
+  if(nDistil>0 && cannaUsata<rumCap*2) avvisiEconomia.push('Distilleria senza abbastanza canna da zucchero.');
+
+  const tabaccoRichiesto=Math.floor(nSigari*3);
+  const tabaccoUsato=consumaScorta('tabacco',tabaccoRichiesto);
+  const sigariProd=aggiungiScorta('sigari',tabaccoUsato);
+  G.oro+=sigariProd*4;
+  registraTurno('sigari',sigariProd,'S');
+  if(nSigari>0 && tabaccoUsato<tabaccoRichiesto) avvisiEconomia.push('Fabbrica Sigari senza tabacco.');
+
+  const ferroRichiesto=Math.floor(nFonderia*4);
+  const ferroUsato=consumaScorta('ferro',ferroRichiesto);
+  registraTurno('metallo',aggiungiScorta('metallo',ferroUsato),'M');
+  if(nFonderia>0 && ferroUsato<ferroRichiesto) avvisiEconomia.push('Fonderia senza ferro.');
+
+  const metalloArmi=consumaScorta('metallo',Math.floor(nArmi*2));
+  registraTurno('armi',aggiungiScorta('armi',metalloArmi),'A');
+  const metalloCannoni=consumaScorta('metallo',Math.floor(nCannoni*3));
+  registraTurno('cannoni',aggiungiScorta('cannoni',Math.floor(metalloCannoni/3)),'K');
+
+  const ciboRazioni=Math.min(Math.floor(G.cibo/6),Math.floor(nRazioni*4));
+  if(ciboRazioni>0){
+    G.cibo-=ciboRazioni*6;
+    registraTurno('razioni',aggiungiScorta('razioni',ciboRazioni*3),'R');
+  }else if(nRazioni>0) avvisiEconomia.push('Fabbrica Razioni senza cibo in eccesso.');
+
   G.oro           += 12 + Math.floor(nCasa*6) + Math.floor(nSarto*10);
   G.ricerca.punti += Math.floor(nOsserv*3);
+  aggiornaIndicatoriEconomia(avvisiEconomia);
   if(typeof avvisaReteSentieri==='function') avvisaReteSentieri();
 
   if(nBordello>0){
@@ -70,18 +177,19 @@ function tick(){
   }
   const sogliaDiserzione=nCappella>0?8:12;
 
-  const costoCibo=G.pirati.length*2;
+  const bil=G.bilanciamento?.consumo||{};
+  const costoCibo=Math.ceil(G.pirati.length*(bil.ciboPerPirata??1.25));
   G.cibo-=costoCibo;
   if(G.cibo<0){G.cibo=0;for(const p of G.pirati) p.umore-=10;aggMsg('⚠ I pirati stanno morendo di fame!','male');}
 
-  const costoRum=G.pirati.length;
+  const costoRum=Math.ceil(G.pirati.length*(bil.rumPerPirata??.45));
   if(G.rum>=costoRum){G.rum-=costoRum;for(const p of G.pirati) p.umore=Math.min(100,p.umore+3);}
   else for(const p of G.pirati) p.umore-=6;
   if(haTaverna) for(const p of G.pirati) p.umore=Math.min(100,p.umore+5);
 
-  const pirateCoperti=Math.min(G.pirati.length, nCasa*2);
+  const pirateCoperti=Math.min(G.pirati.length, Math.floor(nCasa*(bil.coperturaCasa??3) + G.navi.length*(bil.coperturaNave??1)));
   const pagaTotale=G.pirati.reduce((a,p)=>a+p.paga,0);
-  const pagaFinale=Math.max(0, pagaTotale-pirateCoperti);
+  const pagaFinale=Math.max(0, Math.ceil(pagaTotale*(bil.pagaFattore??.55))-pirateCoperti);
   G.oro-=pagaFinale;
   if(G.oro<0){G.oro=0;for(const p of G.pirati) p.umore-=8;}
 
@@ -124,9 +232,12 @@ function tick(){
     }
   }
 
-  // Rientro navi — esito calcolato qui, al ritorno reale
+  // Rientro navi — esito calcolato qui, al ritorno reale.
+  // Prima del countdown, ogni nave può generare piccoli eventi di spedizione:
+  // vento, bonaccia, pattuglie, prede minori. È non bloccante e stile Tropico 2.
   for(const n of G.navi){
     if(n.inMare && n.timerRaid>0){
+      if(typeof tickEventiSpedizioneRaid==='function') tickEventiSpedizioneRaid(n);
       n.timerRaid--;
       if(n.timerRaid<=0) rientroNave(n);
     }

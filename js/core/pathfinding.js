@@ -42,7 +42,7 @@ function trovaTileCamminabileVicino(r,c,raggio=6){
 function bonusSentieroPer(r,c){
   const rr=Math.floor(r), cc=Math.floor(c);
   const t=G.mappa[rr]&&G.mappa[rr][cc];
-  return t===T.SENTIERO ? 1.55 : 0.60;
+  return t===T.SENTIERO ? 1.35 : 0.55;
 }
 
 // ═══════════════════════════════════════════════════
@@ -53,7 +53,9 @@ function bonusSentieroPer(r,c){
 const EDIFICI_SOCIALI_PIRATI = ['taverna','bordello','arena','cantastorie','porto','governatore','casapirata'];
 
 function edificioA(r,c){
-  return G.edifici && G.edifici.find(b=>b.r===r && b.c===c);
+  return (typeof edificioInTile==='function')
+    ? edificioInTile(Math.floor(r),Math.floor(c))
+    : (G.edifici && G.edifici.find(b=>b.r===r && b.c===c));
 }
 function tileCamminabilePersona(r,c){
   if(!tileCamminabile(r,c)) return false;
@@ -63,9 +65,11 @@ function tileCamminabilePersona(r,c){
 function accessiCamminabiliEdificio(ed){
   if(!ed) return [];
   const out=[];
-  const dirs=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
-  for(const [dr,dc] of dirs){
-    const r=ed.r+dr,c=ed.c+dc;
+  const celle=(typeof anelloEdificio==='function')
+    ? anelloEdificio(ed)
+    : [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dr,dc])=>({r:ed.r+dr,c:ed.c+dc}));
+  for(const cell of celle){
+    const r=cell.r,c=cell.c;
     if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) continue;
     if(tileCamminabilePersona(r,c)) out.push({r,c,sentiero:G.mappa[r][c]===T.SENTIERO});
   }
@@ -155,6 +159,7 @@ function astar(sr,sc,er,ec){
       const nk=key(nr,nc);
       if(closed.has(nk)) continue;
       const cost=costoTile(nr,nc); if(cost===Infinity) continue;
+      if(edificioA(nr,nc)) continue;
       const diag=dr!==0&&dc!==0;
       const ng=(g.get(bestK)||0)+cost*(diag?1.4:1);
       if(!open.has(nk)||ng<(g.get(nk)||Infinity)){
@@ -171,9 +176,9 @@ function astar(sr,sc,er,ec){
 // ═══════════════════════════════════════════════════
 // MOVIMENTO PIRATI — stile Tropico 2
 //
-// Velocità di camminata: ~1.5 tile/secondo alla velocità normale.
-// muoviPirata(p, dt) riceve il delta time in secondi dall'ultimo frame,
-// già moltiplicato per G.velocita → se G.velocita=0 i pirati si fermano.
+// Velocità di camminata: lenta e leggibile, più vicina a Tropico 2.
+// muoviPirata(p, dt) riceve il delta time visivo, non il moltiplicatore
+// pieno del calendario: "Max" accelera i giorni, ma non fa correre i pirati.
 //
 // aggiornaPirata(p) è chiamato dal tick (ogni ~8 secondi reali / velocita)
 // e decide il prossimo obiettivo. I timer interni sono in secondi reali
@@ -181,7 +186,16 @@ function astar(sr,sc,er,ec){
 // ═══════════════════════════════════════════════════
 
 // Velocità di camminata base in tile/secondo
-const PIRATA_SPEED = 1.4;
+const PIRATA_SPEED = 0.82;
+
+function scalaMovimentoMondo(){
+  const v=G.velocita||0;
+  if(v<=0) return 0;
+  const m=G.bilanciamento?.movimento||{};
+  if(v<=1) return m.normale??.92;
+  if(v<=2.1) return m.veloce??1.08;
+  return m.max??1.24;
+}
 
 function aggiornaPirata(p){
   if(p.inRaid || p._stato==='in_raid') return;
@@ -290,17 +304,141 @@ function muoviPirata(p, dt){
 let sentieroDrag=false;
 function iniziaSentieroDrag(r,c){ sentieroDrag=true; piazzaSentiero(r,c); }
 function fineSentieroDrag(){ sentieroDrag=false; }
+function terrenoConvertibileInSentiero(t){
+  // Coerente con Tropico 2: il sentiero può tagliare erba, sabbia, colline basse,
+  // foresta/palude ripulite e tile già stradali. Non attraversa acqua, fiumi o edifici.
+  return t===T.SABBIA || t===T.ERBA || t===T.COLLINA ||
+         t===T.FORESTA || t===T.PALUDE || t===T.SENTIERO;
+}
+
+function tileValidoPerSentiero(r,c){
+  r=Math.floor(Number(r)); c=Math.floor(Number(c));
+  if(!isFinite(r)||!isFinite(c)||r<0||r>=G.RIGHE||c<0||c>=G.COLS) return false;
+  const t=G.mappa[r] ? G.mappa[r][c] : undefined;
+  if(t===undefined || !terrenoConvertibileInSentiero(t)) return false;
+  const occupato=(typeof edificioInTile==='function') ? edificioInTile(r,c) : (G.edifici && G.edifici.find(b=>b.r===r&&b.c===c));
+  if(occupato) return false;
+  return true;
+}
+
+function centroTileSchermoSentiero(r,c){
+  if(typeof isoProj!=='function') return null;
+  const s=(G&&G.ISO_SCALE)||1;
+  const IH=((G&&G.ISO_H)||32)*s;
+  const p=isoProj(c,r);
+  return {x:p.x,y:p.y+IH/2};
+}
+
+function risolviTileSentiero(r,c){
+  r=Math.floor(Number(r)); c=Math.floor(Number(c));
+
+  // Se il tile sotto il puntatore è già libero, usalo normalmente.
+  // Eccezione: se è già sentiero e il puntatore arriva da una sagoma edificio,
+  // non vogliamo fermarci su una strada già esistente: l'utente sta cercando di
+  // costruire il tile nascosto dietro/lato edificio.
+  if(tileValidoPerSentiero(r,c) && G.mappa[r][c]!==T.SENTIERO) return {r,c};
+
+  const edificioOccupato=(typeof edificioInTile==='function') ? edificioInTile(r,c) : (G.edifici && G.edifici.find(b=>b.r===r&&b.c===c));
+  const occupato = !!edificioOccupato;
+  if(tileValidoPerSentiero(r,c) && !occupato) return {r,c};
+  if(!occupato) return null;
+
+  const ptr = G.__roadPointerClient;
+  const canvasEl = window.canvas || document.getElementById('mappa-canvas');
+  const rect = canvasEl ? canvasEl.getBoundingClientRect() : null;
+  let px=null, py=null;
+  if(ptr && rect && Date.now()-ptr.t < 1500){
+    px = ptr.x - rect.left;
+    py = ptr.y - rect.top;
+  }
+
+  // Candidati attorno all'edificio. Il punto chiave del fix:
+  // preferiamo SEMPRE un tile nuovo da convertire a sentiero rispetto a una
+  // strada già esistente. Prima il vecchio resolver sceglieva spesso una strada
+  // vicina, quindi il click sembrava non fare nulla.
+  const baseCandidates = [];
+  if(edificioOccupato && typeof anelloEdificio==='function'){
+    const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(edificioOccupato) : {r,c};
+    for(const cell of anelloEdificio(edificioOccupato)){
+      baseCandidates.push({r:cell.r,c:cell.c,bias:(cell.r+cell.c<centro.r+centro.c ? -25 : 8)});
+    }
+  }else{
+    baseCandidates.push(
+      {r:r-1,c:c, bias:-60}, {r:r,c:c-1, bias:-60}, {r:r-1,c:c-1, bias:-45},
+      {r:r-1,c:c+1, bias:-25}, {r:r+1,c:c-1, bias:-25},
+      {r:r,c:c+1, bias:0}, {r:r+1,c:c, bias:0}, {r:r+1,c:c+1, bias:15}
+    );
+    for(let rr=r-2; rr<=r+2; rr++){
+      for(let cc=c-2; cc<=c+2; cc++){
+        if(Math.max(Math.abs(rr-r),Math.abs(cc-c))!==2) continue;
+        baseCandidates.push({r:rr,c:cc,bias:(rr+cc<r+c ? -20 : 20)});
+      }
+    }
+  }
+
+  function scoreCandidate(cand){
+    let score=0;
+    if(px!==null && py!==null){
+      const center=centroTileSchermoSentiero(cand.r,cand.c);
+      if(center) score=Math.hypot(px-center.x,py-center.y);
+      else score=9999;
+    }else{
+      score=Math.abs(cand.r-r)+Math.abs(cand.c-c)*1.05;
+    }
+    score += cand.bias || 0;
+    // Bonus leggero per continuare una rete esistente, ma NON abbastanza da
+    // preferire una strada già costruita a un tile nuovo.
+    for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const nr=cand.r+dr,nc=cand.c+dc;
+      if(G.mappa[nr] && G.mappa[nr][nc]===T.SENTIERO) score -= 8;
+    }
+    return score;
+  }
+
+  // Primo passaggio: solo tile validi NON ancora sentiero.
+  let best=null, bestScore=Infinity;
+  for(const cand of baseCandidates){
+    if(!tileValidoPerSentiero(cand.r,cand.c)) continue;
+    if(G.mappa[cand.r][cand.c]===T.SENTIERO) continue;
+    const score=scoreCandidate(cand);
+    if(score<bestScore){ bestScore=score; best={r:cand.r,c:cand.c}; }
+  }
+  if(best) return best;
+
+  // Fallback: se tutti i tile intorno sono già sentiero, consenti il vecchio comportamento.
+  best=null; bestScore=Infinity;
+  for(const cand of baseCandidates){
+    if(!tileValidoPerSentiero(cand.r,cand.c)) continue;
+    const score=scoreCandidate(cand);
+    if(score<bestScore){ bestScore=score; best={r:cand.r,c:cand.c}; }
+  }
+  return best;
+}
+
 function piazzaSentiero(r,c){
-  if(r<0||r>=G.RIGHE||c<0||c>=G.COLS) return;
+  // Resolver separato dalla validazione: se il click cade sulla sagoma/altezza di un edificio,
+  // risolviTileSentiero sceglie un tile libero adiacente. Qui validiamo SOLO il tile finale.
+  const target=risolviTileSentiero(Math.floor(Number(r)),Math.floor(Number(c)));
+  if(!target){
+    if(typeof aggMsg==='function') aggMsg('🛤 Qui il sentiero non può passare.','male');
+    return;
+  }
+  r=Math.floor(Number(target.r)); c=Math.floor(Number(target.c));
+  if(!tileValidoPerSentiero(r,c)){
+    if(typeof aggMsg==='function') aggMsg('🛤 Tile bloccato: serve terra libera, non acqua o edificio.','male');
+    return;
+  }
   const t=G.mappa[r][c];
-  if(t===T.OCEANO||t===T.BASSO||t===T.ROCCIA) return;
-  if(G.edifici.find(b=>b.r===r&&b.c===c)) return;
   if(t!==T.SENTIERO){
     if(G.oro<2){ aggMsg('Servono 2 oro per ogni tile sentiero','male'); return; }
     G.oro-=2;
+    // Ripulisce elementi naturali sul tile convertito, evitando rocce/alberi disegnati sopra la strada.
+    if(Array.isArray(G.alberi)) G.alberi=G.alberi.filter(a=>!(Math.floor(a.r)===r&&Math.floor(a.c)===c));
+    if(Array.isArray(G.rocce)) G.rocce=G.rocce.filter(rc=>!(Math.floor(rc.r)===r&&Math.floor(rc.c)===c));
     G.mappa[r][c]=T.SENTIERO;
-    _tileCache=null;
-    for(const p of G.pirati){ p.percorso=null; p.percorsoIdx=0; }
+    if(typeof _tileCache!=='undefined') _tileCache=null;
+    for(const p of (G.pirati||[])){ p.percorso=null; p.percorsoIdx=0; }
+    for(const s of (G.schiavi||[])){ s.percorso=null; s.percorsoIdx=0; }
     aggiornaUI();
   }
 }

@@ -44,23 +44,21 @@ function impostaInput(){
   canvas.__islaInputInizializzato=true;
 
   const wrap=document.getElementById('mappa-wrap') || canvas;
+  const target=wrap || canvas;
   canvas.style.touchAction='none';
   canvas.style.webkitUserSelect='none';
-  if(wrap){ wrap.style.touchAction='none'; wrap.style.webkitUserSelect='none'; }
+  if(wrap){
+    wrap.style.touchAction='none';
+    wrap.style.webkitUserSelect='none';
+  }
 
   function canvasRect(){ return canvas.getBoundingClientRect(); }
-  function normalizzaPivot(x,y){
-    const rect=canvasRect();
-    return {
-      x:isFinite(x)?x:(rect.width/2),
-      y:isFinite(y)?y:(rect.height/2),
-    };
-  }
   function zoomCanvas(delta, x, y){
     delta=Number(delta);
     if(!isFinite(delta)||delta<=0||!canvas||!G) return false;
-    const p=normalizzaPivot(x,y);
-    // Applica direttamente la trasformazione per non dipendere da wrapper esterni.
+    const rect=canvasRect();
+    const px=isFinite(x)?x:rect.width/2;
+    const py=isFinite(y)?y:rect.height/2;
     const oldScale=(isFinite(G.ISO_SCALE)&&G.ISO_SCALE>0)?G.ISO_SCALE:1;
     const min=G.ZOOM_MIN||0.35, max=G.ZOOM_MAX||2.5;
     const newScale=Math.max(min,Math.min(max,oldScale*delta));
@@ -68,256 +66,250 @@ function impostaInput(){
     const ratio=newScale/oldScale;
     G.ISO_SCALE=newScale;
     G.zoom=newScale;
-    G.camX=p.x-(p.x-G.camX)*ratio;
-    G.camY=p.y-(p.y-G.camY)*ratio;
+    G.camX=px-(px-G.camX)*ratio;
+    G.camY=py-(py-G.camY)*ratio;
     limiteCamera();
     if(typeof _tileCache!=='undefined') _tileCache=null;
     return false;
   }
 
-  // API globale per i pulsanti + / - in index.html.
   window.zoomMobile=function(delta){
     const rect=canvasRect();
     zoomCanvas(delta,rect.width/2,rect.height/2);
     return false;
   };
 
-  // Collega i tasti anche via JS, così non dipendiamo solo dagli onclick inline.
-
-  // Mouse pan
-  canvas.addEventListener('mousedown',e=>{
-    if(e.button!==0) return;
-    pan.attivo=true; pan.mosso=false;
-    pan.startX=e.clientX; pan.startY=e.clientY;
-    pan.camStartX=G.camX; pan.camStartY=G.camY;
-    canvas.style.cursor='grabbing';
-  });
-  canvas.addEventListener('mousemove',e=>{
+  function tileDaClientBase(x,y){
     const rect=canvasRect();
-    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
     const s=G.ISO_SCALE, IW=G.ISO_W*s, IH=G.ISO_H*s;
-    const lx=mx-G.camX, ly=my-G.camY;
-    G.hoverC=Math.floor((lx/IW*2+ly/IH*2)/2-.5);
-    G.hoverR=Math.floor((ly/IH*2-lx/IW*2)/2+.5);
-    if(pan.attivo && G.modalitaCostruzione==='sentiero'){
-      piazzaSentiero(G.hoverR,G.hoverC); return;
+    const lx=(x-rect.left)-G.camX;
+    const ly=(y-rect.top)-G.camY;
+    return {
+      r:Math.floor((ly/IH*2-lx/IW*2)/2+.5),
+      c:Math.floor((lx/IW*2+ly/IH*2)/2-.5),
+    };
+  }
+
+  function tileSentieroValido(r,c){
+    if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) return false;
+    const occupato=(typeof edificioInTile==='function') ? edificioInTile(r,c) : (G.edifici && G.edifici.find(b=>b.r===r&&b.c===c));
+    if(occupato) return false;
+    const t=G.mappa[r] ? G.mappa[r][c] : undefined;
+    return t!==undefined && t!==T.OCEANO && t!==T.BASSO && t!==T.ROCCIA;
+  }
+
+  // Picking speciale per il sentiero: in isometrico gli edifici sono alti e
+  // spesso coprono visivamente il tile dietro. Il vecchio picking inverso prendeva
+  // quasi sempre il tile dell'edificio, impedendo di costruire la strada dietro.
+  // Qui, se il tile base è occupato, scegliamo prima il vicino nella direzione
+  // visiva del tap/click rispetto al centro dell'edificio, poi facciamo fallback
+  // sui vicini validi più vicini al puntatore.
+  function tileSentieroDaClient(x,y){
+    // In modalità sentiero vogliamo conoscere il tile geometrico reale sotto il dito.
+    // Se è occupato da un edificio, NON proviamo più a indovinare qui: il resolver
+    // in piazzaSentiero sceglierà in modo coerente il vicino libero usando il puntatore.
+    return tileDaClientBase(x,y);
+  }
+
+  function tileDaClient(x,y){
+    return G.modalitaCostruzione==='sentiero' ? tileSentieroDaClient(x,y) : tileDaClientBase(x,y);
+  }
+  function setHoverDaClient(x,y){
+    // Conserva il puntatore reale: il piazzamento sentiero lo usa per scegliere
+    // un tile adiacente quando la sagoma alta di un edificio copre il tile dietro.
+    G.__roadPointerClient = { x, y, t: Date.now() };
+    const tc=tileDaClient(x,y);
+    // Per i sentieri, l'anteprima deve mostrare il tile realmente piazzabile.
+    // Se il cursore cade sulla sagoma di un edificio, risolviTileSentiero può restituire
+    // il tile libero dietro/laterale, evitando anteprima verde ma piazzamento rifiutato.
+    if(G.modalitaCostruzione==='sentiero' && typeof risolviTileSentiero==='function') {
+      const resolved=risolviTileSentiero(tc.r,tc.c);
+      if(resolved){ G.hoverR=resolved.r; G.hoverC=resolved.c; return resolved; }
     }
-    if(!pan.attivo) return;
-    const dx=e.clientX-pan.startX, dy=e.clientY-pan.startY;
-    if(Math.abs(dx)>4||Math.abs(dy)>4) pan.mosso=true;
-    if(pan.mosso){ G.camX=pan.camStartX+dx; G.camY=pan.camStartY+dy; limiteCamera(); }
-  });
-  window.addEventListener('mouseup',()=>{
-    if(pan.attivo){ pan.attivo=false; canvas.style.cursor=''; if(typeof sentieroDrag!=='undefined') sentieroDrag=false; }
-  });
+    G.hoverR=tc.r; G.hoverC=tc.c;
+    return tc;
+  }
+  function azioneTapMappa(x,y){
+    const tc=setHoverDaClient(x,y);
+    if(G.modalitaCostruzione==='sentiero'){
+      if(typeof piazzaSentiero==='function') piazzaSentiero(tc.r,tc.c);
+      return;
+    }
+    if(G.modalitaCostruzione){
+      if(typeof piazzaEdificio==='function') piazzaEdificio(tc.r,tc.c);
+      return;
+    }
+    const b=(typeof edificioInTile==='function') ? edificioInTile(tc.r,tc.c) : G.edifici.find(ed=>ed.r===tc.r&&ed.c===tc.c);
+    if(b){ if(typeof apriPopupEdificio==='function') apriPopupEdificio(b); return; }
+    const tt=(G.mappa[tc.r]!==undefined)?G.mappa[tc.r][tc.c]:undefined;
+    if(tt!==undefined){
+      const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
+      aggMsg('📍 '+(nomi[tt]||'?'));
+    }
+  }
+
+  // Pointer Events: un solo sistema per mouse + touch. Evita il vecchio conflitto
+  // touchend/click che bloccava il piazzamento edifici dopo lo strumento sentiero.
+  const pointers=new Map();
+  let gesture={pinch:false,dist:0,midX:0,midY:0};
+  const drag={active:false,id:null,startX:0,startY:0,camX:0,camY:0,moved:false,roadTimer:null,roadDraw:false,lastRoad:''};
+  const LONG_PRESS_MS=320;
+  const TAP_SLOP=12;
+
+  function clearRoadTimer(){ if(drag.roadTimer){ clearTimeout(drag.roadTimer); drag.roadTimer=null; } }
+  function resetDrag(){ clearRoadTimer(); drag.active=false; drag.id=null; drag.moved=false; drag.roadDraw=false; drag.lastRoad=''; }
+  function distance(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+  function midpoint(a,b){ const rect=canvasRect(); return {x:(a.x+b.x)/2-rect.left,y:(a.y+b.y)/2-rect.top}; }
+  function paintRoadAt(x,y){
+    const tc=setHoverDaClient(x,y);
+    const k=tc.r+','+tc.c;
+    if(k!==drag.lastRoad){
+      drag.lastRoad=k;
+      if(typeof piazzaSentiero==='function') piazzaSentiero(tc.r,tc.c);
+    }
+  }
+
+  target.addEventListener('pointerdown',e=>{
+    if(e.button!==undefined && e.button!==0 && e.pointerType==='mouse') return;
+    e.preventDefault();
+    target.setPointerCapture?.(e.pointerId);
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,type:e.pointerType});
+
+    if(pointers.size===2){
+      clearRoadTimer();
+      drag.active=false;
+      const [a,b]=[...pointers.values()];
+      gesture.pinch=true;
+      gesture.dist=distance(a,b);
+      const m=midpoint(a,b); gesture.midX=m.x; gesture.midY=m.y;
+      canvas.__islaSuppressClickUntil=Date.now()+450;
+      return;
+    }
+
+    if(pointers.size===1){
+      gesture.pinch=false;
+      drag.active=true;
+      drag.id=e.pointerId;
+      drag.startX=e.clientX; drag.startY=e.clientY;
+      drag.camX=G.camX; drag.camY=G.camY;
+      drag.moved=false; drag.roadDraw=false; drag.lastRoad='';
+      setHoverDaClient(e.clientX,e.clientY);
+
+      // Mobile: sentiero con tap o long-press+drag. Mouse: drag sentiero immediato.
+      if(G.modalitaCostruzione==='sentiero'){
+        if(e.pointerType==='mouse'){
+          drag.roadDraw=true;
+          paintRoadAt(e.clientX,e.clientY);
+        }else{
+          drag.roadTimer=setTimeout(()=>{
+            drag.roadDraw=true;
+            drag.moved=true;
+            paintRoadAt(drag.startX,drag.startY);
+            aggMsg('🛤 Disegno sentiero: trascina sul percorso','info');
+          },LONG_PRESS_MS);
+        }
+      }
+    }
+  },{passive:false});
+
+  target.addEventListener('pointermove',e=>{
+    // Hover/anteprima costruzione desktop: deve aggiornarsi anche senza trascinare.
+    // La v20.30 aggiornava G.hoverR/G.hoverC solo a pointer premuto, quindi
+    // l'anteprima edificio non compariva passando il mouse sulla mappa.
+    if(!pointers.has(e.pointerId)){
+      if(e.pointerType==='mouse' && G.modalitaCostruzione){
+        setHoverDaClient(e.clientX,e.clientY);
+      }
+      return;
+    }
+    e.preventDefault();
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY,type:e.pointerType});
+
+    if(gesture.pinch && pointers.size>=2){
+      const [a,b]=[...pointers.values()];
+      const d=distance(a,b);
+      if(d>8 && gesture.dist>0){
+        const m=midpoint(a,b);
+        zoomCanvas(d/gesture.dist,m.x,m.y);
+        const dx=m.x-gesture.midX, dy=m.y-gesture.midY;
+        if(Math.abs(dx)>0.1||Math.abs(dy)>0.1){ G.camX+=dx; G.camY+=dy; limiteCamera(); }
+        gesture.dist=d; gesture.midX=m.x; gesture.midY=m.y;
+        canvas.__islaSuppressClickUntil=Date.now()+450;
+      }
+      return;
+    }
+
+    if(!drag.active || drag.id!==e.pointerId) return;
+    setHoverDaClient(e.clientX,e.clientY);
+    const dx=e.clientX-drag.startX, dy=e.clientY-drag.startY;
+    const moved=Math.abs(dx)>TAP_SLOP||Math.abs(dy)>TAP_SLOP;
+
+    if(G.modalitaCostruzione==='sentiero' && drag.roadDraw){
+      drag.moved=true;
+      paintRoadAt(e.clientX,e.clientY);
+      canvas.__islaSuppressClickUntil=Date.now()+250;
+      return;
+    }
+
+    if(moved){
+      clearRoadTimer();
+      drag.moved=true;
+      G.camX=drag.camX+dx;
+      G.camY=drag.camY+dy;
+      limiteCamera();
+    }
+  },{passive:false});
+
+  function endPointer(e){
+    if(pointers.has(e.pointerId)) pointers.delete(e.pointerId);
+    if(gesture.pinch){
+      canvas.__islaSuppressClickUntil=Date.now()+450;
+      if(pointers.size<2){ gesture.pinch=false; gesture.dist=0; }
+      resetDrag();
+      return;
+    }
+    if(drag.active && drag.id===e.pointerId){
+      clearRoadTimer();
+      // Tap = azione. Drag = solo pan. Long-press sentiero ha già disegnato.
+      if(!drag.moved && !drag.roadDraw){
+        azioneTapMappa(e.clientX,e.clientY);
+        canvas.__islaSuppressClickUntil=Date.now()+120;
+      }
+      resetDrag();
+    }
+  }
+  target.addEventListener('pointerup',endPointer,{passive:false});
+  target.addEventListener('pointercancel',e=>{ if(pointers.has(e.pointerId)) pointers.delete(e.pointerId); resetDrag(); gesture.pinch=false; },{passive:false});
+  target.addEventListener('pointerleave',e=>{ if(e.pointerType==='mouse' && drag.active) endPointer(e); },{passive:false});
+
+  // Fallback click solo per desktop senza PointerEvent pieno: non deve mai doppiare il tap touch.
   canvas.addEventListener('click',e=>{
     if(Date.now()<(canvas.__islaSuppressClickUntil||0)) return;
-    if(pan.mosso) return;
-    cliccaMappa(e);
+    if('PointerEvent' in window) return;
+    azioneTapMappa(e.clientX,e.clientY);
   });
+
   canvas.addEventListener('wheel',e=>{
     e.preventDefault();
     const rect=canvasRect();
     zoomCanvas(e.deltaY<0?1.1:0.91,e.clientX-rect.left,e.clientY-rect.top);
   },{passive:false});
 
-  // TOUCH: pan + pinch-to-zoom. Gestito sul wrapper perché su mobile il canvas può non ricevere
-  // tutti gli eventi quando ci sono overlay/HUD sopra la mappa.
-  const touchTarget=wrap||canvas;
-  let pinch={attivo:false,wasPinching:false,dist0:0,midX:0,midY:0};
-  // Mobile road tool: tap = 1 tile, normal drag = pan, long-press + drag = paint road.
-  let roadTouch={timer:null,draw:false,lastKey:'',startX:0,startY:0};
-  const LONG_PRESS_MS=320;
-  const PAN_SLOP=10;
-  function clearRoadTimer(){ if(roadTouch.timer){ clearTimeout(roadTouch.timer); roadTouch.timer=null; } }
-  function resetRoadTouch(){ clearRoadTimer(); roadTouch.draw=false; roadTouch.lastKey=''; }
-
-  // Reset pubblico usato quando si cambia strumento dal pannello costruzioni.
-  // Fix v20.27: dopo il disegno dei sentieri su mobile restavano stati touch
-  // interni (long press / draw / pan.mosso) che potevano bloccare il piazzamento
-  // dell'edificio selezionato subito dopo.
-  window.__islaResetTouchInputState=function(){
-    try{
-      resetRoadTouch();
-      pan.attivo=false;
-      pan.mosso=false;
-      pinch.attivo=false;
-      pinch.wasPinching=false;
-      if(canvas){
-        canvas.__islaSuppressClickUntil=0;
-        canvas.style.cursor='';
-      }
-    }catch(err){
-      console.warn('[Isla] reset input touch non riuscito:', err);
-    }
-  };
-
-  function distTocchi(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
-  function midTocchi(t){
-    const rect=canvasRect();
-    return {x:(t[0].clientX+t[1].clientX)/2-rect.left,y:(t[0].clientY+t[1].clientY)/2-rect.top};
-  }
-  function tileDaClient(x,y){
-    const rect=canvasRect();
-    const s=G.ISO_SCALE, IW=G.ISO_W*s, IH=G.ISO_H*s;
-    const lx=(x-rect.left)-G.camX, ly=(y-rect.top)-G.camY;
-    return {
-      r:Math.floor((ly/IH*2-lx/IW*2)/2+.5),
-      c:Math.floor((lx/IW*2+ly/IH*2)/2-.5),
-    };
-  }
-  function setHoverDaTouch(t){
-    const tc=tileDaClient(t.clientX,t.clientY);
-    G.hoverR=tc.r; G.hoverC=tc.c;
-    return tc;
-  }
-  function paintSentieroDaTouch(t){
-    const tc=setHoverDaTouch(t);
-    const key=tc.r+','+tc.c;
-    if(key!==roadTouch.lastKey){
-      roadTouch.lastKey=key;
-      if(typeof piazzaSentiero==='function') piazzaSentiero(tc.r,tc.c);
-    }
-  }
-
-  touchTarget.addEventListener('touchstart',e=>{
-    if(e.touches.length===2){
-      e.preventDefault();
-      resetRoadTouch();
-      pan.attivo=false;
-      pinch.attivo=true; pinch.wasPinching=true;
-      pinch.dist0=distTocchi(e.touches);
-      const m=midTocchi(e.touches); pinch.midX=m.x; pinch.midY=m.y;
-      canvas.__islaSuppressClickUntil=Date.now()+400;
-      return;
-    }
-    if(e.touches.length!==1) return;
-    e.preventDefault();
-    pinch.attivo=false;
-    resetRoadTouch();
-    const t=e.touches[0];
-    pan.attivo=true; pan.mosso=false;
-    pan.startX=t.clientX; pan.startY=t.clientY;
-    pan.camStartX=G.camX; pan.camStartY=G.camY;
-    roadTouch.startX=t.clientX; roadTouch.startY=t.clientY;
-    setHoverDaTouch(t);
-    if(G.modalitaCostruzione==='sentiero'){
-      roadTouch.timer=setTimeout(()=>{
-        roadTouch.draw=true;
-        pan.mosso=true; // evita che il touchend piazzi due volte lo stesso tile
-        const fake={clientX:roadTouch.startX,clientY:roadTouch.startY};
-        paintSentieroDaTouch(fake);
-        aggMsg('🛤 Disegno sentiero: trascina sul percorso','info');
-      },LONG_PRESS_MS);
-    }
-  },{passive:false});
-
-  touchTarget.addEventListener('touchmove',e=>{
-    if(e.touches.length===2){
-      e.preventDefault();
-      resetRoadTouch();
-      const d=distTocchi(e.touches);
-      if(!pinch.attivo||!pinch.dist0){ pinch.attivo=true; pinch.dist0=d; const m=midTocchi(e.touches); pinch.midX=m.x; pinch.midY=m.y; return; }
-      if(d<8) return;
-      const m=midTocchi(e.touches);
-      zoomCanvas(d/pinch.dist0,m.x,m.y);
-      const dx=m.x-pinch.midX, dy=m.y-pinch.midY;
-      if(Math.abs(dx)>0.1||Math.abs(dy)>0.1){ G.camX+=dx; G.camY+=dy; limiteCamera(); }
-      pinch.dist0=d; pinch.midX=m.x; pinch.midY=m.y;
-      canvas.__islaSuppressClickUntil=Date.now()+400;
-      return;
-    }
-    if(e.touches.length!==1||!pan.attivo) return;
-    e.preventDefault();
-    const t=e.touches[0];
-    const dx=t.clientX-pan.startX, dy=t.clientY-pan.startY;
-    const moved=Math.abs(dx)>PAN_SLOP||Math.abs(dy)>PAN_SLOP;
-    setHoverDaTouch(t);
-
-    if(G.modalitaCostruzione!=='sentiero' && roadTouch.draw){
-      // Cambio strumento mentre un long-press sentiero era attivo: annulla il draw.
-      resetRoadTouch();
-    }
-
-    if(G.modalitaCostruzione==='sentiero' && roadTouch.draw){
-      paintSentieroDaTouch(t);
-      canvas.__islaSuppressClickUntil=Date.now()+250;
-      return;
-    }
-
-    // Se l'utente trascina prima del long-press, è pan della mappa, non costruzione.
-    if(moved){
-      clearRoadTimer();
-      pan.mosso=true;
-      G.camX=pan.camStartX+dx;
-      G.camY=pan.camStartY+dy;
-      limiteCamera();
-    }
-  },{passive:false});
-
-  touchTarget.addEventListener('touchend',e=>{
-    if(pinch.attivo&&e.touches.length<2){ pinch.attivo=false; }
-    clearRoadTimer();
-    if(pinch.wasPinching){
-      e.preventDefault();
-      resetRoadTouch();
-      canvas.__islaSuppressClickUntil=Date.now()+400;
-      if(e.touches.length===0){ pan.attivo=false; setTimeout(()=>{pinch.wasPinching=false;},120); }
-      return;
-    }
-    if(e.changedTouches.length>0){
-      e.preventDefault();
-      const t=e.changedTouches[0];
-      const tc=tileDaClient(t.clientX,t.clientY);
-      G.hoverR=tc.r; G.hoverC=tc.c;
-      const r=tc.r,c=tc.c;
-      if(G.modalitaCostruzione!=='sentiero' && roadTouch.draw){
-        resetRoadTouch();
-      }
-      if(G.modalitaCostruzione==='sentiero'){
-        // Tap breve = un solo tile. Drag normale = pan. Long-press aveva già disegnato.
-        if(!pan.mosso && !roadTouch.draw) piazzaSentiero(r,c);
-      }
-      else if(G.modalitaCostruzione){
-        if(!pan.mosso) piazzaEdificio(r,c);
-      }
-      else if(!pan.mosso){
-        const b=G.edifici.find(x=>x.r===r&&x.c===c);
-        if(b){ if(typeof apriPopupEdificio==='function') apriPopupEdificio(b); }
-        else{
-          const tt=(G.mappa[r]!==undefined)?G.mappa[r][c]:undefined;
-          if(tt!==undefined){
-            const nomi={[T.OCEANO]:'Oceano',[T.BASSO]:'Acque Basse',[T.SABBIA]:'Spiaggia',[T.ERBA]:'Prato',[T.FORESTA]:'Foresta',[T.ROCCIA]:'Roccia',[T.COLLINA]:'Collina',[T.FIUME]:'Fiume',[T.SENTIERO]:'Sentiero',[T.PALUDE]:'Palude'};
-            aggMsg('📍 '+(nomi[tt]||'?'));
-          }
-        }
-      }
-    }
-    if(e.touches.length===0){ pan.attivo=false; pinch.attivo=false; resetRoadTouch(); }
-  },{passive:false});
-
-  touchTarget.addEventListener('touchcancel',()=>{
-    pan.attivo=false; pinch.attivo=false; pinch.wasPinching=false;
-    canvas.__islaSuppressClickUntil=Date.now()+300;
-  },{passive:false});
-
-  // iOS Safari fallback: alcuni dispositivi emettono GestureEvent oltre ai touch event.
+  // iOS Safari GestureEvent fallback.
   let gestureZoom0=1;
-  touchTarget.addEventListener('gesturestart',e=>{
-    e.preventDefault(); gestureZoom0=G.ISO_SCALE||1; pinch.wasPinching=true;
-    canvas.__islaSuppressClickUntil=Date.now()+400;
+  target.addEventListener('gesturestart',e=>{
+    e.preventDefault(); gestureZoom0=G.ISO_SCALE||1;
+    canvas.__islaSuppressClickUntil=Date.now()+450;
   },{passive:false});
-  touchTarget.addEventListener('gesturechange',e=>{
+  target.addEventListener('gesturechange',e=>{
     e.preventDefault();
     const rect=canvasRect();
     const px=isFinite(e.clientX)?e.clientX-rect.left:rect.width/2;
     const py=isFinite(e.clientY)?e.clientY-rect.top:rect.height/2;
-    const target=Math.max(G.ZOOM_MIN||0.35,Math.min(G.ZOOM_MAX||2.5,gestureZoom0*(e.scale||1)));
-    zoomCanvas(target/(G.ISO_SCALE||1),px,py);
+    const targetScale=Math.max(G.ZOOM_MIN||0.35,Math.min(G.ZOOM_MAX||2.5,gestureZoom0*(e.scale||1)));
+    zoomCanvas(targetScale/(G.ISO_SCALE||1),px,py);
   },{passive:false});
-  touchTarget.addEventListener('gestureend',e=>{
-    e.preventDefault(); setTimeout(()=>{pinch.wasPinching=false;},140);
-  },{passive:false});
+  target.addEventListener('gestureend',e=>{ e.preventDefault(); canvas.__islaSuppressClickUntil=Date.now()+450; },{passive:false});
 
   window.addEventListener('resize',()=>{ ridimensionaCanvas(); impostaMobile(); });
 }
@@ -339,7 +331,7 @@ function cliccaMappa(e){
   if(G.modalitaCostruzione){piazzaEdificio(r,c);return;}
 
   // 1. Edificio sul tile cliccato — priorità massima
-  const b=G.edifici.find(x=>x.r===r&&x.c===c);
+  const b=(typeof edificioInTile==='function') ? edificioInTile(r,c) : G.edifici.find(x=>x.r===r&&x.c===c);
   if(b){
     if(typeof apriPopupEdificio==='function') apriPopupEdificio(b);
     return;
@@ -400,8 +392,8 @@ function notifica(titolo,corpo,tipo=''){
 const VELOCITA_LIVELLI = [
   { val:0,   label:'⏸',       title:'Pausa'  },
   { val:1,   label:'▶',       title:'Normale' },
-  { val:2.5, label:'▶▶',      title:'Veloce'  },
-  { val:6,   label:'▶▶▶',     title:'Max'     },
+  { val:2,   label:'▶▶',      title:'Veloce'  },
+  { val:4,   label:'▶▶▶',     title:'Max'     },
 ];
 let _velIdx = 1; // parte in Normale
 

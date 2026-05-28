@@ -23,11 +23,11 @@ const OBIETTIVI_VITTORIA=[
   },
   {
     id:'pirati',
-    desc:'Ciurma di 10 pirati',
-    check:()=>G.pirati.length>=10,
-    progresso:()=>Math.min(G.pirati.length,10),
-    totale:10,
-    fmt:v=>v+'/10 pirati',
+    desc:'Ciurma di 16 pirati',
+    check:()=>G.pirati.length>=16,
+    progresso:()=>Math.min(G.pirati.length,16),
+    totale:16,
+    fmt:v=>v+'/16 pirati',
   },
   {
     id:'ricerca',
