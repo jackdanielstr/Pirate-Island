@@ -41,7 +41,7 @@ function disegnaIndicatoriEdifici(s){
 
   const hoverR=Number.isFinite(G.hoverR)?G.hoverR:-1;
   const hoverC=Number.isFinite(G.hoverC)?G.hoverC:-1;
-  const b=G.edifici.find(ed=>ed.r===hoverR&&ed.c===hoverC);
+  const b=(typeof edificioInTile==='function') ? edificioInTile(hoverR,hoverC) : G.edifici.find(ed=>ed.r===hoverR&&ed.c===hoverC);
   if(!b){
     disegnaIndicatoriEdifici._key='';
     return;
@@ -62,7 +62,8 @@ function disegnaIndicatoriEdifici(s){
 
   const IH=G.ISO_H*s;
   const alture={fortezza:2.2,guardia:2.8,osservatorio:2.5,cantiere:1.8,cappella:2.3,caserma:1.6};
-  const p=isoProj(b.c,b.r);
+  const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(b) : {r:b.r,c:b.c};
+  const p=isoProj(centro.c,centro.r);
   const cx=p.x, cy=p.y+IH*0.5;
   const altH=(alture[b.tipo]||1.2)*IH;
   const ix=cx, iy=cy-altH;
@@ -203,7 +204,7 @@ function inizializzaNaveMare(nave){
 // Obiettivo: rendere il porto il cuore visivo della simulazione.
 // Navi visibili da attraccate, clutter scenico, merci e schiavi trasportatori.
 
-const PORTO_PROPS_TIPI = ['cassa','botte','rete','palo','corda','lanterna','barile'];
+const PORTO_PROPS_TIPI = ['cassa','botte','rete','palo','corda','lanterna','barile','catasta','ancora','bandiera','fuoco','gru','telo'];
 const RISORSE_PORTO = [
   {k:'cibo',  icona:'🍖', nome:'cibo'},
   {k:'legno', icona:'🪵', nome:'legno'},
@@ -219,7 +220,7 @@ function hashPorto(v){
 function puntoPortoVivo(){
   if(typeof trovaPortoRaid==='function') return trovaPortoRaid();
   const porto=G.edifici.find(b=>b.tipo==='porto')||G.edifici.find(b=>b.tipo==='cantiere');
-  if(porto) return {r:porto.r,c:porto.c,tipo:porto.tipo};
+  if(porto) return (typeof cellaRiferimentoEdificio==='function') ? cellaRiferimentoEdificio(porto,true) : {r:porto.r,c:porto.c,tipo:porto.tipo};
   return {r:Math.floor(G.RIGHE/2),c:Math.floor(G.COLS/2),tipo:'centro'};
 }
 
@@ -237,19 +238,40 @@ function tileAcquaVicino(r,c){
   return {r,c};
 }
 
+function latoMarePorto(r,c){
+  const acqua=tileAcquaVicino(r,c);
+  const dc=Math.max(-1,Math.min(1,acqua.c-c));
+  const dr=Math.max(-1,Math.min(1,acqua.r-r));
+  return {acqua,dc,dr};
+}
+
 function slotAttracco(nave){
   const porto=puntoPortoVivo();
-  const acqua=tileAcquaVicino(porto.r,porto.c);
+  const lato=latoMarePorto(porto.r,porto.c);
+  const acqua=lato.acqua;
   const i=(nave.id||0)%4;
-  const offsets=[
-    {dc:-.15,dr:.05},{dc:.35,dr:.15},{dc:-.45,dr:.35},{dc:.15,dr:.55}
-  ][i];
+  // Attracchi più larghi e sfalsati: la nave sembra legata al molo, non appoggiata a caso.
+  const lungo=[-.38,.12,.46,-.08][i];
+  const fuori=[.16,.26,.08,.42][i];
+  const tangC = lato.dr || 0;
+  const tangR = -(lato.dc || 0);
   return {
-    r:acqua.r+0.5+offsets.dr,
-    c:acqua.c+0.5+offsets.dc,
+    r:acqua.r+0.5 + tangR*lungo + lato.dr*fuori,
+    c:acqua.c+0.5 + tangC*lungo + lato.dc*fuori,
     portoR:porto.r,
     portoC:porto.c,
   };
+}
+function propPorto(id,tipo,r,c,scala=1,rot=0,vicino='porto',extra={}){
+  return Object.assign({id,tipo,r,c,scala,rot,vicino}, extra);
+}
+
+function tilePropValido(r,c,ancheAcqua=false){
+  const tr=Math.max(0,Math.min(G.RIGHE-1,Math.floor(r)));
+  const tc=Math.max(0,Math.min(G.COLS-1,Math.floor(c)));
+  const t=G.mappa[tr]&&G.mappa[tr][tc];
+  if(ancheAcqua) return t===T.BASSO||t===T.OCEANO;
+  return t!==T.OCEANO && t!==T.BASSO && t!==T.FIUME;
 }
 
 function rigeneraPortoVivo(){
@@ -261,43 +283,67 @@ function rigeneraPortoVivo(){
   }
 
   let id=1;
-  for(const b of basi){
-    const quantita = b.tipo==='porto' ? 18 : 10;
-    for(let i=0;i<quantita;i++){
-      const ang = i*1.77 + hashPorto(b.r*31+b.c*17+i)*.7;
-      const rad = .35 + hashPorto(i*13+b.r)*1.25;
-      const rr = b.r + 0.5 + Math.sin(ang)*rad*.72;
-      const cc = b.c + 0.5 + Math.cos(ang)*rad;
-      const tr=Math.max(0,Math.min(G.RIGHE-1,Math.floor(rr)));
-      const tc=Math.max(0,Math.min(G.COLS-1,Math.floor(cc)));
-      const t=G.mappa[tr]&&G.mappa[tr][tc];
-      if(t===T.OCEANO||t===T.BASSO||t===T.FIUME) continue;
-      G.portoProps.push({
-        id:id++,
-        tipo:PORTO_PROPS_TIPI[(i + b.r + b.c) % PORTO_PROPS_TIPI.length],
-        r:rr,c:cc,
-        scala:.75+hashPorto(i*19+b.c)*.55,
-        rot:hashPorto(i*23+b.r)*Math.PI,
-        vicino:b.tipo
-      });
+  for(const base of basi){
+    const b=(typeof cellaRiferimentoEdificio==='function') ? cellaRiferimentoEdificio(base,true) : base;
+    const lato=latoMarePorto(b.r,b.c);
+    const dirC=lato.dc||1, dirR=lato.dr||0;
+    const tangC=dirR, tangR=-dirC;
+
+    // Molo principale: passerelle parallele alla costa e paletti verso l'acqua.
+    const moloLen=b.tipo==='porto'?5:3;
+    for(let j=-moloLen;j<=moloLen;j++){
+      const rr=b.r+0.55+tangR*j*.24+dirR*.34;
+      const cc=b.c+0.55+tangC*j*.24+dirC*.34;
+      G.portoProps.push(propPorto(id++,'passerella',rr,cc,1.05,Math.atan2(tangR,tangC),'molo',{asse:j}));
+      if(j%2===0){
+        G.portoProps.push(propPorto(id++,'palo',rr+dirR*.32,cc+dirC*.32,1.05,0,'molo'));
+      }
+      if(j%4===0){
+        G.portoProps.push(propPorto(id++,'lanterna',rr-dirR*.08,cc-dirC*.08,.95,0,'molo'));
+      }
     }
 
-    // Paletti e lanterne lungo il lato mare
-    const acqua=tileAcquaVicino(b.r,b.c);
-    for(let j=0;j<4;j++){
-      G.portoProps.push({
-        id:id++,
-        tipo:j%2===0?'palo':'lanterna',
-        r:b.r+0.2+j*.18,
-        c:b.c+0.15+(acqua.c>b.c?.7:-.7),
-        scala:1,
-        rot:0,
-        vicino:'molo'
-      });
+    // Piccoli moli secondari per rendere il porto più leggibile e meno “tile singolo”.
+    for(let j=-2;j<=2;j+=2){
+      for(let k=1;k<=3;k++){
+        const rr=b.r+0.5+tangR*j*.32+dirR*(.42+k*.22);
+        const cc=b.c+0.5+tangC*j*.32+dirC*(.42+k*.22);
+        if(tilePropValido(rr,cc,true)) G.portoProps.push(propPorto(id++,'pontile_corto',rr,cc,.92,Math.atan2(dirR,dirC),'molo'));
+      }
     }
+
+    // Clutter vicino al porto: sporco, caotico, ma deterministico.
+    const quantita = b.tipo==='porto' ? 34 : 20;
+    for(let i=0;i<quantita;i++){
+      const rnd=hashPorto(b.r*83+b.c*47+i*13);
+      const ang = i*1.77 + rnd*.9;
+      const rad = .35 + hashPorto(i*13+b.r)*1.85;
+      const rr = b.r + 0.5 + Math.sin(ang)*rad*.78 - dirR*.18;
+      const cc = b.c + 0.5 + Math.cos(ang)*rad - dirC*.18;
+      if(!tilePropValido(rr,cc,false)) continue;
+      const stockPeso=(G.oro+G.legno+G.rum+G.cibo)/900;
+      const tipi=[...PORTO_PROPS_TIPI];
+      if(stockPeso>.65) tipi.push('stock_merci','stock_merci','catasta');
+      if(i%9===0) tipi.push('facchino');
+      const tipo=tipi[(i + b.r + b.c) % tipi.length];
+      G.portoProps.push(propPorto(
+        id++, tipo, rr, cc,
+        .68+hashPorto(i*19+b.c)*.62,
+        hashPorto(i*23+b.r)*Math.PI,
+        b.tipo,
+        {merce:RISORSE_PORTO[(i+b.r+b.c)%RISORSE_PORTO.length]}
+      ));
+    }
+
+    // Gru e bandiera: elementi verticali che danno silhouette “Tropico 2”.
+    const gruR=b.r+0.48-dirR*.28+tangR*.44;
+    const gruC=b.c+0.48-dirC*.28+tangC*.44;
+    if(tilePropValido(gruR,gruC,false)) G.portoProps.push(propPorto(id++,'gru',gruR,gruC,1.15,0,'molo'));
+    const bandR=b.r+0.18-dirR*.18-tangR*.44;
+    const bandC=b.c+0.18-dirC*.18-tangC*.44;
+    if(tilePropValido(bandR,bandC,false)) G.portoProps.push(propPorto(id++,'bandiera',bandR,bandC,1.1,0,'molo'));
   }
 }
-
 function assicuraPortoVivo(){
   if(!G.portoProps) rigeneraPortoVivo();
 }
@@ -352,6 +398,80 @@ function disegnaPropPorto(prop,cx,cy,s){
       ctx.strokeStyle='#8a6020'; ctx.lineWidth=s;
       ctx.strokeRect(-sc*.08,-sc*.58,sc*.16,sc*.16);
       break;
+    case 'passerella':
+    case 'pontile_corto': {
+      const w=prop.tipo==='passerella'?sc*.56:sc*.42;
+      const h=prop.tipo==='passerella'?sc*.16:sc*.13;
+      ctx.fillStyle='#6a4318';
+      ctx.fillRect(-w*.5,-h*.5,w,h);
+      ctx.fillStyle='rgba(205,150,70,.45)';
+      ctx.fillRect(-w*.5,-h*.5,w,h*.36);
+      ctx.strokeStyle='rgba(45,25,8,.65)'; ctx.lineWidth=Math.max(.7,s*.75);
+      for(let k=-2;k<=2;k++){
+        ctx.beginPath(); ctx.moveTo(k*w*.16,-h*.55); ctx.lineTo(k*w*.16,h*.55); ctx.stroke();
+      }
+      break;
+    }
+    case 'catasta':
+    case 'stock_merci': {
+      for(let k=0;k<3;k++){
+        const ox=(k-1)*sc*.18, oy=(k%2)*sc*.08;
+        isoBox(ox,oy,sc*.24,sc*.16,sc*.16,'#9a6a2a','#b88436','#6b461a');
+      }
+      const merce=prop.merce||RISORSE_PORTO[0];
+      ctx.font=`${Math.max(8,9*s)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(merce.icona,0,-sc*.18);
+      break;
+    }
+    case 'ancora':
+      ctx.strokeStyle='#2f3538'; ctx.lineWidth=Math.max(1.5,s*2.2);
+      ctx.beginPath(); ctx.moveTo(0,-sc*.25); ctx.lineTo(0,sc*.18); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,-sc*.32,sc*.08,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-sc*.14,sc*.12,sc*.16,0,Math.PI*.9); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sc*.14,sc*.12,sc*.16,Math.PI*.1,Math.PI); ctx.stroke();
+      break;
+    case 'bandiera': {
+      ctx.strokeStyle='#5a3a10'; ctx.lineWidth=2*s;
+      ctx.beginPath(); ctx.moveTo(0,sc*.18); ctx.lineTo(0,-sc*.72); ctx.stroke();
+      const flap=Math.sin(frame*.08+prop.id)*sc*.06;
+      ctx.fillStyle='#111';
+      ctx.beginPath(); ctx.moveTo(0,-sc*.68); ctx.lineTo(sc*.38,-sc*.6+flap); ctx.lineTo(sc*.34,-sc*.42+flap*.4); ctx.lineTo(0,-sc*.48); ctx.closePath(); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.8)'; ctx.font=`${Math.max(8,10*s)}px serif`; ctx.textAlign='center';
+      ctx.fillText('☠',sc*.19,-sc*.51+flap*.45);
+      break;
+    }
+    case 'fuoco': {
+      ctx.fillStyle='#3a2410';
+      ctx.beginPath(); ctx.ellipse(0,sc*.08,sc*.22,sc*.09,0,0,Math.PI*2); ctx.fill();
+      const a=.65+Math.sin(frame*.16+prop.id)*.18;
+      ctx.fillStyle=`rgba(255,90,20,${a})`;
+      ctx.beginPath(); ctx.moveTo(-sc*.09,sc*.03); ctx.quadraticCurveTo(0,-sc*.38,sc*.1,sc*.03); ctx.closePath(); ctx.fill();
+      ctx.fillStyle=`rgba(255,210,70,${a})`;
+      ctx.beginPath(); ctx.moveTo(-sc*.04,sc*.03); ctx.quadraticCurveTo(sc*.02,-sc*.25,sc*.06,sc*.03); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'gru': {
+      isoBox(0,0,sc*.18,sc*.12,sc*.58,'#8a6028','#a07838','#5a3814');
+      ctx.strokeStyle='#6a4318'; ctx.lineWidth=2*s;
+      ctx.beginPath(); ctx.moveTo(0,-sc*.58); ctx.lineTo(sc*.52,-sc*.82); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sc*.52,-sc*.82); ctx.lineTo(sc*.48,-sc*.46); ctx.stroke();
+      ctx.fillStyle='#8a6028'; ctx.beginPath(); ctx.arc(sc*.48,-sc*.43,sc*.055,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'telo': {
+      ctx.fillStyle='rgba(150,35,25,.82)';
+      ctx.beginPath(); ctx.moveTo(-sc*.28,-sc*.08); ctx.lineTo(sc*.28,-sc*.12); ctx.lineTo(sc*.2,sc*.16); ctx.lineTo(-sc*.22,sc*.18); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='rgba(80,20,10,.65)'; ctx.lineWidth=s; ctx.stroke();
+      break;
+    }
+    case 'facchino': {
+      const bob=Math.sin(frame*.09+prop.id)*sc*.035;
+      ctx.fillStyle='rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(sc*.04,sc*.14,sc*.16,sc*.05,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#8a4a20'; ctx.fillRect(-sc*.05,-sc*.08+bob,sc*.1,sc*.18);
+      ctx.fillStyle='#c89a60'; ctx.beginPath(); ctx.arc(0,-sc*.15+bob,sc*.08,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#9a6a2a'; ctx.fillRect(sc*.07,-sc*.12+bob,sc*.18,sc*.14);
+      break;
+    }
     case 'palo':
     default:
       ctx.strokeStyle='#6a4318'; ctx.lineWidth=3*s;
@@ -554,8 +674,37 @@ function liberaTileInsediamento(r,c){
   return true;
 }
 
+function improntaLiberaInsediamento(tipo,r,c){
+  const celle=(typeof celleEdificio==='function') ? celleEdificio(tipo,r,c) : [{r,c}];
+  for(const cell of celle){
+    if(!tileValidoInsediamento(cell.r,cell.c)) return false;
+    const occupato=(typeof edificioInTile==='function')
+      ? edificioInTile(cell.r,cell.c)
+      : G.edifici.some(b=>b.r===cell.r&&b.c===cell.c);
+    if(occupato) return false;
+  }
+  return true;
+}
+
+function liberaImprontaInsediamento(tipo,r,c){
+  const celle=(typeof celleEdificio==='function') ? celleEdificio(tipo,r,c) : [{r,c}];
+  for(const cell of celle) liberaTileInsediamento(cell.r,cell.c);
+}
+
+function accessoScenarioEdificio(ed,verso=null){
+  const celle=(typeof anelloEdificio==='function') ? anelloEdificio(ed) : [{r:ed.r,c:ed.c+1},{r:ed.r+1,c:ed.c}];
+  const validi=celle.filter(p=>tileValidoInsediamento(p.r,p.c) && !(typeof edificioInTile==='function' ? edificioInTile(p.r,p.c) : false));
+  if(!validi.length) return {r:ed.r,c:ed.c};
+  if(verso){
+    const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(verso) : verso;
+    validi.sort((a,b)=>heuristica(a.r,a.c,centro.r,centro.c)-heuristica(b.r,b.c,centro.r,centro.c));
+  }
+  return validi[0];
+}
+
 function creaSentieroScenario(r,c){
   if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) return;
+  if(typeof edificioInTile==='function' && edificioInTile(r,c)) return;
   const t=G.mappa[r][c];
   if(t===T.OCEANO||t===T.BASSO||t===T.FIUME) return;
   G.mappa[r][c]=T.SENTIERO;
@@ -580,12 +729,11 @@ function collegaSentieroScenario(a,b){
   }
 }
 
-function trovaPostoEdificioVicino(base, offsets){
+function trovaPostoEdificioVicino(base, offsets, tipo='casapirata'){
   for(const [dr,dc] of offsets){
     const r=base.r+dr,c=base.c+dc;
-    if(!tileValidoInsediamento(r,c)) continue;
-    if(G.edifici.some(b=>b.r===r&&b.c===c)) continue;
-    liberaTileInsediamento(r,c);
+    if(!improntaLiberaInsediamento(tipo,r,c)) continue;
+    liberaImprontaInsediamento(tipo,r,c);
     return {r,c};
   }
   // fallback a spirale
@@ -593,9 +741,8 @@ function trovaPostoEdificioVicino(base, offsets){
     for(let dr=-rad;dr<=rad;dr++) for(let dc=-rad;dc<=rad;dc++){
       if(Math.abs(dr)!==rad && Math.abs(dc)!==rad) continue;
       const r=base.r+dr,c=base.c+dc;
-      if(!tileValidoInsediamento(r,c)) continue;
-      if(G.edifici.some(b=>b.r===r&&b.c===c)) continue;
-      liberaTileInsediamento(r,c);
+      if(!improntaLiberaInsediamento(tipo,r,c)) continue;
+      liberaImprontaInsediamento(tipo,r,c);
       return {r,c};
     }
   }
@@ -606,7 +753,8 @@ function aggiungiEdificioScenario(tipo,pos){
   if(!ED[tipo]||!pos) return null;
   const esiste=G.edifici.some(b=>b.tipo===tipo && b.r===pos.r && b.c===pos.c);
   if(esiste) return null;
-  liberaTileInsediamento(pos.r,pos.c);
+  if(!improntaLiberaInsediamento(tipo,pos.r,pos.c)) return null;
+  liberaImprontaInsediamento(tipo,pos.r,pos.c);
   const b={tipo,r:pos.r,c:pos.c,scenario:true};
   G.edifici.push(b);
   return b;
@@ -624,16 +772,23 @@ function inizializzaScenarioTropico2(){
     if(tileValidoInsediamento(r,c)) liberaTileInsediamento(r,c);
   }
 
-  const palazzo=trovaPostoEdificioVicino(palazzoBase, [[0,0],[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1]]);
-  const porto=trovaPostoEdificioVicino(portoPos, [[0,0],[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1]]);
+  const palazzo=trovaPostoEdificioVicino(palazzoBase, [[0,0],[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1]], 'governatore');
+  const porto=trovaPostoEdificioVicino(portoPos, [[0,0],[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1]], 'porto');
 
-  aggiungiEdificioScenario('porto', porto);
-  aggiungiEdificioScenario('governatore', palazzo);
+  const portoB=aggiungiEdificioScenario('porto', porto);
+  const palazzoB=aggiungiEdificioScenario('governatore', palazzo);
 
   // piazza centrale e strada porto → palazzo
-  collegaSentieroScenario(porto,palazzo);
-  for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
-    if(Math.abs(dr)+Math.abs(dc)<=1) creaSentieroScenario(palazzo.r+dr,palazzo.c+dc);
+  const accessoPorto=portoB ? accessoScenarioEdificio(portoB,palazzoB) : porto;
+  const accessoPalazzo=palazzoB ? accessoScenarioEdificio(palazzoB,portoB) : palazzo;
+  collegaSentieroScenario(accessoPorto,accessoPalazzo);
+  const piazzaPalazzo=palazzoB && typeof anelloEdificio==='function' ? anelloEdificio(palazzoB) : [];
+  if(piazzaPalazzo.length){
+    for(const p of piazzaPalazzo) creaSentieroScenario(p.r,p.c);
+  }else{
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+      if(Math.abs(dr)+Math.abs(dc)<=1) creaSentieroScenario(palazzo.r+dr,palazzo.c+dc);
+    }
   }
 
   // piccolo insediamento già presente, come in Tropico 2: servizi base e produzione iniziale
@@ -645,15 +800,22 @@ function inizializzaScenarioTropico2(){
     ['prigione',    [[-2,-1],[-2,-2],[-1,-2]]],
   ];
   for(const [tipo,offs] of defs){
-    const pos=trovaPostoEdificioVicino(palazzo,offs);
+    const pos=trovaPostoEdificioVicino(palazzo,offs,tipo);
     const b=aggiungiEdificioScenario(tipo,pos);
-    if(b) collegaSentieroScenario(palazzo,pos);
+    if(b) collegaSentieroScenario(
+      accessoScenarioEdificio(palazzoB||{tipo:'governatore',r:palazzo.r,c:palazzo.c},b),
+      accessoScenarioEdificio(b,palazzoB||{r:palazzo.r,c:palazzo.c})
+    );
   }
 
   // molo e piazza più leggibili: il sentiero deve essere il tessuto connettivo dell'insediamento.
-  for(const [dr,dc] of [[0,0],[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]) creaSentieroScenario(porto.r+dr,porto.c+dc);
+  if(portoB && typeof anelloEdificio==='function'){
+    for(const p of anelloEdificio(portoB)) creaSentieroScenario(p.r,p.c);
+  }else{
+    for(const [dr,dc] of [[0,0],[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]) creaSentieroScenario(porto.r+dr,porto.c+dc);
+  }
   for(const b of G.edifici.filter(x=>x.scenario)) collegaEdificioAlSentiero(b);
 
   // posiziona la ciurma iniziale intorno al palazzo, non nel centro astratto della mappa
-  G._spawnScenario={r:palazzo.r,c:palazzo.c};
+  G._spawnScenario=(palazzoB && typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(palazzoB) : {r:palazzo.r,c:palazzo.c};
 }

@@ -23,6 +23,7 @@ function generaHeightmap(rows, cols, cx, cy){
 
 function generaMappa(){
   const cx=G.COLS/2, cy=G.RIGHE/2;
+  const scalaIsola=Math.max(1, Math.min(G.COLS,G.RIGHE)/20);
   const hm=generaHeightmap(G.RIGHE,G.COLS,cx,cy);
   G.altezza=hm; // salva per uso nel renderer (ombreggiatura colline)
 
@@ -31,11 +32,11 @@ function generaMappa(){
   // biomi base da heightmap
   for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
     const d=hm[r][c];
-    if(d<2.8)       G.mappa[r][c]=T.COLLINA;   // cime
-    else if(d<4.5)  G.mappa[r][c]=T.FORESTA;
-    else if(d<6.8)  G.mappa[r][c]=T.ERBA;
-    else if(d<8.5)  G.mappa[r][c]=T.SABBIA;
-    else if(d<10.2) G.mappa[r][c]=T.BASSO;
+    if(d<2.8*scalaIsola)       G.mappa[r][c]=T.COLLINA;   // cime
+    else if(d<4.5*scalaIsola)  G.mappa[r][c]=T.FORESTA;
+    else if(d<6.8*scalaIsola)  G.mappa[r][c]=T.ERBA;
+    else if(d<8.5*scalaIsola)  G.mappa[r][c]=T.SABBIA;
+    else if(d<10.2*scalaIsola) G.mappa[r][c]=T.BASSO;
     // else OCEANO
   }
 
@@ -53,7 +54,7 @@ function generaMappa(){
   if(fsr>0){
     let r=fsr, c=fsc;
     const visited=new Set();
-    for(let step=0;step<60;step++){
+    for(let step=0;step<Math.max(70,G.COLS+G.RIGHE);step++){
       const k=r+','+c;
       if(visited.has(k)) break;
       visited.add(k);
@@ -90,7 +91,7 @@ function generaMappa(){
     // percorso greedy verso il centro
     let r=psr, c=psc;
     const visited=new Set();
-    for(let step=0;step<50;step++){
+    for(let step=0;step<Math.max(60,G.COLS+G.RIGHE);step++){
       const k=r+','+c;
       if(visited.has(k)) break;
       visited.add(k);
