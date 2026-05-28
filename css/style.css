@@ -386,6 +386,21 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 .btn-fine:hover{transform:translateY(-2px);filter:brightness(1.1);}
 
 /* BISOGNI */
+.registro-governatore{background:rgba(12,24,32,.72);border:1px solid var(--bordo);border-radius:6px;padding:9px;margin:0 0 9px;box-shadow:inset 0 0 0 1px rgba(240,192,64,.06);}
+.registro-titolo{font-family:var(--font-label);font-size:.72rem;color:var(--oro);letter-spacing:1px;text-transform:uppercase;margin-bottom:7px;}
+.registro-metriche{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;}
+.registro-metriche>div{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;padding:6px;}
+.registro-metriche span{display:block;font-size:.62rem;color:var(--sabbia);margin-bottom:2px;}
+.registro-metriche strong{font-family:var(--font-label);font-size:1rem;}
+.registro-sottotitolo{font-size:.62rem;color:var(--sabbia);text-transform:uppercase;letter-spacing:.8px;margin:7px 0 5px;}
+.registro-scorte{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+.registro-chip{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.075);border-radius:4px;padding:4px 5px;min-width:0;}
+.registro-chip span{display:block;color:var(--sabbia);font-size:.56rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.registro-chip b{display:block;color:var(--pergamena);font-family:var(--font-label);font-size:.78rem;margin-top:1px;}
+.registro-turno{display:flex;flex-wrap:wrap;gap:4px;}
+.registro-turno span{font-size:.6rem;color:var(--verde-ch);background:rgba(70,150,70,.13);border:1px solid rgba(120,210,120,.18);border-radius:4px;padding:2px 4px;}
+.registro-avvisi{margin-top:7px;display:flex;flex-direction:column;gap:4px;}
+.registro-avvisi div{font-size:.62rem;color:var(--rum-chiaro);background:rgba(180,70,50,.13);border:1px solid rgba(210,90,70,.22);border-radius:4px;padding:4px 5px;line-height:1.25;}
 .bisogni-grid{display:flex;flex-direction:column;gap:7px;margin-bottom:8px;}
 .bisogno-riga{background:rgba(255,255,255,.04);border-radius:5px;padding:7px 9px;border:1px solid var(--bordo);}
 .bisogno-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
@@ -648,3 +663,169 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 
 
 #mappa-wrap,#mappa-canvas{touch-action:none !important;-ms-touch-action:none !important;}
+
+/* ════════════════════════════════════════════════════════
+   UI TROPICO 2 PASS — legno, pergamena, ottone
+   Patch v20.49: solo presentazione, nessun input/gameplay.
+   ════════════════════════════════════════════════════════ */
+:root{
+  --legno-scuro:#2b1608;
+  --legno:#5a3217;
+  --legno-chiaro:#8a5a28;
+  --ottone:#d9a441;
+  --ottone-scuro:#8f5e18;
+  --pergamena-ui:#f0d99b;
+  --inchiostro-ui:#2a1608;
+  --panel-ui:rgba(42,22,8,.96);
+  --panel-ui-2:rgba(18,12,8,.98);
+}
+
+/* Barra superiore: più “registro del capitano” e meno pannello moderno */
+#barra-sup{
+  background:
+    linear-gradient(180deg,rgba(80,45,18,.98),rgba(28,15,7,.98)),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,rgba(0,0,0,.03) 2px 7px);
+  border-bottom:3px solid var(--ottone-scuro);
+  box-shadow:0 3px 14px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,220,120,.18);
+}
+.logo{
+  color:#ffd66a;
+  text-shadow:0 2px 0 #000,0 0 12px rgba(240,192,64,.35);
+}
+.res,.rep{
+  background:linear-gradient(180deg,rgba(245,215,145,.14),rgba(40,20,8,.45));
+  border:1px solid rgba(217,164,65,.55);
+  box-shadow:inset 0 1px 0 rgba(255,240,180,.14),0 1px 3px rgba(0,0,0,.35);
+}
+.res .val{color:#ffd66a;text-shadow:0 1px 0 #000;}
+.res .etich,#info-giorno{color:#e0c37a;}
+
+/* Pannello laterale: legno scuro con bordo ottone */
+#pannello-dx{
+  background:
+    linear-gradient(160deg,rgba(50,26,10,.97),rgba(14,10,8,.99)),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 2px,rgba(0,0,0,.025) 2px 8px);
+  border-left:3px solid var(--ottone-scuro);
+  box-shadow:inset 1px 0 0 rgba(255,220,120,.16),-7px 0 20px rgba(0,0,0,.45);
+}
+#tab-pannello{
+  background:linear-gradient(180deg,rgba(96,54,20,.85),rgba(35,18,8,.9));
+  border-bottom:2px solid rgba(217,164,65,.5);
+}
+.ptab{
+  color:#caa96a;
+  text-shadow:0 1px 0 #000;
+  border-right:1px solid rgba(217,164,65,.16);
+}
+.ptab:hover{background:rgba(217,164,65,.12);color:#ffe0a0;}
+.ptab.attivo{
+  color:#ffe07a;
+  background:linear-gradient(180deg,rgba(217,164,65,.22),rgba(120,66,22,.24));
+  border-bottom-color:#ffd66a;
+  box-shadow:inset 0 -2px 8px rgba(240,192,64,.18);
+}
+#contenuto-pannello{
+  background:
+    radial-gradient(circle at 30% 0%,rgba(240,192,64,.06),transparent 45%),
+    linear-gradient(180deg,rgba(30,16,8,.12),rgba(0,0,0,.12));
+}
+.titolo-sez{
+  color:#ffd66a;
+  text-shadow:0 2px 0 #000;
+  border-bottom:1px solid rgba(217,164,65,.35);
+  padding-bottom:4px;
+}
+
+/* Carte e pulsanti: pergamena sporca dentro cornice legno */
+.btn-costruisci,.carta-pirata,.carta-nave,.carta-missione,.nodo-tech,.bisogno-riga,.upg-riga{
+  background:
+    linear-gradient(180deg,rgba(244,220,150,.12),rgba(86,48,18,.16)),
+    rgba(20,12,8,.68);
+  border:1px solid rgba(217,164,65,.42);
+  box-shadow:inset 0 1px 0 rgba(255,235,170,.08),0 2px 5px rgba(0,0,0,.22);
+}
+.btn-costruisci:hover:not(:disabled),.carta-pirata:hover,.carta-pirata.sel,.nodo-tech.disponibile:hover{
+  background:linear-gradient(180deg,rgba(240,192,64,.2),rgba(82,42,14,.28));
+  border-color:#ffd66a;
+  color:#ffe8b0;
+}
+.btn-costruisci.attivo-strumento{
+  background:linear-gradient(180deg,rgba(255,214,106,.26),rgba(100,55,18,.32));
+  border-color:#ffd66a;
+  box-shadow:0 0 0 1px rgba(255,214,106,.25), inset 0 0 12px rgba(240,192,64,.14);
+}
+.costo,.costo-t,.ricompensa-missione{color:#ffd66a;text-shadow:0 1px 0 #000;}
+.nome-p,.nome-n,.nome-t,.titolo-missione{color:#f5e0ac;}
+.ruolo-p,.stato-n,.desc-t,.desc-missione,.sp,.bisogno-nota{color:#c9aa6a;}
+
+/* Barra inferiore: plancia di legno */
+#barra-inf{
+  background:
+    linear-gradient(0deg,rgba(28,14,6,.99),rgba(78,43,18,.97)),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.03) 0 2px,rgba(0,0,0,.03) 2px 8px);
+  border-top:3px solid var(--ottone-scuro);
+  box-shadow:0 -4px 16px rgba(0,0,0,.48),inset 0 1px 0 rgba(255,220,120,.14);
+}
+.btn-azione,#btn-velocita,#btn-musica,.btn-piccolo,.mbtn{
+  background:linear-gradient(180deg,#7a471e,#351909);
+  border:1px solid rgba(217,164,65,.62);
+  color:#f4e4bc;
+  box-shadow:inset 0 1px 0 rgba(255,230,160,.2),0 2px 4px rgba(0,0,0,.35);
+  text-shadow:0 1px 0 #000;
+}
+.btn-azione:hover,#btn-velocita:hover,#btn-musica:hover,.btn-piccolo:hover:not(:disabled){
+  background:linear-gradient(180deg,#a96926,#4a220b);
+  border-color:#ffd66a;
+  color:#ffe8a8;
+  transform:translateY(-1px);
+}
+.btn-azione.pericolo{border-color:rgba(190,70,55,.65);}
+.btn-azione.pericolo:hover{background:linear-gradient(180deg,#8a2a18,#3a1008);}
+
+/* Modali: pergamena dentro cornice scura */
+#overlay-modale{background:rgba(10,5,2,.78);backdrop-filter:blur(2px);}
+#box-modale{
+  background:
+    linear-gradient(180deg,rgba(245,224,172,.96),rgba(207,163,92,.96));
+  border:4px solid #5a3217;
+  outline:2px solid rgba(217,164,65,.8);
+  color:var(--inchiostro-ui);
+  box-shadow:0 12px 60px rgba(0,0,0,.65), inset 0 0 0 2px rgba(255,245,200,.25);
+}
+#box-modale h2{
+  color:#5a2108;
+  text-shadow:0 1px 0 rgba(255,240,180,.65);
+  border-bottom:1px solid rgba(90,50,20,.35);
+  padding-bottom:6px;
+}
+#box-modale p,#corpo-modale{color:#3a210c;}
+#chiudi-modale{color:#5a2108;text-shadow:0 1px 0 rgba(255,240,180,.5);}
+.mbtn.primario{background:linear-gradient(180deg,#e2b653,#9b661c);color:#261000;border:1px solid #70410e;}
+.mbtn.secondario{background:linear-gradient(180deg,#7a471e,#351909);border-color:#7a4a1a;color:#f4e4bc;}
+
+/* Notifiche e messaggi più nautici */
+.msg,.notifica{
+  background:linear-gradient(180deg,rgba(42,22,8,.92),rgba(10,7,5,.92));
+  border-color:rgba(217,164,65,.55);
+  box-shadow:0 2px 8px rgba(0,0,0,.35);
+}
+.titolo-notifica{color:#ffd66a;text-shadow:0 1px 0 #000;}
+
+/* Overlay eventi/fine partita più coerenti */
+#box-evento,#box-fine{
+  border-color:#8f5e18;
+  box-shadow:0 0 70px rgba(0,0,0,.55),0 0 24px rgba(217,164,65,.16);
+}
+.btn-scelta{
+  background:linear-gradient(180deg,rgba(245,224,172,.1),rgba(70,36,12,.18));
+  border-color:rgba(217,164,65,.42);
+}
+.btn-scelta:hover{border-color:#ffd66a;color:#ffe0a0;background:rgba(217,164,65,.14);}
+
+/* Mobile: conserva leggibilità e drawer, ma con pelle legno/pergamena */
+@media(max-width:600px) and (orientation:portrait){
+  #barra-sup,#barra-inf{background:rgba(38,20,8,.94);}
+  #pannello-dx{background:linear-gradient(160deg,rgba(50,26,10,.98),rgba(12,8,6,.99)) !important;}
+  #tab-pannello::before{background:rgba(255,214,106,.55);}
+  .btn-azione{font-size:.72rem;}
+}
