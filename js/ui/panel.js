@@ -7,7 +7,7 @@
 function mostraTab(tab){
   G.tabCorrente=tab;
   document.querySelectorAll('.ptab').forEach((b,i)=>{
-    const tabs=['costruisci','ciurma','flotta','ricerca','fazioni','missioni'];
+    const tabs=['costruisci','ciurma','flotta','ricerca','fazioni','missioni','bisogni'];
     b.classList.toggle('attivo',tabs[i]===tab);
   });
   renderPannello();

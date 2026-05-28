@@ -78,6 +78,46 @@ function renderFazioni(){
   return h;
 }
 
+function renderRegistroGovernatore(){
+  const econ=G.economia||{};
+  const sc=G.scorte||{};
+  const rete=typeof reteSentieriPercentuale==='function' ? reteSentieriPercentuale() : (econ.rete||100);
+  const produttivita=econ.produttivita||100;
+  const reteCol=rete>75?'var(--verde-ch)':rete>45?'var(--oro)':'var(--rum-chiaro)';
+  const prodCol=produttivita>75?'var(--verde-ch)':produttivita>45?'var(--oro)':'var(--rum-chiaro)';
+  const scorte=[
+    ['canna','Canna',sc.canna||0],['tabacco','Tabacco',sc.tabacco||0],
+    ['ferro','Ferro',sc.ferro||0],['metallo','Metallo',sc.metallo||0],
+    ['tavole','Tavole',sc.tavole||0],['razioni','Razioni',sc.razioni||0],
+    ['sigari','Sigari',sc.sigari||0],['armi','Armi',sc.armi||0],['cannoni','Cannoni',sc.cannoni||0],
+  ];
+  const turno=(econ.turno||[]).slice(-6);
+  let h=`<div class="registro-governatore">
+    <div class="registro-titolo">Registro del Governatore</div>
+    <div class="registro-metriche">
+      <div><span>Rete sentieri</span><strong style="color:${reteCol}">${Math.round(rete)}%</strong></div>
+      <div><span>Produttivita</span><strong style="color:${prodCol}">${Math.round(produttivita)}%</strong></div>
+    </div>
+    <div class="registro-sottotitolo">Filiere e scorte</div>
+    <div class="registro-scorte">`;
+  for(const [,nome,val] of scorte){
+    h+=`<div class="registro-chip"><span>${nome}</span><b>${Math.floor(val)}</b></div>`;
+  }
+  h+=`</div>`;
+  if(turno.length){
+    h+=`<div class="registro-sottotitolo">Ultimo giorno</div><div class="registro-turno">`;
+    for(const p of turno) h+=`<span>+${p.val} ${p.nome}</span>`;
+    h+=`</div>`;
+  }
+  if(econ.avvisi&&econ.avvisi.length){
+    h+=`<div class="registro-avvisi">`;
+    for(const a of econ.avvisi) h+=`<div>${a}</div>`;
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  return h;
+}
+
 function renderBisogni(){
   const B=G.bisogni;
   const defs=[
@@ -114,6 +154,7 @@ function renderBisogni(){
       '💀 Rivolta imminente!'
     }</div>
   </div>
+  ${renderRegistroGovernatore()}
   <div class="bisogni-grid">`;
 
   for(const d of defs){
