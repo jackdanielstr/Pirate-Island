@@ -228,15 +228,18 @@ function apriGestioneSchiavi(){
       Prigionieri disponibili (${G.prigionieri.length})</div>`;
 
     for(const p of G.prigionieri){
+      const specialista=p.specialista
+        ? `<span style="margin-left:4px;color:var(--oro);font-size:.62rem">${p.icona||'★'} ${p.mestiere}</span>`
+        : '';
       html += `<div style="background:rgba(139,26,26,.15);border:1px solid rgba(192,57,43,.3);
         border-radius:5px;padding:7px 10px;margin-bottom:6px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="color:#ffbbbb;font-size:.8rem">⛓ ${p.nome}
-            <span style="color:var(--sabbia);font-size:.68rem">(${p.fazione})</span></span>
+            <span style="color:var(--sabbia);font-size:.68rem">(${p.fazione})</span>${specialista}</span>
           <span style="font-size:.68rem;color:var(--oro)">${p.riscatto}💰</span>
         </div>
         <div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">
-          ${edificiLavoro.map(b=>`
+          ${p.specialista ? `<button class="btn-piccolo" onclick="reclutaPrigioniero(${p.id});chiudiModale()">★ Recluta specialista</button>` : edificiLavoro.map(b=>`
             <button class="btn-piccolo" onclick="mettiAlLavoro(${p.id},${b.r},${b.c})">
               ${ED[b.tipo].icona} ${ED[b.tipo].nome}
             </button>`).join('')}

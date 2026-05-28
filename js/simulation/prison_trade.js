@@ -5,6 +5,35 @@
 // MODULO: PRIGIONE_COMMERCIO
 // ═══════════════════════════════════════
 // ── PRIGIONIERI, RICERCA, COMMERCIO, EDITTI ──
+const SPECIALISTI_RAID=[
+  {mestiere:'Cartografo', ruolo:'Navigatore', icona:'🧭', bonus:{combattimento:4,navigazione:22}, riscatto:260},
+  {mestiere:'Mastro Cannoniere', ruolo:'Cannoniere', icona:'💣', bonus:{combattimento:24,navigazione:6}, riscatto:240},
+  {mestiere:'Carpentiere Navale', ruolo:'Carpentiere', icona:'🪚', bonus:{combattimento:8,navigazione:16}, riscatto:220},
+  {mestiere:'Medico di Bordo', ruolo:'Chirurgo', icona:'⚕', bonus:{combattimento:5,navigazione:14,umore:12}, riscatto:230},
+];
+
+function catturaSpecialistaRaid(){
+  const prof=SPECIALISTI_RAID[Math.floor(Math.random()*SPECIALISTI_RAID.length)];
+  const base=NOMI_PRIGIONIERI[Math.floor(Math.random()*NOMI_PRIGIONIERI.length)];
+  const nome=prof.mestiere+' '+base.replace(/^(Ten\.|Cap\.|Gov\.|Amm\.|Sgt\.)\s*/,'');
+  const riscatto=prof.riscatto+Math.floor(Math.random()*120);
+  const prigioniero={
+    id:nuovoIdPrigioniero(),
+    nome,
+    fazione:'Specialista',
+    riscatto,
+    giorni:0,
+    specialista:true,
+    mestiere:prof.mestiere,
+    ruolo:prof.ruolo,
+    icona:prof.icona,
+    bonus:{...prof.bonus},
+  };
+  G.prigionieri.push(prigioniero);
+  aggMsg(`${prof.icona} Specialista catturato: ${nome}!`,'bene');
+  return prigioniero;
+}
+
 function catturaPrigioniero(fazione){
   const nome=NOMI_PRIGIONIERI[Math.floor(Math.random()*NOMI_PRIGIONIERI.length)];
   const riscatto=100+Math.floor(Math.random()*200);
@@ -28,8 +57,22 @@ function reclutaPrigioniero(id){
   const p=G.prigionieri.find(x=>x.id===id);
   if(!p) return;
   rimuoviUnPrigioniero(id);
-  creaaPirata();
-  aggMsg(`⚔ ${p.nome} si unisce alla ciurma!`,'bene');
+  if(p.specialista){
+    const b=p.bonus||{};
+    creaaPirata({
+      nome:p.nome,
+      ruolo:p.ruolo||p.mestiere||'Specialista',
+      combattimento:Math.min(100,36+(b.combattimento||0)+Math.floor(Math.random()*18)),
+      navigazione:Math.min(100,38+(b.navigazione||0)+Math.floor(Math.random()*18)),
+      umore:Math.min(100,52+(b.umore||0)+Math.floor(Math.random()*18)),
+      paga:6,
+      tratto:{id:'specialista',label:p.mestiere||'Specialista',icona:p.icona||'★'},
+    });
+    aggMsg(`${p.icona||'★'} ${p.nome} ora serve la ciurma come ${p.mestiere}.`,'bene');
+  } else {
+    creaaPirata({nome:p.nome});
+    aggMsg(`⚔ ${p.nome} si unisce alla ciurma!`,'bene');
+  }
   aggiornaUI();
 }
 function apriPrigione(){
@@ -38,11 +81,15 @@ function apriPrigione(){
   if(!haPrigione) html+=`<p style="color:#ffaaaa">⚠ Costruisci una Prigione per tenere i prigionieri!</p>`;
   if(G.prigionieri.length===0){html+=`<p>Nessun prigioniero al momento.</p>`;}
   else for(const p of G.prigionieri){
+    const tag=p.specialista
+      ? `<span style="display:inline-block;margin-left:5px;padding:1px 5px;border:1px solid rgba(240,192,64,.45);border-radius:4px;color:var(--oro);font-size:.62rem">${p.icona||'★'} ${p.mestiere}</span>`
+      : '';
     html+=`<div style="background:rgba(139,26,26,.2);border:1px solid rgba(192,57,43,.4);border-radius:4px;padding:8px;margin:6px 0">
-      <strong style="color:#ffbbbb">${p.nome}</strong> <span style="font-size:.75rem;color:var(--sabbia)">(${p.fazione})</span><br>
+      <strong style="color:#ffbbbb">${p.nome}</strong> <span style="font-size:.75rem;color:var(--sabbia)">(${p.fazione})</span>${tag}<br>
+      ${p.specialista?`<span style="font-size:.7rem;color:var(--sabbia)">Reclutato: ${p.ruolo} esperto per navi e raid.</span><br>`:''}
       <span style="font-size:.75rem">Riscatto: <span style="color:var(--oro)">${p.riscatto} oro</span></span><br>
       <button class="mbtn primario" onclick="riscattaPrigioniero(${p.id});chiudiModale()">💰 Riscatta</button>
-      <button class="mbtn secondario" onclick="reclutaPrigioniero(${p.id});chiudiModale()">⚔ Recluta</button>
+      <button class="mbtn secondario" onclick="reclutaPrigioniero(${p.id});chiudiModale()">${p.specialista?'★ Recluta specialista':'⚔ Recluta'}</button>
     </div>`;
   }
   apriModale('⛓ Prigione',html);
