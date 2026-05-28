@@ -5,13 +5,15 @@
 // MODULO: RENDERER_BUILDINGS
 // ═══════════════════════════════════════
 // ── disegna edificio — isometrico stile Tropico 2 ──
-// cx,cy = centro tile iso (da isoProj), s = ISO_SCALE
-function disegnaEdificio(tipo,cx,cy,s){
+// cx,cy = centro dell'impronta iso (da isoProj), s = ISO_SCALE
+function disegnaEdificio(tipo,cx,cy,s,footprint){
   s = s || G.ISO_SCALE;
-  const S = G.ISO_H * s * 1.8;  // unità di scala edificio
+  const fp=footprint || (typeof ingombroEdificio==='function' ? ingombroEdificio(tipo) : {w:1,h:1});
+  const scalaIngombro=Math.min(1.36,1+(Math.max(fp.w||1,fp.h||1)-1)*0.18);
+  const S = G.ISO_H * s * 1.8 * scalaIngombro;  // unita di scala edificio
   // Punto di ancoraggio: centro-basso del tile iso
   const bx = cx;
-  const by = cy + G.ISO_H * s * .5;
+  const by = cy + G.ISO_H * s * .18;
   ctx.save();
   isoShadow(bx,by,S*.55,S*.28);
 

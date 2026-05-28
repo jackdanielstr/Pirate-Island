@@ -87,64 +87,102 @@ function disegnaTileIso(t, cx, cy, r, c) {
   switch (t) {
 
     case T.OCEANO: {
-      const v   = hash(r, c, 1);
-      const hue = 195 + v * 14;
-      const wave = Math.sin(frame * .018 + c * .55 + r * .3) * .04;
-      ctx.fillStyle = `hsl(${hue}, 72%, ${20 + v*6 + wave*8}%)`;
+      // Acqua caraibica più leggibile: profondità, onde morbide e riflessi.
+      const v = hash(r, c, 1);
+      const f1 = frame * .018 + c * .58 + r * .34;
+      const f2 = frame * .011 + c * .21 - r * .47;
+      const hue = 194 + v * 10;
+      const light = 22 + v * 7 + Math.sin(f1) * 2.4;
+      ctx.fillStyle = `hsl(${hue}, 76%, ${light}%)`;
       ctx.fill();
-      // riflesso solare
-      const shim = .06 + Math.sin(frame * .025 + c * .7) * .025;
-      ctx.fillStyle = `rgba(180,255,255,${shim})`;
-      ctx.beginPath();
-      ctx.moveTo(cx - hw * .5, cy + hh * .4);
-      ctx.lineTo(cx,           cy + hh * .1);
-      ctx.lineTo(cx + hw * .3, cy + hh * .5);
-      ctx.lineTo(cx - hw * .2, cy + hh * .8);
-      ctx.closePath();
-      ctx.fill();
-      // onda animata
-      const f1 = frame * .018 + c * .55 + r * .3;
-      ctx.strokeStyle = `rgba(160,240,255,${.12 + Math.sin(f1) * .05})`;
-      ctx.lineWidth = 1.2 * s;
-      ctx.beginPath();
-      ctx.moveTo(cx - hw * .7, cy + hh * .55 + Math.sin(f1) * 2 * s);
-      ctx.bezierCurveTo(
-        cx - hw * .2, cy + hh * .45 + Math.sin(f1+1)*3*s,
-        cx + hw * .2, cy + hh * .5  - Math.sin(f1+2)*3*s,
-        cx + hw * .7, cy + hh * .55 + Math.sin(f1+3)*2*s
-      );
-      ctx.stroke();
-      break;
-    }
 
-    case T.BASSO: {
-      const sv = hash(r, c, 9);
-      ctx.fillStyle = `hsl(${175+sv*15}, ${65+sv*15}%, ${34+sv*10}%)`;
-      ctx.fill();
-      // corallo
-      for (let i = 0; i < 3; i++) {
-        const hx = cx + (hash(r,c,i+300)-.5)*W*.7;
-        const hy = cy + hh * .4 + hash(r,c,i+310)*hh*.8;
-        const col = hash(r,c,i+320);
-        ctx.fillStyle = col>.6 ? `rgba(240,160,80,${.15+col*.1})`
-                                : `rgba(180,80,80,${.1+col*.08})`;
-        ctx.beginPath();
-        ctx.arc(hx, hy, (2+col*3)*s, 0, Math.PI*2);
-        ctx.fill();
-      }
-      // trasparenza acqua
-      ctx.fillStyle = `rgba(100,220,200,${.2+sv*.08})`;
+      // Velatura turchese centrale per effetto mare tropicale non piatto.
+      const grad = ctx.createLinearGradient(cx - hw, cy, cx + hw, cy + H);
+      grad.addColorStop(0, `rgba(85,210,225,${.10 + v*.04})`);
+      grad.addColorStop(.45, `rgba(30,145,190,${.08 + v*.035})`);
+      grad.addColorStop(1, `rgba(0,40,80,${.12 + v*.05})`);
+      ctx.fillStyle = grad;
       ctx.beginPath();
       ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
       ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
       ctx.closePath(); ctx.fill();
-      // increspature
-      const fb = frame*.016 + c*.48 + r*.28;
-      ctx.strokeStyle = `rgba(200,255,240,${.18+Math.sin(fb)*.07})`;
-      ctx.lineWidth = s;
+
+      // Riflesso a rombo, più sottile e variabile.
+      const shimmer = .045 + Math.sin(f2) * .025;
+      ctx.fillStyle = `rgba(205,255,245,${shimmer})`;
       ctx.beginPath();
-      ctx.moveTo(cx-hw*.6, cy+hh*.6+Math.sin(fb)*2*s);
-      ctx.bezierCurveTo(cx-hw*.2,cy+hh*.5, cx+hw*.2,cy+hh*.6, cx+hw*.6,cy+hh*.6+Math.sin(fb+2)*2*s);
+      ctx.moveTo(cx - hw * .46, cy + hh * .46);
+      ctx.lineTo(cx - hw * .06, cy + hh * .22);
+      ctx.lineTo(cx + hw * .34, cy + hh * .55);
+      ctx.lineTo(cx - hw * .16, cy + hh * .82);
+      ctx.closePath(); ctx.fill();
+
+      // Due piccole increspature animate, in stile Tropico 2/HD leggero.
+      ctx.lineWidth = Math.max(.75, 1.05 * s);
+      ctx.strokeStyle = `rgba(185,245,255,${.13 + Math.sin(f1) * .045})`;
+      ctx.beginPath();
+      ctx.moveTo(cx - hw * .72, cy + hh * .55 + Math.sin(f1) * 1.8 * s);
+      ctx.bezierCurveTo(
+        cx - hw * .28, cy + hh * .43 + Math.sin(f1+1)*2.2*s,
+        cx + hw * .18, cy + hh * .48 - Math.sin(f1+2)*2.2*s,
+        cx + hw * .68, cy + hh * .57 + Math.sin(f1+3)*1.8*s
+      );
+      ctx.stroke();
+      if (v > .43) {
+        ctx.strokeStyle = `rgba(220,255,255,${.08 + Math.sin(f2) * .035})`;
+        ctx.beginPath();
+        ctx.moveTo(cx - hw * .44, cy + hh * 1.18 + Math.sin(f2)*1.4*s);
+        ctx.bezierCurveTo(cx - hw*.12, cy+hh*1.05, cx+hw*.15, cy+hh*1.25, cx+hw*.48, cy+hh*1.12);
+        ctx.stroke();
+      }
+      break;
+    }
+
+    case T.BASSO: {
+      // Acqua bassa più luminosa: laguna, coralli e sabbia visibile sotto.
+      const sv = hash(r, c, 9);
+      const fb = frame*.016 + c*.48 + r*.28;
+      ctx.fillStyle = `hsl(${176+sv*12}, ${70+sv*12}%, ${38+sv*9}%)`;
+      ctx.fill();
+
+      const lagoon = ctx.createLinearGradient(cx-hw, cy, cx+hw, cy+H);
+      lagoon.addColorStop(0, `rgba(170,255,225,${.18+sv*.07})`);
+      lagoon.addColorStop(.55, `rgba(65,205,205,${.20+sv*.06})`);
+      lagoon.addColorStop(1, `rgba(20,95,135,${.18+sv*.05})`);
+      ctx.fillStyle = lagoon;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
+      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
+      ctx.closePath(); ctx.fill();
+
+      // Chiazze sabbiose sott'acqua.
+      for (let i = 0; i < 2; i++) {
+        const sx = cx + (hash(r,c,i+880)-.5)*W*.58;
+        const sy = cy + hh*.55 + hash(r,c,i+890)*hh*.85;
+        ctx.fillStyle = `rgba(235,210,145,${.11+hash(r,c,i+900)*.07})`;
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, (5+hash(r,c,i+901)*8)*s, (2.5+hash(r,c,i+902)*4)*s, .25, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // Coralli più piccoli, meno rumorosi.
+      for (let i = 0; i < 3; i++) {
+        const hx = cx + (hash(r,c,i+300)-.5)*W*.62;
+        const hy = cy + hh * .45 + hash(r,c,i+310)*hh*.82;
+        const col = hash(r,c,i+320);
+        ctx.fillStyle = col>.62 ? `rgba(242,155,90,${.13+col*.08})`
+                                : `rgba(170,70,90,${.10+col*.07})`;
+        ctx.beginPath();
+        ctx.arc(hx, hy, (1.4+col*2.4)*s, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      // Increspature chiare.
+      ctx.strokeStyle = `rgba(220,255,242,${.18+Math.sin(fb)*.07})`;
+      ctx.lineWidth = Math.max(.7, s);
+      ctx.beginPath();
+      ctx.moveTo(cx-hw*.6, cy+hh*.6+Math.sin(fb)*1.8*s);
+      ctx.bezierCurveTo(cx-hw*.2,cy+hh*.5, cx+hw*.2,cy+hh*.6, cx+hw*.6,cy+hh*.6+Math.sin(fb+2)*1.8*s);
       ctx.stroke();
       break;
     }
@@ -340,28 +378,62 @@ function disegnaTileIso(t, cx, cy, r, c) {
 // Nel sistema iso le transizioni sono gestite direttamente nelle texture del tile.
 // Questa funzione è mantenuta per compatibilità ma fa poco in iso vero.
 function disegnaTransizioni() {
-  // Nell'iso 2:1 le transizioni di bordo sono già nel tile stesso.
-  // Per le spiagge aggiungiamo una striscia foam sull'oceano adiacente.
+  // Foam costiero più evidente: acqua bassa/oceano vicino alla spiaggia.
   const s = G.ISO_SCALE;
   const W = G.ISO_W * s, H = G.ISO_H * s;
+  const hw = W/2, hh = H/2;
+
   for (let r=0; r<G.RIGHE; r++) for (let c=0; c<G.COLS; c++) {
-    if (G.mappa[r][c] !== T.SABBIA) continue;
-    // Controlla vicini oceano
+    const tile = G.mappa[r][c];
+    if (tile !== T.SABBIA && tile !== T.SENTIERO) continue;
+
+    const p = isoProj(c, r);
+    const cx = p.x, cy = p.y;
     const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+
     for (const [dr,dc] of dirs) {
       const nr=r+dr, nc=c+dc;
       if (nr<0||nc<0||nr>=G.RIGHE||nc>=G.COLS) continue;
-      if (G.mappa[nr][nc] !== T.OCEANO) continue;
-      // Foam sulla spiaggia verso oceano
-      const p = isoProj(c, r);
-      const cx = p.x, cy = p.y + H/2; // centro tile
-      const foam = .15 + Math.sin(frame*.015 + c*.4 + r*.3) * .08;
-      ctx.fillStyle = `rgba(255,255,255,${foam})`;
+      const nt = G.mappa[nr][nc];
+      if (nt !== T.OCEANO && nt !== T.BASSO) continue;
+
+      const t = frame*.025 + r*.45 + c*.37 + dr*.9 + dc*.6;
+      const foam = nt===T.BASSO ? .13 : .19;
+
+      // Piccola linea ondulata sul bordo del rombo verso l'acqua.
+      ctx.save();
+      ctx.strokeStyle = `rgba(245,255,235,${foam + Math.sin(t)*.055})`;
+      ctx.lineWidth = Math.max(.9, 1.45*s);
       ctx.beginPath();
-      ctx.moveTo(cx, cy+H*.4);
-      ctx.lineTo(cx+W*.3*dr, cy+H*.4+H*.2*dc);
-      ctx.lineTo(cx, cy+H*.6);
-      ctx.closePath(); ctx.fill();
+
+      if (dr === -1) { // lato nord
+        ctx.moveTo(cx, cy + Math.sin(t)*1.2*s);
+        ctx.quadraticCurveTo(cx-hw*.22, cy+hh*.22, cx-hw*.5, cy+hh*.5);
+      } else if (dr === 1) { // lato sud
+        ctx.moveTo(cx, cy+H + Math.sin(t)*1.2*s);
+        ctx.quadraticCurveTo(cx+hw*.22, cy+hh*1.78, cx+hw*.5, cy+hh*1.5);
+      } else if (dc === -1) { // lato ovest
+        ctx.moveTo(cx-hw, cy+hh + Math.sin(t)*1.2*s);
+        ctx.quadraticCurveTo(cx-hw*.62, cy+hh*.75, cx, cy);
+      } else { // lato est
+        ctx.moveTo(cx+hw, cy+hh + Math.sin(t)*1.2*s);
+        ctx.quadraticCurveTo(cx+hw*.62, cy+hh*.75, cx, cy);
+      }
+      ctx.stroke();
+
+      // Schiuma interna molto leggera, per costa più morbida.
+      ctx.globalAlpha = .16 + Math.sin(t+1.5)*.04;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(
+        cx + dc*hw*.48 - dr*hw*.08,
+        cy + hh + dr*hh*.46 + dc*hh*.05,
+        W*.10, H*.045,
+        dc ? .55 : -.55,
+        0, Math.PI*2
+      );
+      ctx.fill();
+      ctx.restore();
     }
   }
 }

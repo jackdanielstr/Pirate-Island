@@ -14,6 +14,7 @@ function disegnaScena(dt=0.016){
   const s   = G.ISO_SCALE;
   const IW  = G.ISO_W * s;   // larghezza tile schermo
   const IH  = G.ISO_H * s;   // altezza tile schermo
+  const dtMovimento = dt * (typeof scalaMovimentoMondo==='function' ? scalaMovimentoMondo() : (G.velocita||0));
 
   // ── SFONDO oceano profondo ──
   const bg = ctx.createRadialGradient(canvas.width*.5,canvas.height*.5,0,canvas.width*.5,canvas.height*.5,canvas.width*.7);
@@ -67,8 +68,10 @@ function disegnaScena(dt=0.016){
 
   // Edifici (depth +1 per stare sopra alberi dello stesso tile)
   for (const b of G.edifici){
-    const p = isoProj(b.c, b.r);
-    oggetti.push({ depth: b.r*2+b.c*2+1, tipo:'edificio', data:b, px:p.x, py:p.y });
+    const fp=(typeof ingombroEdificio==='function') ? ingombroEdificio(b.tipo) : {w:1,h:1};
+    const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(b) : {r:b.r,c:b.c};
+    const p = isoProj(centro.c, centro.r);
+    oggetti.push({ depth: (b.r+fp.h-1)*2+(b.c+fp.w-1)*2+1, tipo:'edificio', data:b, px:p.x, py:p.y, fp });
   }
   // Pirati (depth = posizione float, +2 per stare sopra gli edifici)
   for (const p of G.pirati){
@@ -109,10 +112,21 @@ function disegnaScena(dt=0.016){
       case 'portoProp':
         if(typeof disegnaPropPorto==='function') disegnaPropPorto(data, cx, cy, s); break;
       case 'edificio':
-        disegnaEdificio(data.tipo, cx, cy, s); break;
+        // In modalità sentiero gli edifici alti possono coprire il tile dietro.
+        // Li rendiamo semi-trasparenti solo durante la costruzione strade per rendere visibile
+        // anteprima e piazzamento senza cambiare il gameplay normale.
+        if(G.modalitaCostruzione==='sentiero'){
+          ctx.save();
+          ctx.globalAlpha = 0.58;
+          disegnaEdificio(data.tipo, cx, cy, s, obj.fp);
+          ctx.restore();
+        }else{
+          disegnaEdificio(data.tipo, cx, cy, s, obj.fp);
+        }
+        break;
       case 'pirata':
         disegnaPirataIso(cx,cy,G.pirataSelezionato===data.id,data.umore,data.ruolo,s);
-        if(!G.battagliaAttiva) muoviPirata(data,dt*G.velocita);
+        if(!G.battagliaAttiva) muoviPirata(data,dtMovimento);
         break;
       case 'schiavo':
         if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s);
@@ -125,29 +139,61 @@ function disegnaScena(dt=0.016){
 
   // ── 6. Navi: vedi disegnaNaviMare() ──
 
-  // ── 7. Hover costruzione ──
-  if (G.modalitaCostruzione && G.modalitaCostruzione!=='sentiero' && G.hoverC>=0 && G.hoverR>=0){
+  // ── 7. Hover / anteprima costruzione ──
+  if (G.modalitaCostruzione && G.hoverC>=0 && G.hoverR>=0){
     const p = isoProj(G.hoverC, G.hoverR);
     const cx = p.x, cy = p.y;
     const hw = IW/2, hh = IH/2;
-    const ok = puoCostruire(G.hoverR, G.hoverC);
-    ctx.fillStyle   = ok ? 'rgba(80,220,80,.3)' : 'rgba(220,60,60,.3)';
+    const isRoad = G.modalitaCostruzione === 'sentiero';
+    let ok = false;
+    let cellePreview=[{r:G.hoverR,c:G.hoverC}];
+    let originePreview={r:G.hoverR,c:G.hoverC};
+    if(isRoad){
+      const rr=G.hoverR, cc=G.hoverC;
+      ok = (typeof tileValidoPerSentiero==='function' ? tileValidoPerSentiero(rr,cc) : false) && G.oro>=2;
+    }else{
+      ok = puoCostruire(G.hoverR, G.hoverC);
+      originePreview=(typeof origineEdificioDaCentro==='function')
+        ? origineEdificioDaCentro(G.modalitaCostruzione,G.hoverR,G.hoverC)
+        : {r:G.hoverR,c:G.hoverC};
+      cellePreview=(typeof celleEdificio==='function')
+        ? celleEdificio(G.modalitaCostruzione,originePreview.r,originePreview.c)
+        : [{r:G.hoverR,c:G.hoverC}];
+    }
+    ctx.fillStyle   = ok ? 'rgba(80,220,80,.28)' : 'rgba(220,60,60,.28)';
     ctx.strokeStyle = ok ? '#4f4' : '#f44';
     ctx.lineWidth   = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
-    ctx.lineTo(cx, cy+IH); ctx.lineTo(cx-hw, cy+hh);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    if (ok){
+    for(const cell of cellePreview){
+      if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) continue;
+      const pp=isoProj(cell.c,cell.r);
+      const pcx=pp.x, pcy=pp.y;
+      ctx.beginPath();
+      ctx.moveTo(pcx, pcy); ctx.lineTo(pcx+hw, pcy+hh);
+      ctx.lineTo(pcx, pcy+IH); ctx.lineTo(pcx-hw, pcy+hh);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    if (ok && !isRoad){
       ctx.globalAlpha = .45;
-      disegnaEdificio(G.modalitaCostruzione, cx, cy+hh, s);
+      const preview={tipo:G.modalitaCostruzione,r:originePreview.r,c:originePreview.c};
+      const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(preview) : preview;
+      const pp=isoProj(centro.c,centro.r);
+      const fp=(typeof ingombroEdificio==='function') ? ingombroEdificio(G.modalitaCostruzione) : {w:1,h:1};
+      disegnaEdificio(G.modalitaCostruzione, pp.x, pp.y+hh, s, fp);
       ctx.globalAlpha = 1;
+    }
+    if(ok && isRoad){
+      ctx.strokeStyle='rgba(240,192,64,.9)';
+      ctx.lineWidth=3;
+      ctx.beginPath();
+      ctx.moveTo(cx-hw*.35, cy+hh);
+      ctx.lineTo(cx+hw*.35, cy+hh);
+      ctx.stroke();
     }
   }
 
 
   // ── 7a. Movimento schiavi (una volta per frame) ──
-  if(typeof muoviSchiavi==="function") muoviSchiavi(dt*G.velocita);
+  if(typeof muoviSchiavi==="function") muoviSchiavi(dtMovimento);
   // ── 7b. Indicatori edifici ──
   if(typeof disegnaIndicatoriEdifici==="function") disegnaIndicatoriEdifici(s);
   // ── 7c. Navi animate ──
@@ -161,9 +207,12 @@ function disegnaScena(dt=0.016){
   const shadowAlts = {fortezza:.55,guardia:.65,osservatorio:.6,cantiere:.3,cappella:.5,caserma:.38,taverna:.42,cantastorie:.48};
   ctx.globalAlpha = .22;
   for (const b of G.edifici){
-    const p = isoProj(b.c, b.r);
+    const fp=(typeof ingombroEdificio==='function') ? ingombroEdificio(b.tipo) : {w:1,h:1};
+    const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(b) : {r:b.r,c:b.c};
+    const p = isoProj(centro.c, centro.r);
     const bx = p.x, by = p.y + IH/2;
-    const altH = (shadowAlts[b.tipo]||.35) * G.ISO_H * s * 1.8;
+    const scalaIngombro=Math.min(1.36,1+(Math.max(fp.w||1,fp.h||1)-1)*0.18);
+    const altH = (shadowAlts[b.tipo]||.35) * G.ISO_H * s * 1.8 * scalaIngombro;
     ctx.beginPath();
     ctx.ellipse(bx + altH*.6, by + altH*.32, altH*.65, altH*.18, .25, 0, Math.PI*2);
     ctx.fill();
