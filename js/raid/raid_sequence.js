@@ -22,9 +22,9 @@
 function trovaPortoRaid(){
   // Priorità: Porto dei Pirati -> Cantiere Navale -> prima spiaggia disponibile
   const porto=G.edifici.find(b=>b.tipo==='porto');
-  if(porto) return {r:porto.r,c:porto.c,tipo:'porto'};
+  if(porto) return (typeof cellaRiferimentoEdificio==='function') ? cellaRiferimentoEdificio(porto,true) : {r:porto.r,c:porto.c,tipo:'porto'};
   const cantiere=G.edifici.find(b=>b.tipo==='cantiere');
-  if(cantiere) return {r:cantiere.r,c:cantiere.c,tipo:'cantiere'};
+  if(cantiere) return (typeof cellaRiferimentoEdificio==='function') ? cellaRiferimentoEdificio(cantiere,true) : {r:cantiere.r,c:cantiere.c,tipo:'cantiere'};
   for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
     if(G.mappa[r][c]===T.SABBIA) return {r,c,tipo:'spiaggia'};
   }
@@ -50,7 +50,7 @@ function piratiPerRaid(nave){
 
 function puntoImbarcoRaid(){
   const porto=trovaPortoRaid();
-  const ed=G.edifici.find(b=>b.r===porto.r&&b.c===porto.c) || {r:porto.r,c:porto.c,tipo:porto.tipo||'porto'};
+  const ed=(typeof edificioInTile==='function' ? edificioInTile(porto.r,porto.c) : G.edifici.find(b=>b.r===porto.r&&b.c===porto.c)) || {r:porto.r,c:porto.c,tipo:porto.tipo||'porto'};
   if(typeof accessoMiglioreEdificio==='function'){
     const acc=accessoMiglioreEdificio(ed,porto.r,porto.c);
     if(acc) return {r:acc.r,c:acc.c,tipo:porto.tipo||'porto'};
@@ -69,7 +69,13 @@ function forzaEquipaggioRaid(nave, crew){
   const nav=c.reduce((a,p)=>a+(p.navigazione||0),0)/n;
   const morale=c.reduce((a,p)=>a+(p.umore||50),0)/n;
   const capitano=c.find(p=>p.capitano)||null;
-  return {comb,nav,morale,capitano,count:c.length};
+  return {
+    comb:Math.max(0,Math.min(100,comb+(capitano?6:-4))),
+    nav:Math.max(0,Math.min(100,nav+(capitano?8:-5))),
+    morale:Math.max(0,Math.min(100,morale+(capitano?4:-3))),
+    capitano,
+    count:c.length
+  };
 }
 
 function avviaSequenzaRaid(nave, bersaglio, tattica){
@@ -155,6 +161,8 @@ function salpaNave(nave, bersaglio, tattica, durata, equipaggioRaid){
     tattica,
     crewIds:(nave.crewRaidIds||[]).slice(),
     forza,
+    preparazione:bersaglio.preparazione||null,
+    capitanoId:bersaglio.capitanoId||forza.capitano?.id||null,
     giornoPartenza:G.giorno,
     log:['La nave lascia il molo con '+crew.length+' pirati a bordo.']
   };
@@ -182,6 +190,116 @@ function salpaNave(nave, bersaglio, tattica, durata, equipaggioRaid){
   aggMsg('⛵ '+nave.nome+' salpa con '+crew.length+' pirati. Rientro tra '+durata+' giorni.','bene');
   controllaMissione('raid', G.contatori.raid);
   aggiornaUI();
+}
+
+
+// ═══════════════════════════════════════════════════
+// EVENTI DI SPEDIZIONE — Tropico 2 style
+// Chiamati dal tick mentre la nave è in mare. Non aprono popup:
+// solo log/notifiche leggere, così il raid sembra una spedizione viva.
+// ═══════════════════════════════════════════════════
+function tickEventiSpedizioneRaid(nave){
+  if(!nave || !nave.inMare || !nave.raidData || nave.timerRaid<=0) return;
+  const rd=nave.raidData;
+  rd._giorniEvento = (rd._giorniEvento||0) + 1;
+  rd.extraBottino = rd.extraBottino || {oro:0,cibo:0,legno:0,rum:0,ricerca:0};
+
+  // Non tutti i giorni succede qualcosa: deve dare sapore, non spam.
+  const pericolo = rd.bersaglio?.difficolta || 1;
+  const chance = Math.min(.58, .24 + pericolo*.07);
+  if(Math.random()>chance) return;
+
+  const crewIds = new Set(rd.crewIds||[]);
+  const crew = G.pirati.filter(p=>crewIds.has(p.id));
+  const morale = crew.reduce((a,p)=>a+(p.umore||50),0)/Math.max(1,crew.length);
+  const nav = crew.reduce((a,p)=>a+(p.navigazione||0),0)/Math.max(1,crew.length);
+  const tag = rd.bersaglio?.territorio?.nome || rd.bersaglio?.nome || 'mare aperto';
+
+  const eventi = [
+    {
+      id:'vento_favorevole', peso:nav>55?3:1,
+      fn:()=>{
+        if(nave.timerRaid>1 && Math.random()<.55){ nave.timerRaid=Math.max(1,nave.timerRaid-1); }
+        const msg='🌬 Vento favorevole verso '+tag+': la nave guadagna tempo.';
+        rd.log?.push(msg); aggMsg(msg,'bene');
+      }
+    },
+    {
+      id:'bonaccia', peso:nav<55?3:1,
+      fn:()=>{
+        if(Math.random()<.55) nave.timerRaid++;
+        nave.usura=Math.min(100,(nave.usura||0)+3);
+        const msg='🌫 Bonaccia in mare: vele molli, ciurma nervosa.';
+        rd.log?.push(msg); aggMsg(msg,'info');
+      }
+    },
+    {
+      id:'preda_minore', peso:2,
+      fn:()=>{
+        const oro=20+Math.floor(Math.random()*55);
+        const rum=Math.random()<.35 ? 5+Math.floor(Math.random()*12) : 0;
+        rd.extraBottino.oro += oro;
+        rd.extraBottino.rum += rum;
+        const msg='🚢 Preda minore intercettata: +'+oro+' oro'+(rum?' e +'+rum+' rum':'')+' nel carico.';
+        rd.log?.push(msg); aggMsg(msg,'bene');
+      }
+    },
+    {
+      id:'razioni', peso:2,
+      fn:()=>{
+        const consumo=Math.min(G.cibo, Math.max(2, crew.length*2));
+        G.cibo=Math.max(0,G.cibo-consumo);
+        for(const p of crew) p.umore=Math.min(100,(p.umore||50)+2);
+        const msg='🍖 Razioni caricate dalla stiva: -'+consumo+' cibo, ciurma più calma.';
+        rd.log?.push(msg); aggMsg(msg,'info');
+      }
+    },
+    {
+      id:'disciplina', peso:morale<45?3:1,
+      fn:()=>{
+        const p=crew[Math.floor(Math.random()*crew.length)];
+        if(p) p.umore=Math.max(5,(p.umore||50)-6);
+        const msg='🗡 Lite a bordo: la disciplina cala durante la spedizione.';
+        rd.log?.push(msg); aggMsg(msg,'male');
+      }
+    },
+    {
+      id:'pattuglia', peso:pericolo>=3?3:1,
+      fn:()=>{
+        const dmg=3+Math.floor(Math.random()*(4+pericolo*3));
+        nave.hp=Math.max(5,(nave.hp||nave.hpMax)-dmg);
+        const msg='👑 Pattuglia reale avvistata: '+nave.nome+' subisce -'+dmg+' HP.';
+        rd.log?.push(msg); aggMsg(msg,'male');
+      }
+    },
+  ];
+
+  const tot=eventi.reduce((a,e)=>a+Math.max(0,e.peso),0);
+  let roll=Math.random()*tot;
+  for(const e of eventi){
+    roll-=Math.max(0,e.peso);
+    if(roll<=0){ e.fn(); break; }
+  }
+}
+
+function registraStoriaRaid(nave, bersaglio, vinto, bottino, scoperta){
+  if(!G.raid) G.raid={};
+  if(!Array.isArray(G.raid.storia)) G.raid.storia=[];
+  G.raid.storia.unshift({
+    giorno:G.giorno,
+    nave:nave.nome,
+    missione:bersaglio?.missione?.nome||'Raid',
+    territorio:bersaglio?.territorio?.nome||bersaglio?.nome||'Mare aperto',
+    vinto:!!vinto,
+    bottino:bottino||{},
+    scoperta:scoperta||null,
+  });
+  G.raid.storia=G.raid.storia.slice(0,10);
+}
+
+function primaRottaNonScopertaRaid(){
+  if(typeof raidTerritoriDisponibili!=='function'||typeof territorioScoperto!=='function') return null;
+  return raidTerritoriDisponibili().find(t=>!territorioScoperto(t.id))||null;
 }
 
 // Chiamata dal tick quando timerRaid arriva a 0
@@ -269,20 +387,40 @@ function rientroNave(nave){
     const multBB   = barbanera ? 1.5 : 1;
     const multAbbo = (tattica.id==='abbordaggio') ? 1+(mediaCombo*.005) : 1;
 
-    const oroFinale  = Math.floor(oro   * multCan * multRic * multBB * multAbbo);
-    const cibFinale  = Math.floor(cibo  * multSti);
-    const legFinale  = Math.floor(legno * multSti);
-    const rumFinale  = Math.floor(rum);
+    const extra=rd.extraBottino||{};
+    const oroFinale  = Math.floor(oro   * multCan * multRic * multBB * multAbbo) + (extra.oro||0);
+    const cibFinale  = Math.floor(cibo  * multSti) + (extra.cibo||0);
+    const legFinale  = Math.floor(legno * multSti) + (extra.legno||0);
+    const rumFinale  = Math.floor(rum) + (extra.rum||0);
+    const ricFinale  = ric + (extra.ricerca||0);
 
     G.oro           += oroFinale;
     G.cibo          += cibFinale;
     G.legno         += legFinale;
     G.rum           += rumFinale;
-    G.ricerca.punti += ric;
+    G.ricerca.punti += ricFinale;
+
+    let rottaScoperta=null;
+    if(bersaglio.missione?.id==='esplorazione'){
+      if(bersaglio.esplorazioneNuova && typeof scopriTerritorioRaid==='function'){
+        rottaScoperta=scopriTerritorioRaid(bersaglio.territorio?.id) ? bersaglio.territorio : null;
+      }
+      if(!rottaScoperta){
+        const prossima=primaRottaNonScopertaRaid();
+        if(prossima && typeof scopriTerritorioRaid==='function'){
+          rottaScoperta=scopriTerritorioRaid(prossima.id) ? prossima : null;
+        }
+      }
+      if(rottaScoperta) aggMsg('🧭 Carte nautiche aggiornate: '+rottaScoperta.nome+' e ora raggiungibile.','bene');
+      else aggMsg('🧭 Esplorazione completata: nessuna nuova rotta, ma le carte migliorano.','info');
+    }
 
     // Reputazioni
     for(const[k,v] of Object.entries(bersaglio.rep))
       if(v && G.fazioni[k]) G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));
+
+    if(bersaglio.missione?.falsaBandiera)
+      aggMsg('🏳 Falsa bandiera riuscita: la Corona sospetta altri corsari, non la tua cala.','bene');
 
     if(barbanera) G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+5);
 
@@ -304,24 +442,39 @@ function rientroNave(nave){
       }
     }
 
-    // Cattura prigionieri — numero basato su difficoltà
+    // Cattura prigionieri — numero basato su difficoltà e tipo missione
     const _faz=bersaglio.rep.reale<0?'Marina Reale':'Mercante';
     const _nMin=bersaglio.difficolta<=2?1:2;
     const _nMax=bersaglio.difficolta<=2?3:5;
-    const _nCat=_nMin+Math.floor(Math.random()*(_nMax-_nMin+1))+(bersaglio.prigionieriBonus||0);
-    for(let _i=0;_i<_nCat;_i++){ if(Math.random()<0.75) catturaPrigioniero(_faz); }
-    if(bersaglio.id==='galeone_reale'||bersaglio.id==='porto_coloniale'){
+    const _baseCat=_nMin+Math.floor(Math.random()*(_nMax-_nMin+1))+(bersaglio.prigionieriBonus||0);
+    const _missioneId=bersaglio.missione?.id||'raid';
+    if(_missioneId==='rapimento_specialisti'){
+      const _spec=Math.max(1,Math.min(3,Math.ceil(_baseCat/2)));
+      for(let _i=0;_i<_spec;_i++){
+        if(typeof catturaSpecialistaRaid==='function') catturaSpecialistaRaid();
+        else catturaPrigioniero(_faz);
+      }
+      if(Math.random()<.45) catturaPrigioniero(_faz);
+    } else if(_missioneId==='raid_insediamento'){
+      for(let _i=0;_i<_baseCat;_i++){ if(Math.random()<0.78) catturaPrigioniero(_faz); }
+    } else if(_missioneId==='crociera'){
+      if(Math.random()<0.45) catturaPrigioniero('Mercante');
+    } else if(_missioneId==='falsa_bandiera'){
+      if(Math.random()<0.25) catturaPrigioniero(_faz);
+    }
+    const baseId=bersaglio.baseId||bersaglio.id;
+    if(baseId==='galeone_reale'||baseId==='porto_coloniale'){
       catturaPrigioniero('Marina Reale'); catturaPrigioniero('Mercante');
     }
 
     // Evento speciale porto coloniale
-    if(bersaglio.id==='porto_coloniale'){
+    if(baseId==='porto_coloniale'){
       const ts=['cannoni','velocita','stiva'];
       const tt=ts[Math.floor(Math.random()*ts.length)];
       const kk='liv'+tt.charAt(0).toUpperCase()+tt.slice(1);
       if(nave[kk]<3){ nave[kk]++; aggMsg('⬆ Upgrade gratuito: '+tt+' su '+nave.nome,'bene'); }
     }
-    if(bersaglio.id==='galeone_reale')
+    if(baseId==='galeone_reale')
       G.fazioni.corsaro.rep=Math.min(100,G.fazioni.corsaro.rep+20);
 
     const bottinoStr=[
@@ -329,16 +482,18 @@ function rientroNave(nave){
       cibFinale && `+${cibFinale}🍖`,
       legFinale && `+${legFinale}🪵`,
       rumFinale && `+${rumFinale}🍺`,
-      ric       && `+${ric}🔭`,
+      ricFinale && `+${ricFinale}🔭`,
     ].filter(Boolean).join(' ');
 
+    registraStoriaRaid(nave,bersaglio,true,{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ricFinale},rottaScoperta?.nome||null);
     notifica('⚔ Raid Riuscito!', bersaglio.icona+' '+bersaglio.nome+' saccheggiata! '+bottinoStr);
     aggMsg('💰 '+nave.nome+' rientra: '+bottinoStr+' (danno -'+dannoNave+'hp)','bene');
-    if(typeof creaScaricoRaidPorto==='function') creaScaricoRaidPorto(nave,{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ric});
+    if(typeof creaScaricoRaidPorto==='function') creaScaricoRaidPorto(nave,{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ricFinale});
 
   } else {
     for(const p of crew) p.umore=Math.max(5,p.umore-18);
     if(Math.random()<0.35) catturaPrigioniero(bersaglio.rep.reale<0?'Marina Reale':'Mercante');
+    registraStoriaRaid(nave,bersaglio,false,{danno:dannoNave},null);
     notifica('💀 Raid Fallito',
       bersaglio.icona+' '+bersaglio.nome+' ha respinto l\'attacco. '+nave.nome+' rientra danneggiata.','male');
     aggMsg('💀 Raid fallito — nave -'+dannoNave+' HP','male');
