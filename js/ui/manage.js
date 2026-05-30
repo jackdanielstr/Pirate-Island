@@ -4,7 +4,17 @@
 // ═══════════════════════════════════════
 // MODULO: UI_MANAGE
 // ═══════════════════════════════════════
+function apriOfficinaNave(id){
+  if(typeof window!=='undefined') window.__apriOfficinaNave=true;
+  try{ apriGestioneNave(id); }
+  finally{ if(typeof window!=='undefined') window.__apriOfficinaNave=false; }
+}
+
 function apriGestioneNave(id){
+  if(typeof apriSchedaNavePorto==='function' && !(typeof window!=='undefined' && window.__apriOfficinaNave)){
+    apriSchedaNavePorto(id,'flotta');
+    return;
+  }
   const n=G.navi.find(x=>x.id===id);
   if(!n) return;
 
@@ -174,15 +184,52 @@ function upgradeNave(id, tipo){
 
 // ── UI SUPERIORE ──
 function aggiornaUI(){
-  document.getElementById('r-oro').textContent=Math.floor(G.oro);
-  document.getElementById('r-cibo').textContent=Math.floor(G.cibo);
-  document.getElementById('r-legno').textContent=Math.floor(G.legno);
-  document.getElementById('r-rum').textContent=Math.floor(G.rum);
-  document.getElementById('r-ric').textContent=Math.floor(G.ricerca.punti);
-  document.getElementById('r-pop').textContent=G.pirati.length;
+  const setRes=(id,val,soglia=25)=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    el.textContent=Math.floor(val);
+    const box=el.closest('.res');
+    if(box){
+      box.classList.toggle('basso', val<soglia);
+      box.classList.toggle('abbondante', val>=soglia*6);
+    }
+  };
+  setRes('r-oro',G.oro,60);
+  setRes('r-cibo',G.cibo,30);
+  setRes('r-legno',G.legno,25);
+  setRes('r-rum',G.rum,20);
+  setRes('r-ric',G.ricerca.punti,5);
+  setRes('r-pop',G.pirati.length,4);
   document.getElementById('num-giorno').textContent=G.giorno;
   document.getElementById('rep-reale').textContent=`👑 ${Math.floor(G.fazioni.reale.rep)}`;
   document.getElementById('rep-mercante').textContent=`🤝 ${Math.floor(G.fazioni.mercante.rep)}`;
   document.getElementById('rep-corsaro').textContent=`☠ ${Math.floor(G.fazioni.corsaro.rep)}`;
+  aggiornaConsiglioUI();
   renderPannello();
+}
+
+function aggiornaConsiglioUI(){
+  const el=document.getElementById('consiglio-ui');
+  if(!el) return;
+  let testo='🏴 Seleziona una categoria in basso o tocca un edificio per aprire la scheda.';
+  let stato='normale';
+  if(G.modalitaCostruzione==='sentiero'){
+    testo='🪨 Trascina sulla mappa per disegnare sentieri. I pirati useranno solo questi percorsi.';
+    stato='costruzione';
+  }else if(G.modalitaCostruzione){
+    const nome=ED[G.modalitaCostruzione]?.nome||'edificio';
+    testo=`🏗 Piazzamento: ${nome}. Verde valido, arancione serve sentiero, rosso bloccato.`;
+    stato='costruzione';
+  }else if((G.cibo||0)<20){
+    testo='🍖 Scorte di cibo basse: costruisci o assegna schiavi alle fattorie.';
+    stato='avviso';
+  }else if((G.legno||0)<15){
+    testo='🪵 Legno basso: potenzia segheria o raid/commercio.';
+    stato='avviso';
+  }else if((G.pirati||[]).some(p=>p.umore<25)){
+    testo='☠ Alcuni pirati sono scontenti: servono rum, svago o edifici di servizio.';
+    stato='avviso';
+  }
+  el.textContent=testo;
+  el.className=stato;
 }
