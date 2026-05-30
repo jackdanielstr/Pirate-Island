@@ -117,22 +117,26 @@ function disegnaIndicatoriEdifici(s){
 function apriPopupEdificio(edificio){
   const def=ED[edificio.tipo];
   if(!def) return;
+  if(edificio.tipo==='porto' && typeof apriPortoPirata==='function'){
+    apriPortoPirata(edificio);
+    return;
+  }
   const prod=EDIFICIO_PRODUZIONE[edificio.tipo];
   const schiaviQui=(G.schiavi||[]).filter(s=>s.edificioR===edificio.r&&s.edificioC===edificio.c);
   const accettaSchiavi=typeof LAVORO_SCHIAVI!=='undefined'&&!!LAVORO_SCHIAVI[edificio.tipo];
   const lav=accettaSchiavi?LAVORO_SCHIAVI[edificio.tipo]:null;
 
-  let h='<div style="text-align:center;margin-bottom:12px">';
-  h+='<div style="font-size:2.5rem">'+def.icona+'</div>';
-  h+='<div style="font-family:\'Pirata One\',cursive;color:var(--oro);font-size:1.2rem">'+def.nome+'</div>';
-  h+='<div style="font-size:.72rem;color:var(--sabbia);font-style:italic;margin-top:3px">'+def.effetto+'</div>';
+  let h='<div class="scheda-edificio-head">';
+  h+='<div class="scheda-edificio-icona">'+def.icona+'</div>';
+  h+='<div class="scheda-edificio-nome">'+def.nome+'</div>';
+  h+='<div class="scheda-edificio-effetto">'+def.effetto+'</div>';
   h+='</div>';
 
   if(typeof efficienzaStradaEdificio==='function' && edificio.tipo!=='governatore'){
     const eff=efficienzaStradaEdificio(edificio);
     const stato=eff>=1?'Collegato al porto/palazzo':eff>=0.7?'Sentiero vicino, ma rete incompleta':'Isolato: produzione ridotta';
     const colore=eff>=1?'#4fc04f':eff>=0.7?'#f0c040':'#c0392b';
-    h+='<div style="background:rgba(255,255,255,.05);border:1px solid '+colore+'66;';
+    h+='<div class="scheda-edificio-box" style="border-color:'+colore+'66;';
     h+='border-radius:6px;padding:7px 9px;margin-bottom:10px;font-size:.72rem;color:var(--sabbia)">';
     h+='<strong style="color:'+colore+'">🛤 Rete sentieri: '+Math.round(eff*100)+'%</strong><br>'+stato+'</div>';
   }
@@ -170,7 +174,7 @@ function apriPopupEdificio(edificio){
     h+='</div>';
   }
 
-  h+='<div style="display:flex;gap:6px;margin-top:10px">';
+  h+='<div class="scheda-edificio-azioni">';
   h+='<button class="mbtn pericolo" onclick="demolisciEdificio('+edificio.r+','+edificio.c+')">🔨 Demolisci</button>';
   h+='<button class="mbtn secondario" onclick="chiudiModale()">Chiudi</button>';
   h+='</div>';
@@ -564,9 +568,183 @@ function correggiNaveSuAcqua(nm,forza=0.12){
   nm.y+=(ty-nm.y)*forza;
 }
 
+
+
+// ═══════════════════════════════════════
+// FASE 4B LIGHT — PORTO DINAMICO VISIVO
+// ═══════════════════════════════════════
+// Effetti solo grafici collegati ai raid: campana, imbarco, salpata,
+// rientro e scarico merci. Non modifica economia, pathfinding o salvataggi.
+
+function assicuraEffettiPorto(){
+  if(!Array.isArray(G.portoFx)) G.portoFx=[];
+}
+
+function creaEffettoPortoRaid(tipo,nave,extra={}){
+  try{
+    assicuraEffettiPorto();
+    const porto=puntoPortoVivo();
+    const slot=nave ? slotAttracco(nave) : {r:porto.r+.5,c:porto.c+.5};
+    const durata={campana:160,imbarco:210,salpa:180,rientro:210,scarico:260,vela:120}[tipo]||150;
+    G.portoFx.push(Object.assign({
+      id:'fx_'+Date.now()+'_'+Math.floor(Math.random()*99999),
+      tipo,
+      naveId:nave?.id||null,
+      nome:nave?.nome||'',
+      r:slot.r,
+      c:slot.c,
+      portoR:porto.r,
+      portoC:porto.c,
+      vita:durata,
+      maxVita:durata,
+      seed:hashPorto((nave?.id||1)*71+G.giorno*13+durata)
+    },extra));
+    // Limite morbido per evitare accumuli se il player lancia molti raid.
+    if(G.portoFx.length>28) G.portoFx.splice(0,G.portoFx.length-28);
+  }catch(e){ /* effetto opzionale: mai bloccare il raid */ }
+}
+
+function posizioneFxPorto(fx,s){
+  const base=isoProj(fx.c,fx.r);
+  return {x:base.x,y:base.y+G.ISO_H*s*.55};
+}
+
+function disegnaFumoPorto(x,y,t,sc,seed){
+  for(let i=0;i<5;i++){
+    const p=(t+i*.17)%1;
+    const ox=(Math.sin(seed*9+i)*12 + Math.sin(frame*.025+i)*8)*sc*p;
+    const oy=-(14+36*p+i*4)*sc;
+    ctx.globalAlpha=(1-p)*.22;
+    ctx.fillStyle='#d8d0b8';
+    ctx.beginPath(); ctx.ellipse(x+ox,y+oy,sc*(5+i*1.5+p*9),sc*(3+i+p*6),0,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+function disegnaCiurmaImbarco(fx,x,y,s,progress){
+  const sc=G.ISO_H*s*.13;
+  const n=fx.quanti||Math.max(3,Math.min(8,(fx.crew||5)));
+  for(let i=0;i<n;i++){
+    const lane=(i-(n-1)/2)*sc*.95;
+    const advance=Math.min(1,Math.max(0,progress*1.25-i*.045));
+    const px=x-sc*5+advance*sc*7+lane*.28;
+    const py=y+lane*.34-Math.sin((frame+i*13)*.16)*sc*.08;
+    ctx.save();
+    ctx.globalAlpha=.22; ctx.fillStyle='#000';
+    ctx.beginPath(); ctx.ellipse(px,py+sc*.38,sc*.28,sc*.09,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=.95;
+    ctx.fillStyle=i%3===0?'#7f1b18':i%3===1?'#2d4f7a':'#5a3a1a';
+    ctx.fillRect(px-sc*.12,py-sc*.48,sc*.24,sc*.62);
+    ctx.fillStyle='#c89a60'; ctx.beginPath(); ctx.arc(px,py-sc*.66,sc*.16,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#111';
+    ctx.beginPath(); ctx.ellipse(px,py-sc*.82,sc*.33,sc*.10,0,0,Math.PI*2); ctx.fill();
+    // casse o barili portati a bordo
+    if(i%2===0 && advance>.25){
+      ctx.fillStyle='#9a6a2a'; ctx.fillRect(px+sc*.18,py-sc*.5,sc*.32,sc*.26);
+      ctx.strokeStyle='#5a3210'; ctx.lineWidth=Math.max(.5,s*.7); ctx.strokeRect(px+sc*.18,py-sc*.5,sc*.32,sc*.26);
+    }
+    ctx.restore();
+  }
+}
+
+function disegnaScaricoMerci(fx,x,y,s,progress){
+  const sc=G.ISO_H*s*.16;
+  const merci=['💰','🍺','🪵','🍖'];
+  for(let i=0;i<8;i++){
+    const p=Math.min(1,Math.max(0,progress*1.35-i*.06));
+    const ox=(i%4-1.5)*sc*.9;
+    const oy=Math.floor(i/4)*sc*.45;
+    const px=x+sc*3*(1-p)+ox;
+    const py=y+sc*.35+oy-sc*.55*p;
+    ctx.save();
+    ctx.globalAlpha=.25; ctx.fillStyle='#000';
+    ctx.beginPath(); ctx.ellipse(px,py+sc*.18,sc*.24,sc*.07,0,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=.98;
+    isoBox(px-x,py-y,sc*.32,sc*.22,sc*.2,'#9a6a2a','#b88436','#6b461a');
+    ctx.font=`${Math.max(8,9*s)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(merci[i%merci.length],px,py-sc*.05);
+    ctx.restore();
+  }
+}
+
+function disegnaOndeSalpata(x,y,s,intensita=1){
+  ctx.save();
+  ctx.globalAlpha=.18*intensita;
+  ctx.strokeStyle='#d7ffff';
+  ctx.lineWidth=Math.max(1,2.2*s);
+  for(let i=0;i<4;i++){
+    ctx.beginPath();
+    ctx.moveTo(x-18*s-i*10*s,y+10*s+i*3*s);
+    ctx.quadraticCurveTo(x-45*s-i*13*s,y+2*s+i*4*s,x-78*s-i*14*s,y+13*s+i*2*s);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function aggiornaDisegnaEffettiPorto(s){
+  assicuraEffettiPorto();
+  if(!G.portoFx.length) return;
+  const vivi=[];
+  for(const fx of G.portoFx){
+    fx.vita--;
+    if(fx.vita<=0) continue;
+    vivi.push(fx);
+    const t=1-(fx.vita/fx.maxVita);
+    const pos=posizioneFxPorto(fx,s);
+    const x=pos.x, y=pos.y;
+    const fade=Math.min(1,fx.vita/35)*Math.min(1,t*8);
+
+    ctx.save();
+    ctx.globalAlpha=fade;
+    if(fx.tipo==='campana'){
+      const sc=G.ISO_H*s*.35;
+      ctx.fillStyle='rgba(40,25,8,.55)';
+      ctx.beginPath(); ctx.ellipse(x,y+sc*.42,sc*.72,sc*.2,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#d4a43a';
+      ctx.font=`bold ${Math.max(12,18*s)}px serif`; ctx.textAlign='center';
+      ctx.fillText('🔔',x,y-sc*.35-Math.sin(frame*.25)*sc*.08);
+      ctx.strokeStyle='rgba(240,192,64,.45)'; ctx.lineWidth=Math.max(1,2*s);
+      ctx.beginPath(); ctx.arc(x,y-sc*.33,sc*(.55+t*.9),0,Math.PI*2); ctx.stroke();
+    } else if(fx.tipo==='imbarco'){
+      disegnaCiurmaImbarco(fx,x,y,s,t);
+      disegnaFumoPorto(x+18*s,y-10*s,(t+fx.seed)%1,s,fx.seed);
+    } else if(fx.tipo==='salpa'){
+      disegnaOndeSalpata(x,y,s,1-t*.45);
+      disegnaFumoPorto(x-12*s,y-6*s,(t+fx.seed)%1,s,fx.seed);
+      ctx.fillStyle='rgba(240,192,64,.85)'; ctx.font=`bold ${Math.max(8,10*s)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillText('Molla gli ormeggi!',x,y-34*s-18*s*t);
+    } else if(fx.tipo==='rientro'){
+      disegnaOndeSalpata(x,y,s,.9);
+      ctx.fillStyle='rgba(170,230,255,.9)'; ctx.font=`bold ${Math.max(8,10*s)}px Cinzel,serif`; ctx.textAlign='center';
+      ctx.fillText('Rientro al porto',x,y-32*s-14*s*t);
+    } else if(fx.tipo==='scarico'){
+      disegnaScaricoMerci(fx,x,y,s,t);
+      disegnaFumoPorto(x+10*s,y-8*s,(t+fx.seed)%1,s,fx.seed);
+    }
+    ctx.restore();
+  }
+  G.portoFx=vivi;
+}
+
+function disegnaStatoRaidPorto(nave,nm,s){
+  if(!nave || !nm) return;
+  if(nave._faseRaid==='raduno'){
+    ctx.save();
+    ctx.globalAlpha=.8;
+    ctx.fillStyle='rgba(0,0,0,.55)';
+    const w=88*s,h=18*s,x=nm.x-w/2,y=nm.y-54*s;
+    if(ctx.roundRect) ctx.roundRect(x,y,w,h,4*s); else ctx.rect(x,y,w,h);
+    ctx.fill();
+    ctx.fillStyle='#f0c040'; ctx.font=`bold ${Math.max(7,8*s)}px Cinzel,serif`; ctx.textAlign='center';
+    ctx.fillText('CIURMA AL MOLO',nm.x,y+12*s);
+    ctx.restore();
+  }
+}
+
 function disegnaNaviMare(s){
   if(!G.navi||!canvas) return;
   assicuraPortoVivo();
+  aggiornaDisegnaEffettiPorto(s);
 
   for(const nave of G.navi){
     inizializzaNaveMare(nave);
@@ -649,6 +827,7 @@ function disegnaNaviMare(s){
       ctx.fillText(label,nm.x,ly+13*s);
       ctx.restore();
     }
+    disegnaStatoRaidPorto(nave,nm,s);
   }
 }
 
@@ -703,29 +882,52 @@ function accessoScenarioEdificio(ed,verso=null){
 }
 
 function creaSentieroScenario(r,c){
-  if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) return;
-  if(typeof edificioInTile==='function' && edificioInTile(r,c)) return;
+  if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) return false;
+  if(typeof edificioInTile==='function' && edificioInTile(r,c)) return false;
   const t=G.mappa[r][c];
-  if(t===T.OCEANO||t===T.BASSO||t===T.FIUME) return;
+  if(t===T.OCEANO||t===T.BASSO||t===T.FIUME) return false;
   G.mappa[r][c]=T.SENTIERO;
+  if(!G.sentieri) G.sentieri=[];
+  if(!G.sentieri.some(p=>p.r===r&&p.c===c)) G.sentieri.push({r,c});
   G.alberi=G.alberi.filter(a=>!(Math.floor(a.r)===r&&Math.floor(a.c)===c));
   G.rocce=G.rocce.filter(x=>!(x.r===r&&x.c===c));
+  return true;
 }
 
 function collegaSentieroScenario(a,b){
+  if(!a||!b) return;
   let r=a.r,c=a.c;
-  const guard=80;
+  const guard=120;
   for(let i=0;i<guard;i++){
     creaSentieroScenario(r,c);
     if(r===b.r && c===b.c) break;
     const dr=b.r-r, dc=b.c-c;
-    // sentiero coloniale leggibile: prima diagonale, poi assi cardinali
-    if(Math.abs(dc)>0 && Math.abs(dr)>0 && Math.random()<0.58){
-      c += dc>0?1:-1;
-      r += dr>0?1:-1;
-    } else if(Math.abs(dc)>=Math.abs(dr)) c += dc>0?1:-1;
-    else r += dr>0?1:-1;
+    // Patch leggibilita: percorso deterministico, completo e senza casualita.
+    // Prima il tratto poteva risultare spezzato o poco chiaro fra edifici iniziali.
+    if(Math.abs(dc)>=Math.abs(dr) && dc!==0) c += dc>0?1:-1;
+    else if(dr!==0) r += dr>0?1:-1;
+    else if(dc!==0) c += dc>0?1:-1;
     if(r<1||c<1||r>=G.RIGHE-1||c>=G.COLS-1) break;
+  }
+  creaSentieroScenario(b.r,b.c);
+}
+
+function collegaScenarioTuttiGliEdifici(){
+  const scenario=(G.edifici||[]).filter(b=>b.scenario);
+  const hub=scenario.find(b=>b.tipo==='governatore') || scenario[0];
+  if(!hub) return;
+  // Anello/piazzetta attorno a ogni edificio iniziale, così il footprint resta leggibile
+  // e i pirati trovano sempre un accesso su sentiero.
+  for(const b of scenario){
+    const anello=(typeof anelloEdificio==='function') ? anelloEdificio(b) : [{r:b.r,c:b.c+1},{r:b.r+1,c:b.c}];
+    for(const p of anello){
+      const t=G.mappa[p.r]&&G.mappa[p.r][p.c];
+      if(t!==T.OCEANO && t!==T.BASSO && t!==T.FIUME) creaSentieroScenario(p.r,p.c);
+    }
+  }
+  for(const b of scenario){
+    if(b===hub) continue;
+    collegaSentieroScenario(accessoScenarioEdificio(hub,b), accessoScenarioEdificio(b,hub));
   }
 }
 
@@ -815,6 +1017,7 @@ function inizializzaScenarioTropico2(){
     for(const [dr,dc] of [[0,0],[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]]) creaSentieroScenario(porto.r+dr,porto.c+dc);
   }
   for(const b of G.edifici.filter(x=>x.scenario)) collegaEdificioAlSentiero(b);
+  collegaScenarioTuttiGliEdifici();
 
   // posiziona la ciurma iniziale intorno al palazzo, non nel centro astratto della mappa
   G._spawnScenario=(palazzoB && typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(palazzoB) : {r:palazzo.r,c:palazzo.c};

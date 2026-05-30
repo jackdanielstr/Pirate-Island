@@ -50,18 +50,32 @@ function terrenoCostruibileEdificio(t){
   return t===T.SABBIA||t===T.ERBA||t===T.COLLINA||t===T.SENTIERO;
 }
 
-function puoCostruire(r,c,tipo=G.modalitaCostruzione){
-  if(!tipo || !ED[tipo]) return false;
+function edificioRichiedeSentiero(tipo){
+  // Regola stile Tropico 2: gli edifici normali possono nascere solo sulla rete
+  // viaria. Eccezioni: strutture portuali/costiere e il palazzo iniziale.
+  return !['porto','cantiere','shipyard','governatore'].includes(tipo);
+}
+
+function edificioHaSentieroAdiacente(tipo,r,c){
+  const ed={tipo,r,c};
+  const perimetro=(typeof anelloEdificio==='function')
+    ? anelloEdificio(ed)
+    : [{r:r-1,c},{r:r+1,c},{r,c:c-1},{r,c:c+1}];
+  return perimetro.some(cell=>G.mappa[cell.r] && G.mappa[cell.r][cell.c]===T.SENTIERO);
+}
+
+function statoCostruzioneEdificio(r,c,tipo=G.modalitaCostruzione){
+  if(!tipo || !ED[tipo]) return {ok:false,motivo:'no-tipo'};
   const origine=(typeof origineEdificioDaCentro==='function') ? origineEdificioDaCentro(tipo,r,c) : {r,c};
   const celle=(typeof celleEdificio==='function') ? celleEdificio(tipo,origine.r,origine.c) : [{r,c}];
   for(const cell of celle){
-    if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) return false;
+    if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) return {ok:false,motivo:'fuori-mappa',origine,celle};
     const t=G.mappa[cell.r]&&G.mappa[cell.r][cell.c];
-    if(!terrenoCostruibileEdificio(t)) return false;
+    if(!terrenoCostruibileEdificio(t)) return {ok:false,motivo:'terreno',origine,celle};
     const occupato=(typeof edificioInTile==='function')
       ? edificioInTile(cell.r,cell.c)
       : G.edifici.find(b=>b.r===cell.r&&b.c===cell.c);
-    if(occupato) return false;
+    if(occupato) return {ok:false,motivo:'occupato',origine,celle};
   }
   // cantiere/porto: almeno una cella dell'impronta deve toccare spiaggia/acque basse.
   if(tipo==='cantiere'||tipo==='porto'||tipo==='shipyard'){
@@ -71,9 +85,16 @@ function puoCostruire(r,c,tipo=G.modalitaCostruzione){
       if(nr<0||nc<0||nr>=G.RIGHE||nc>=G.COLS) return false;
       return G.mappa[nr][nc]===T.SABBIA||G.mappa[nr][nc]===T.BASSO;
     }));
-    if(!hasSpiaggia) return false;
+    if(!hasSpiaggia) return {ok:false,motivo:'costa',origine,celle};
   }
-  return true;
+  if(edificioRichiedeSentiero(tipo) && !edificioHaSentieroAdiacente(tipo,origine.r,origine.c)){
+    return {ok:false,motivo:'manca-sentiero',origine,celle};
+  }
+  return {ok:true,motivo:'ok',origine,celle};
+}
+
+function puoCostruire(r,c,tipo=G.modalitaCostruzione){
+  return statoCostruzioneEdificio(r,c,tipo).ok;
 }
 function piazzaEdificio(r,c){
   const tipo=G.modalitaCostruzione;
@@ -82,7 +103,18 @@ function piazzaEdificio(r,c){
     return;
   }
   const def=ED[tipo];
-  if(!puoCostruire(r,c,tipo)){aggMsg('Non puoi costruire qui!','male');return;}
+  const stato=statoCostruzioneEdificio(r,c,tipo);
+  if(!stato.ok){
+    const messaggi={
+      'manca-sentiero':'Serve un sentiero adiacente al perimetro dell’edificio.',
+      'costa':'Questo edificio deve stare vicino alla costa.',
+      'occupato':'Uno o più tile sono già occupati.',
+      'terreno':'Terreno non adatto alla costruzione.',
+      'fuori-mappa':'Fuori dalla mappa.'
+    };
+    aggMsg(messaggi[stato.motivo]||'Non puoi costruire qui!','male');
+    return;
+  }
   if(G.oro<def.costo.oro||G.legno<def.costo.legno){
     aggMsg(`Servono ${def.costo.oro} oro e ${def.costo.legno} legno.`,'male');return;
   }
