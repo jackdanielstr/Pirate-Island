@@ -6,16 +6,303 @@
 // ═══════════════════════════════════════
 // ── disegna edificio — isometrico stile Tropico 2 ──
 // cx,cy = centro dell'impronta iso (da isoProj), s = ISO_SCALE
+function isoFootprintEdificio(cx,cy,fp,s,tipo){
+  const iw=G.ISO_W*s, ih=G.ISO_H*s;
+  const w=Math.max(1,fp?.w||1), h=Math.max(1,fp?.h||1);
+  const nautica=tipo==='porto'||tipo==='cantiere'||tipo==='shipyard';
+  const pietra=['governatore','fortezza','prigione','cappella','infermeria','guardia','caserma','osservatorio'].includes(tipo);
+  ctx.save();
+  ctx.globalAlpha=nautica ? .55 : (pietra ? .26 : .18);
+  ctx.fillStyle=nautica?'rgba(86,58,28,.75)':pietra?'rgba(130,112,82,.58)':'rgba(92,76,42,.52)';
+  ctx.beginPath();
+  ctx.ellipse(cx,cy+ih*.1,iw*(.26+.18*w),ih*(.18+.1*h),0,0,Math.PI*2);
+  ctx.fill();
+  ctx.globalAlpha=nautica ? .38 : .16;
+  for(let i=0;i<6;i++){
+    const a=((i*97)%360)*Math.PI/180;
+    const rx=iw*(.11+((i*13)%7)*.018);
+    const ry=ih*(.06+((i*17)%5)*.012);
+    ctx.fillStyle=nautica?'rgba(60,38,18,.45)':'rgba(48,70,28,.42)';
+    ctx.beginPath();
+    ctx.ellipse(cx+Math.cos(a)*iw*.22,cy+ih*.1+Math.sin(a)*ih*.12,rx,ry,a*.3,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function disegnaTendaPirata(bx,by,S,colore='#9a3018',accento='#f0c040'){
+  const lw=Math.max(.8,S/52);
+  ctx.fillStyle='rgba(80,45,18,.65)';
+  ctx.beginPath();ctx.ellipse(bx,by-S*.02,S*.34,S*.13,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=colore;
+  ctx.beginPath();
+  ctx.moveTo(bx-S*.34,by-S*.02);
+  ctx.lineTo(bx,by-S*.42);
+  ctx.lineTo(bx+S*.34,by-S*.02);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.25)';
+  ctx.beginPath();ctx.moveTo(bx-S*.34,by-S*.02);ctx.lineTo(bx,by-S*.42);ctx.lineTo(bx,by-S*.02);ctx.closePath();ctx.fill();
+  ctx.strokeStyle=accento;ctx.lineWidth=1.2*lw;
+  ctx.beginPath();ctx.moveTo(bx-S*.25,by-S*.13);ctx.lineTo(bx+S*.25,by-S*.13);ctx.stroke();
+  ctx.fillStyle='#241008';
+  ctx.beginPath();ctx.moveTo(bx-S*.07,by-S*.02);ctx.lineTo(bx,by-S*.2);ctx.lineTo(bx+S*.07,by-S*.02);ctx.closePath();ctx.fill();
+}
+
+function disegnaBaraccone(bx,by,S,parete='#9a7040',tetto='#7a2818'){
+  isoBox(bx,by,S*.42,S*.26,S*.24,'#7a5a30',parete,'#6a4820');
+  isoRoof(bx,by-S*.24,S*.46,S*.28,0,S*.18,tetto,'#552010','#9a3a1a');
+  isoWindow(bx-S*.12,by-S*.2,true,S*.08);
+  isoWindow(bx+S*.12,by-S*.18,false,S*.07);
+  ctx.fillStyle='#2a1608';
+  ctx.fillRect(bx-S*.055,by-S*.12,S*.11,S*.12);
+}
+
+function dettagliBaseEdificio(tipo,bx,by,S,s){
+  const nautica=tipo==='porto'||tipo==='cantiere'||tipo==='shipyard';
+  ctx.save();
+  if(!nautica){
+    for(let i=0;i<5;i++){
+      const x=bx+S*(-.42+i*.2);
+      const y=by+S*(.02+(i%2)*.045);
+      const hue=95+(i*17)%28;
+      ctx.fillStyle=`hsla(${hue},45%,${24+(i%3)*5}%,.72)`;
+      ctx.beginPath();
+      ctx.ellipse(x,y,S*(.055+(i%2)*.018),S*(.032+(i%3)*.008),-.25+i*.12,0,Math.PI*2);
+      ctx.fill();
+    }
+  }
+  if(['casapirata','taverna','locanda','bettola_contrabbandieri','bordello','dormitorio','mensa','mensa_economica'].includes(tipo)){
+    ctx.strokeStyle='rgba(95,58,24,.72)';
+    ctx.lineWidth=Math.max(.8,1.1*s);
+    ctx.beginPath();
+    ctx.moveTo(bx-S*.42,by+S*.06);
+    ctx.lineTo(bx-S*.22,by+S*.12);
+    ctx.lineTo(bx+S*.05,by+S*.07);
+    ctx.stroke();
+    for(let i=0;i<4;i++){
+      const px=bx-S*.42+i*S*.16;
+      ctx.beginPath();ctx.moveTo(px,by+S*.035);ctx.lineTo(px,by+S*.135);ctx.stroke();
+    }
+    if(['taverna','locanda','bettola_contrabbandieri','bordello'].includes(tipo)){
+      lanternaRossa(bx-S*.34,by-S*.02,S*.72);
+      barileMolo(bx+S*.34,by+S*.09,S,.042);
+    }
+  }
+  if(nautica||['segheria','sawmill','campo_costruzione','fabbro','carpentiere','forno','birrificio','razioni_mare','covo_contrabbandieri','distilleria'].includes(tipo)){
+    for(let i=0;i<3;i++){
+      isoBox(bx+S*(-.32+i*.18),by+S*(.08+i*.015),S*.11,S*.07,S*.08,'#7a4f22','#9b6a2f','#593516');
+    }
+  }
+  ctx.restore();
+}
+
+function ponteLegnoIso(bx,by,S,w,d,assi=6){
+  isoBox(bx,by,w,d,S*.045,'#6b4a28','#8d6234','#51351f');
+  ctx.save();
+  ctx.strokeStyle='rgba(32,20,10,.42)';
+  ctx.lineWidth=Math.max(.7,S*.012);
+  for(let i=1;i<assi;i++){
+    const t=i/assi-.5;
+    ctx.beginPath();
+    ctx.moveTo(bx+t*w,by-S*.055-d*.22);
+    ctx.lineTo(bx+t*w+d*.22,by-S*.012+d*.16);
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(210,160,88,.22)';
+  for(let i=0;i<3;i++){
+    const yy=by-d*.18+i*d*.18;
+    ctx.beginPath();
+    ctx.moveTo(bx-w*.46,yy);
+    ctx.lineTo(bx+w*.46,yy+d*.14);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function paloMolo(x,y,S,h=.42){
+  ctx.save();
+  ctx.strokeStyle='#3d2414';
+  ctx.lineWidth=Math.max(2,S*.035);
+  ctx.beginPath();
+  ctx.moveTo(x,y-S*h);
+  ctx.lineTo(x+S*.02,y+S*.14);
+  ctx.stroke();
+  ctx.strokeStyle='rgba(210,150,76,.45)';
+  ctx.lineWidth=Math.max(.7,S*.01);
+  ctx.beginPath();
+  ctx.moveTo(x-S*.012,y-S*h*.94);
+  ctx.lineTo(x+S*.008,y+S*.1);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function barileMolo(x,y,S,scala=.06){
+  const w=S*scala, h=S*scala*1.35;
+  ctx.save();
+  ctx.fillStyle='#8a5524';
+  ctx.fillRect(x-w*.5,y-h,w,h);
+  ctx.fillStyle='#b77a32';
+  ctx.beginPath();ctx.ellipse(x,y-h,w*.5,w*.24,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#5d3518';
+  ctx.beginPath();ctx.ellipse(x,y,w*.5,w*.22,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(35,20,8,.65)';
+  ctx.lineWidth=Math.max(.7,S*.008);
+  ctx.beginPath();ctx.moveTo(x-w*.48,y-h*.68);ctx.lineTo(x+w*.48,y-h*.68);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x-w*.48,y-h*.34);ctx.lineTo(x+w*.48,y-h*.34);ctx.stroke();
+  ctx.restore();
+}
+
+function disegnaAssiParete(bx,by,S,w=.36,h=.22){
+  ctx.save();
+  ctx.strokeStyle='rgba(55,28,10,.32)';
+  ctx.lineWidth=Math.max(.6,S*.009);
+  for(let i=-2;i<=2;i++){
+    const x=bx+i*w*S*.19;
+    ctx.beginPath();
+    ctx.moveTo(x,by-h*S*.92);
+    ctx.lineTo(x+S*.015,by-S*.02);
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(230,170,86,.16)';
+  ctx.beginPath();
+  ctx.moveTo(bx-w*S*.45,by-h*S*.54);
+  ctx.lineTo(bx+w*S*.43,by-h*S*.48);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function lanternaRossa(x,y,S){
+  ctx.save();
+  ctx.strokeStyle='rgba(50,22,8,.65)';
+  ctx.lineWidth=Math.max(.6,S*.008);
+  ctx.beginPath();ctx.moveTo(x,y-S*.08);ctx.lineTo(x,y-S*.035);ctx.stroke();
+  ctx.fillStyle='rgba(190,30,20,.86)';
+  ctx.beginPath();ctx.ellipse(x,y,S*.035,S*.045,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(245,155,50,.72)';
+  ctx.lineWidth=Math.max(.5,S*.006);
+  ctx.beginPath();ctx.moveTo(x-S*.026,y);ctx.lineTo(x+S*.026,y);ctx.stroke();
+  ctx.restore();
+}
+
+function teloTropico(x,y,S,colore='#b52b1d'){
+  ctx.save();
+  ctx.fillStyle=colore;
+  ctx.beginPath();
+  ctx.moveTo(x-S*.14,y-S*.1);
+  ctx.lineTo(x+S*.14,y-S*.08);
+  ctx.lineTo(x+S*.1,y+S*.02);
+  ctx.lineTo(x-S*.12,y+S*.02);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle='rgba(45,18,8,.45)';
+  ctx.lineWidth=Math.max(.7,S*.008);
+  ctx.stroke();
+  ctx.restore();
+}
+
+
+function campoColtivatoTropico(bx,by,S,tipo){
+  const palette={
+    fattoria:['#6f8e2d','#547124','#8a6b30'],
+    banane:['#4f8e32','#2f6827','#e0c84a'],
+    papaia:['#5e9a38','#3f7c2b','#e08436'],
+    canna_zucchero:['#82a84c','#5f8732','#d8d090'],
+    tabacco:['#7f7a38','#5a5f27','#b18a44'],
+  }[tipo]||['#5a8a28','#4a7a1e','#b18a44'];
+  ctx.save();
+  // base irregolare di terra, meno “griglia” e più campo tropicale lavorato
+  ctx.fillStyle='rgba(98,72,35,.42)';
+  ctx.beginPath();
+  ctx.ellipse(bx+S*.05,by-S*.05,S*.56,S*.23,-.12,0,Math.PI*2);
+  ctx.fill();
+  for(let r=0;r<5;r++){
+    const y=by-S*(.19-r*.07);
+    const x0=bx-S*(.44-r*.025);
+    const x1=bx+S*(.42-r*.01);
+    ctx.strokeStyle=r%2?palette[0]:palette[1];
+    ctx.lineWidth=Math.max(2,S*.025);
+    ctx.beginPath();
+    ctx.moveTo(x0,y);
+    ctx.bezierCurveTo(bx-S*.18,y+S*(.035+Math.sin(r)*.012),bx+S*.14,y-S*(.026+Math.cos(r)*.01),x1,y+S*(.025-r*.002));
+    ctx.stroke();
+    ctx.strokeStyle='rgba(45,32,16,.25)';
+    ctx.lineWidth=Math.max(.7,S*.008);
+    ctx.beginPath();ctx.moveTo(x0,y+S*.018);ctx.bezierCurveTo(bx-S*.15,y+S*.045,bx+S*.14,y-S*.005,x1,y+S*.045);ctx.stroke();
+  }
+  // colture specifiche
+  if(tipo!=='fattoria'){
+    for(let i=0;i<9;i++){
+      const x=bx+S*(-.34+i*.085);
+      const y=by-S*(.14+((i*7)%5)*.025);
+      ctx.strokeStyle=tipo==='canna_zucchero'?palette[2]:'#2d5a25';
+      ctx.lineWidth=Math.max(.8,S*.012);
+      ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+S*.02,y-S*(.13+((i*3)%4)*.018));ctx.stroke();
+      if(tipo==='banane'||tipo==='papaia'){
+        ctx.fillStyle=palette[2];
+        ctx.beginPath();ctx.ellipse(x+S*.028,y-S*.1,S*.024,S*.018,.3,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+  // staccionata rotta e dettagli rurali
+  ctx.strokeStyle='rgba(95,58,24,.72)';
+  ctx.lineWidth=Math.max(.8,S*.011);
+  for(let i=0;i<5;i++){
+    const x=bx-S*.49+i*S*.14;
+    ctx.beginPath();ctx.moveTo(x,by+S*.045);ctx.lineTo(x+S*.015,by-S*.04);ctx.stroke();
+  }
+  ctx.beginPath();ctx.moveTo(bx-S*.5,by+S*.01);ctx.lineTo(bx+S*.08,by-S*.035);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(bx-S*.49,by+S*.045);ctx.lineTo(bx+S*.04,by+S*.005);ctx.stroke();
+  // sacchi e cesta
+  ctx.fillStyle='#b79a68';ctx.beginPath();ctx.ellipse(bx+S*.34,by+S*.035,S*.045,S*.032,.2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#8a6230';ctx.beginPath();ctx.ellipse(bx+S*.42,by+S*.02,S*.042,S*.025,0,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function capannaFattoriaTropico(bx,by,S,tipo){
+  const roof=tipo==='tabacco'?'#6a4a22':tipo==='canna_zucchero'?'#8d6228':'#9d521d';
+  isoBox(bx-S*.18,by-S*.26,S*.34,S*.21,S*.2,'#7b5728','#a77c3c','#5a3718');
+  disegnaAssiParete(bx-S*.18,by-S*.26,S,.31,.19);
+  isoRoof(bx-S*.18,by-S*.46,S*.39,S*.24,0,S*.14,roof,'#5a2f12','#bd6d2c');
+  ctx.fillStyle='#2b1608';ctx.fillRect(bx-S*.225,by-S*.36,S*.085,S*.1);
+  isoWindow(bx-S*.06,by-S*.39,true,S*.05);
+}
+
+function spaventapasseriTropico(bx,by,S){
+  ctx.save();
+  ctx.strokeStyle='#7a5020';ctx.lineWidth=Math.max(1,S*.016);
+  ctx.beginPath();ctx.moveTo(bx+S*.2,by-S*.1);ctx.lineTo(bx+S*.2,by-S*.36);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(bx+S*.08,by-S*.27);ctx.lineTo(bx+S*.32,by-S*.31);ctx.stroke();
+  ctx.fillStyle='#c8a060';ctx.beginPath();ctx.arc(bx+S*.2,by-S*.405,S*.046,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#8b2e1b';ctx.beginPath();ctx.moveTo(bx+S*.12,by-S*.25);ctx.lineTo(bx+S*.28,by-S*.25);ctx.lineTo(bx+S*.24,by-S*.11);ctx.lineTo(bx+S*.16,by-S*.11);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#caa64a';ctx.beginPath();ctx.ellipse(bx+S*.2,by-S*.45,S*.075,S*.026,0,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function edificioGenericoTropico(bx,by,S,tipo){
+  // fallback più curato per edifici non ancora personalizzati
+  ponteLegnoIso(bx,by+S*.05,S,S*.48,S*.13,6);
+  isoBox(bx,by-S*.02,S*.4,S*.25,S*.25,'#6b4a24','#9b7240','#53351a');
+  disegnaAssiParete(bx,by-S*.02,S,.37,.22);
+  isoRoof(bx,by-S*.28,S*.44,S*.28,0,S*.16,'#5a381b','#382313','#75502a');
+  isoWindow(bx-S*.12,by-S*.2,true,S*.055);
+  ctx.fillStyle='#241008';ctx.fillRect(bx+S*.035,by-S*.13,S*.095,S*.13);
+  ctx.fillStyle='rgba(240,192,64,.72)';ctx.font=`${Math.max(9,S*.12)}px serif`;
+  ctx.textAlign='center';ctx.fillText(ED[tipo]?.icona||'✦',bx-S*.02,by-S*.42);
+  isoBox(bx-S*.28,by+S*.035,S*.12,S*.075,S*.065,'#735027','#a67336','#4f3218');
+  barileMolo(bx+S*.28,by+S*.04,S,.042);
+}
+
 function disegnaEdificio(tipo,cx,cy,s,footprint){
   s = s || G.ISO_SCALE;
   const fp=footprint || (typeof ingombroEdificio==='function' ? ingombroEdificio(tipo) : {w:1,h:1});
-  const scalaIngombro=Math.min(1.36,1+(Math.max(fp.w||1,fp.h||1)-1)*0.18);
-  const S = G.ISO_H * s * 1.8 * scalaIngombro;  // unita di scala edificio
+  const scalaIngombro=Math.min(1.24,1+(Math.max(fp.w||1,fp.h||1)-1)*0.13);
+  const S = G.ISO_H * s * 1.55 * scalaIngombro;  // unita di scala edificio
   // Punto di ancoraggio: centro-basso del tile iso
   const bx = cx;
-  const by = cy + G.ISO_H * s * .18;
+  const by = cy + G.ISO_H * s * .04;
   ctx.save();
-  isoShadow(bx,by,S*.55,S*.28);
+  isoFootprintEdificio(cx,cy+G.ISO_H*s*.06,fp,s,tipo);
+  isoShadow(bx,by+S*.05,S*.58,S*.26);
 
   switch(tipo){
 
@@ -65,10 +352,104 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
       break;
     }
 
+    case 'dormitorio':{
+      {
+        ponteLegnoIso(bx-S*.02,by+S*.045,S,S*.62,S*.16,8);
+        isoBox(bx-S*.04,by-S*.03,S*.55,S*.26,S*.21,'#6b4a24','#927044','#5a3920');
+        disegnaAssiParete(bx-S*.04,by-S*.03,S,.52,.21);
+        isoRoof(bx-S*.04,by-S*.24,S*.6,S*.3,0,S*.13,'#4f3720','#2f2115','#6a4a28');
+        for(let i=0;i<3;i++){
+          isoWindow(bx-S*(.18-i*.16),by-S*.18,i!==1,S*.055);
+        }
+        ctx.fillStyle='#1d120a';
+        ctx.fillRect(bx+S*.16,by-S*.12,S*.1,S*.12);
+        ctx.strokeStyle='rgba(232,210,150,.72)';
+        ctx.lineWidth=Math.max(.8,S*.01);
+        ctx.beginPath();ctx.moveTo(bx-S*.35,by-S*.22);ctx.lineTo(bx+S*.32,by-S*.28);ctx.stroke();
+        for(let i=0;i<4;i++) teloTropico(bx-S*.26+i*S*.16,by-S*.22-i%2*S*.01,S*.42,i%2?'#d8b35a':'#88402a');
+        barileMolo(bx-S*.35,by+S*.04,S,.05);
+        break;
+      }
+      disegnaBaraccone(bx-S*.08,by,S,'#8a6a3a','#5a341a');
+      isoBox(bx+S*.24,by-S*.03,S*.18,S*.12,S*.16,'#6b4a22','#8a6428','#553817');
+      ctx.strokeStyle='#d8c090';ctx.lineWidth=1*s;
+      for(let i=0;i<3;i++){
+        ctx.beginPath();ctx.moveTo(bx-S*.22+i*S*.1,by-S*.22);ctx.lineTo(bx-S*.18+i*S*.1,by-S*.16);ctx.stroke();
+      }
+      break;
+    }
+
+    case 'mensa':
+    case 'mensa_economica':{
+      disegnaTendaPirata(bx,by,S,'#b87424','#e8c56a');
+      isoBox(bx-S*.25,by+S*.02,S*.18,S*.11,S*.08,'#7a4a1a','#a06b28','#5a3210');
+      isoBox(bx+S*.25,by+S*.02,S*.18,S*.11,S*.08,'#7a4a1a','#a06b28','#5a3210');
+      ctx.fillStyle='rgba(255,160,60,.75)';
+      ctx.beginPath();ctx.arc(bx,by-S*.06,S*.045,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(120,55,12,.8)';ctx.lineWidth=1.2*s;
+      ctx.beginPath();ctx.moveTo(bx-S*.08,by-S*.01);ctx.lineTo(bx+S*.08,by-S*.01);ctx.stroke();
+      break;
+    }
+
+    case 'campo_costruzione':{
+      disegnaTendaPirata(bx-S*.14,by,S*.9,'#8a5a28','#d8b45c');
+      ctx.strokeStyle='#7a4a1a';ctx.lineWidth=2*s;
+      ctx.beginPath();ctx.moveTo(bx+S*.08,by-S*.03);ctx.lineTo(bx+S*.28,by-S*.42);ctx.lineTo(bx+S*.43,by-S*.04);ctx.stroke();
+      ctx.strokeStyle='#c09048';ctx.lineWidth=1.2*s;
+      for(let i=0;i<3;i++){
+        ctx.beginPath();ctx.moveTo(bx+S*(.12+i*.09),by-S*.12);ctx.lineTo(bx+S*(.2+i*.07),by-S*.25);ctx.stroke();
+      }
+      isoBox(bx+S*.25,by+S*.04,S*.22,S*.13,S*.08,'#8a5a22','#a87532','#5f3b16');
+      break;
+    }
+
+    case 'grotta_pirati':{
+      ctx.fillStyle='#5f5540';
+      ctx.beginPath();ctx.ellipse(bx,by-S*.12,S*.42,S*.26,0,Math.PI,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#40382c';
+      ctx.beginPath();ctx.ellipse(bx,by-S*.1,S*.28,S*.18,0,Math.PI,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#130d09';
+      ctx.beginPath();ctx.ellipse(bx,by-S*.04,S*.16,S*.17,0,Math.PI,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#8a7048';ctx.lineWidth=2*s;
+      ctx.beginPath();ctx.moveTo(bx-S*.22,by-S*.05);ctx.lineTo(bx-S*.34,by+S*.05);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx+S*.22,by-S*.05);ctx.lineTo(bx+S*.34,by+S*.05);ctx.stroke();
+      break;
+    }
+
+    case 'locanda':
+    case 'bettola_contrabbandieri':
     case 'taverna':{
+      {
+        const contr=tipo==='bettola_contrabbandieri';
+        const w=S*.58,d=S*.33,h=S*.26;
+        ponteLegnoIso(bx,by+S*.045,S,S*.62,S*.14,7);
+        const wall=contr?'#76543a':tipo==='locanda'?'#c28958':'#b8743a';
+        isoBox(bx,by-S*.02,w,d,h,'#7a4a20',wall,contr?'#553727':'#7b421f');
+        disegnaAssiParete(bx,by-S*.02,S,.5,.24);
+        isoRoof(bx,by-h-S*.02,w*1.08,d*1.08,0,S*.2,contr?'#2d261d':'#824020',contr?'#1f1a16':'#5b2816',contr?'#58412b':'#a34e24');
+        isoBox(bx-S*.28,by-S*.04,S*.18,S*.14,S*.17,'#6b4820',contr?'#60472f':'#9b693a','#51311b');
+        isoRoof(bx-S*.28,by-S*.21,S*.2,S*.15,0,S*.09,contr?'#2c241b':'#6b3218','#241911',contr?'#4d3926':'#8a3e1d');
+        isoWindow(bx-S*.14,by-h-S*.02,true,S*.075);
+        isoWindow(bx+S*.16,by-h-S*.015,true,S*.07);
+        ctx.fillStyle='#241008';
+        ctx.fillRect(bx-S*.055,by-h+S*.015,S*.12,S*.15);
+        ctx.beginPath();ctx.arc(bx+S*.005,by-h+S*.015,S*.06,Math.PI,0,false);ctx.fill();
+        teloTropico(bx+S*.18,by-S*.16,S,contr?'#16120f':'#a92318');
+        lanternaRossa(bx-S*.23,by-S*.17,S);
+        lanternaRossa(bx+S*.29,by-S*.12,S*.86);
+        ctx.fillStyle='#c88a32';
+        ctx.fillRect(bx-S*.12,by-h-S*.16,S*.24,S*.07);
+        ctx.strokeStyle='#5a2d0a';ctx.lineWidth=Math.max(.8,S*.01);ctx.strokeRect(bx-S*.12,by-h-S*.16,S*.24,S*.07);
+        ctx.fillStyle='#f2d37a';ctx.font=`bold ${Math.max(8,S*.08)}px serif`;
+        ctx.textAlign='center';ctx.fillText(contr?'X':'RUM',bx,by-h-S*.105);
+        barileMolo(bx+S*.33,by+S*.03,S,.052);
+        barileMolo(bx+S*.41,by+S*.045,S,.047);
+        break;
+      }
       const w=S*.56,d=S*.32,h=S*.28;
       // corpo
-      isoBox(bx,by,w,d,h,'#7a4a1a','#b87030','#7a4218');
+      const wall=tipo==='locanda'?'#bf8650':tipo==='bettola_contrabbandieri'?'#8b5a2b':'#b87030';
+      isoBox(bx,by,w,d,h,'#7a4a1a',wall,'#7a4218');
       // tetto spiovente rosso mattone
       isoRoof(bx,by-h,w,d,0,S*.22,'#8a3010','#6a2008','#9a3818');
       // finestre sulla facciata
@@ -88,30 +469,105 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'porto':
-    case 'cantiere':{
-      // molo in legno
-      ctx.fillStyle='#6a4a1a';
+    case 'cantiere':
+    case 'shipyard':{
+      const grande=tipo==='shipyard'||tipo==='cantiere';
+      ctx.save();
+      ctx.fillStyle='rgba(20,95,108,.38)';
       ctx.beginPath();
-      ctx.moveTo(bx-S*.4,by);ctx.lineTo(bx+S*.4,by);
-      ctx.lineTo(bx+S*.4,by-S*.08);ctx.lineTo(bx-S*.4,by-S*.08);
+      ctx.ellipse(bx+S*.06,by-S*.12,S*.75,S*.36,-.12,0,Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle='rgba(150,220,210,.18)';
+      ctx.lineWidth=Math.max(1,S*.015);
+      for(let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.moveTo(bx-S*(.58-i*.08),by-S*(.08+i*.05));
+        ctx.bezierCurveTo(bx-S*.2,by-S*(.16+i*.02),bx+S*.18,by-S*(.02+i*.08),bx+S*(.58-i*.06),by-S*(.12+i*.03));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ponteLegnoIso(bx-S*.38,by-S*.22,S,S*.44,S*.18,5);
+      ponteLegnoIso(bx+S*.03,by+S*.02,S,S*.98,S*.38,10);
+      ponteLegnoIso(bx+S*.44,by-S*.17,S,S*.34,S*.18,4);
+
+      for(const p of [
+        [-.56,.08,.52],[-.36,.13,.44],[-.12,.15,.39],[.13,.13,.42],[.38,.08,.47],[.58,-.04,.55],
+        [-.46,-.25,.38],[-.18,-.29,.34],[.26,-.31,.36],[.52,-.22,.42]
+      ]) paloMolo(bx+S*p[0],by+S*p[1],S,p[2]);
+
+      isoBox(bx+S*.06,by-S*.17,S*.58,S*.36,S*.42,'#8c5c2d','#bc6d2d','#77421c');
+      ctx.save();
+      ctx.strokeStyle='rgba(72,35,12,.38)';
+      ctx.lineWidth=Math.max(.7,S*.012);
+      for(let i=-3;i<=3;i++){
+        const x=bx+S*(.06+i*.075);
+        ctx.beginPath();ctx.moveTo(x,by-S*.57);ctx.lineTo(x+S*.015,by-S*.18);ctx.stroke();
+      }
+      ctx.restore();
+
+      isoBox(bx+S*.06,by-S*.59,S*.64,S*.4,S*.08,'#704421','#966431','#4f2f19');
+      ctx.strokeStyle='#2f1c0e';
+      ctx.lineWidth=Math.max(1,S*.018);
+      for(let i=-3;i<=3;i++){
+        const x=bx+S*(.06+i*.095);
+        ctx.beginPath();ctx.moveTo(x,by-S*.72);ctx.lineTo(x,by-S*.6);ctx.stroke();
+      }
+      ctx.beginPath();ctx.moveTo(bx-S*.24,by-S*.7);ctx.lineTo(bx+S*.38,by-S*.69);ctx.stroke();
+
+      ctx.fillStyle='#261208';
+      ctx.fillRect(bx-S*.02,by-S*.36,S*.12,S*.2);
+      isoWindow(bx-S*.17,by-S*.37,true,S*.07);
+      isoWindow(bx+S*.25,by-S*.36,false,S*.07);
+      ctx.strokeStyle='rgba(255,205,110,.28)';
+      ctx.lineWidth=Math.max(.8,S*.01);
+      for(let i=0;i<4;i++){
+        const x=bx+S*(.2+i*.035);
+        ctx.beginPath();ctx.moveTo(x,by-S*.48);ctx.lineTo(x,by-S*.23);ctx.stroke();
+      }
+
+      barileMolo(bx-S*.21,by-S*.08,S,.065);
+      barileMolo(bx-S*.12,by-S*.05,S,.058);
+      barileMolo(bx+S*.28,by-S*.02,S,.06);
+      isoBox(bx+S*.37,by+S*.03,S*.14,S*.09,S*.08,'#735027','#a67336','#4f3218');
+
+      ctx.save();
+      ctx.strokeStyle='#6f431c';
+      ctx.lineWidth=Math.max(2,S*.026);
+      ctx.beginPath();ctx.moveTo(bx+S*.07,by-S*.62);ctx.lineTo(bx+S*.07,by-S*1.12);ctx.stroke();
+      ctx.lineWidth=Math.max(1,S*.012);
+      ctx.beginPath();ctx.moveTo(bx+S*.07,by-S*1.02);ctx.lineTo(bx-S*.22,by-S*.66);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx+S*.07,by-S*1.02);ctx.lineTo(bx+S*.35,by-S*.66);ctx.stroke();
+      ctx.fillStyle='#0b0b0b';
+      ctx.beginPath();
+      ctx.moveTo(bx+S*.07,by-S*1.1);
+      ctx.lineTo(bx+S*.22,by-S*1.05+Math.sin(frame*.08)*S*.015);
+      ctx.lineTo(bx+S*.07,by-S*.99);
       ctx.closePath();ctx.fill();
-      // acqua nel bacino
-      ctx.fillStyle=`hsl(195,65%,${30+Math.sin(frame*.04)*3}%)`;
-      ctx.fillRect(bx-S*.3,by-S*.32,S*.6,S*.26);
-      // scafo nave nel bacino (vista iso)
-      ctx.fillStyle='#5c3a1a';
-      ctx.beginPath();ctx.ellipse(bx,by-S*.22,S*.22,S*.07,0,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#3a2008';ctx.lineWidth=1.5;ctx.stroke();
-      // albero maestro
-      ctx.strokeStyle='#8a6020';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(bx,by-S*.22);ctx.lineTo(bx,by-S*.62);ctx.stroke();
-      // vela ammainata
-      ctx.fillStyle='rgba(240,220,170,.8)';
-      ctx.beginPath();ctx.moveTo(bx,by-S*.58);ctx.lineTo(bx+S*.18,by-S*.42);ctx.lineTo(bx,by-S*.28);ctx.fill();
-      // gru/argano
-      isoBox(bx+S*.3,by-S*.06,S*.12,S*.1,S*.36,'#9a7030','#c89040','#7a5018');
-      ctx.strokeStyle='#6a4010';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(bx+S*.3,by-S*.42);ctx.lineTo(bx+S*.05,by-S*.25);ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(bx-S*.48,by-S*.18);
+      ctx.rotate(-.18);
+      ctx.fillStyle='#573019';
+      ctx.beginPath();ctx.ellipse(0,0,S*.17,S*.055,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#8d6234';
+      ctx.beginPath();ctx.ellipse(0,-S*.012,S*.12,S*.032,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#2a1609';ctx.lineWidth=Math.max(.8,S*.01);ctx.stroke();
+      ctx.restore();
+
+      if(grande){
+        ctx.strokeStyle='#7a4b1f';
+        ctx.lineWidth=Math.max(2,S*.03);
+        ctx.beginPath();
+        ctx.moveTo(bx+S*.55,by-S*.05);
+        ctx.lineTo(bx+S*.68,by-S*.52);
+        ctx.lineTo(bx+S*.82,by-S*.07);
+        ctx.stroke();
+        ctx.strokeStyle='rgba(30,18,8,.55)';
+        ctx.lineWidth=Math.max(1,S*.012);
+        ctx.beginPath();ctx.moveTo(bx+S*.68,by-S*.52);ctx.lineTo(bx+S*.43,by-S*.26);ctx.stroke();
+      }
       break;
     }
 
@@ -137,20 +593,91 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
       break;
     }
 
+    case 'banane':
+    case 'papaia':
+    case 'canna_zucchero':
+    case 'tabacco':
     case 'fattoria':{
-      // campi coltivati (strisce iso intorno alla capanna)
-      for(let i=0;i<4;i++){
-        ctx.fillStyle=i%2===0?'#5a8a28':'#4a7a1e';
-        ctx.fillRect(bx-S*.5+i*S*.25,by-S*.1,S*.24,S*.18);
+      campoColtivatoTropico(bx,by,S,tipo);
+      capannaFattoriaTropico(bx,by,S,tipo);
+      spaventapasseriTropico(bx,by,S);
+      break;
+    }
+
+    case 'forno':{
+      isoBox(bx-S*.06,by,S*.34,S*.22,S*.18,'#9a8060','#b89468','#765a3d');
+      ctx.fillStyle='#5b4230';
+      ctx.beginPath();ctx.ellipse(bx-S*.04,by-S*.17,S*.2,S*.16,0,Math.PI,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(255,130,45,.72)';
+      ctx.beginPath();ctx.arc(bx-S*.04,by-S*.12,S*.055,0,Math.PI*2);ctx.fill();
+      isoBox(bx+S*.2,by-S*.14,S*.09,S*.07,S*.26,'#4a3428','#5a4232','#30241d');
+      ctx.fillStyle='rgba(210,210,190,.28)';
+      ctx.beginPath();ctx.arc(bx+S*.2,by-S*.46,S*.05,0,Math.PI*2);ctx.fill();
+      break;
+    }
+
+    case 'fabbro':
+    case 'carpentiere':{
+      {
+        const wood=tipo==='carpentiere';
+        ponteLegnoIso(bx,by+S*.045,S,S*.56,S*.16,7);
+        isoBox(bx-S*.07,by-S*.03,S*.38,S*.24,S*.2,'#765229',wood?'#aa793d':'#8a6a38','#5b3a1d');
+        disegnaAssiParete(bx-S*.07,by-S*.03,S,.36,.2);
+        isoRoof(bx-S*.07,by-S*.23,S*.43,S*.26,0,S*.13,wood?'#62431f':'#4a3a24',wood?'#3c2916':'#30281e',wood?'#7a5528':'#665034');
+        isoBox(bx+S*.22,by-S*.01,S*.2,S*.13,S*.1,wood?'#7a5224':'#34302c',wood?'#a26c30':'#514b43',wood?'#553418':'#26231f');
+        if(wood){
+          ctx.strokeStyle='#c79a55';ctx.lineWidth=Math.max(2,S*.026);
+          for(let i=0;i<3;i++){
+            ctx.beginPath();ctx.moveTo(bx+S*(.1+i*.06),by-S*(.02+i*.01));ctx.lineTo(bx+S*(.34+i*.04),by-S*(.16+i*.015));ctx.stroke();
+          }
+          isoBox(bx-S*.31,by+S*.035,S*.16,S*.08,S*.08,'#8a5b26','#ad7432','#633b18');
+        }else{
+          ctx.fillStyle='#ff8a35';
+          ctx.beginPath();ctx.arc(bx+S*.2,by-S*.14,S*.05,0,Math.PI*2);ctx.fill();
+          ctx.fillStyle='rgba(210,210,190,.24)';
+          ctx.beginPath();ctx.arc(bx+S*.2,by-S*.31,S*.055+Math.sin(frame*.07)*S*.01,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='#2a241c';ctx.lineWidth=Math.max(1.4,S*.02);
+          ctx.beginPath();ctx.moveTo(bx+S*.02,by-S*.08);ctx.lineTo(bx+S*.14,by-S*.22);ctx.stroke();
+        }
+        break;
       }
-      // capanna
-      isoBox(bx-S*.12,by-S*.28,S*.32,S*.2,S*.2,'#8a6a2a','#a07e36','#6a4e18');
-      isoRoof(bx-S*.12,by-S*.28-S*.2,S*.32,S*.2,0,S*.15,'#a04a10','#7a3208','#b05018');
-      // spaventapasseri
-      ctx.strokeStyle='#7a5020';ctx.lineWidth=2;
-      ctx.beginPath();ctx.moveTo(bx+S*.2,by-S*.12);ctx.lineTo(bx+S*.2,by-S*.38);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(bx+S*.08,by-S*.3);ctx.lineTo(bx+S*.32,by-S*.3);ctx.stroke();
-      ctx.fillStyle='#c8a060';ctx.beginPath();ctx.arc(bx+S*.2,by-S*.42,S*.06,0,Math.PI*2);ctx.fill();
+      disegnaBaraccone(bx-S*.06,by,S,tipo==='fabbro'?'#8a6a38':'#a7783f','#56351b');
+      isoBox(bx+S*.22,by-S*.02,S*.18,S*.12,S*.12,'#3a3a38','#56524a','#2c2a28');
+      ctx.fillStyle=tipo==='fabbro'?'#ff8a35':'#c08a3a';
+      ctx.beginPath();ctx.arc(bx+S*.2,by-S*.16,S*.045,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#2a241c';ctx.lineWidth=2*s;
+      ctx.beginPath();ctx.moveTo(bx+S*.02,by-S*.08);ctx.lineTo(bx+S*.12,by-S*.22);ctx.stroke();
+      break;
+    }
+
+    case 'fonderia':
+    case 'fonderia_cannoni':
+    case 'fabbrica_armi':{
+      isoBox(bx,by,S*.48,S*.3,S*.3,'#4a4038','#6e5b48','#3b332d');
+      isoRoof(bx,by-S*.3,S*.5,S*.3,0,S*.13,'#2e2b28','#211f1d','#51463c');
+      isoBox(bx+S*.18,by-S*.3,S*.11,S*.08,S*.34,'#36302d','#4a4038','#292522');
+      ctx.fillStyle='rgba(210,210,200,.3)';
+      for(let i=0;i<3;i++){
+        ctx.beginPath();ctx.arc(bx+S*(.18+i*.03),by-S*(.67+i*.05),S*(.045+i*.015),0,Math.PI*2);ctx.fill();
+      }
+      if(tipo==='fonderia_cannoni'){
+        ctx.strokeStyle='#1c1a18';ctx.lineWidth=4*s;
+        ctx.beginPath();ctx.moveTo(bx-S*.25,by-S*.06);ctx.lineTo(bx+S*.08,by-S*.12);ctx.stroke();
+      }
+      break;
+    }
+
+    case 'birrificio':
+    case 'razioni_mare':
+    case 'covo_contrabbandieri':{
+      disegnaBaraccone(bx,by,S,tipo==='covo_contrabbandieri'?'#6b5132':'#9a7040',tipo==='covo_contrabbandieri'?'#262018':'#73401c');
+      for(let i=0;i<3;i++){
+        isoBox(bx-S*.24+i*S*.2,by+S*.04,S*.13,S*.09,S*.13,'#7a4a18','#9a6424','#5b3510');
+      }
+      if(tipo==='covo_contrabbandieri'){
+        ctx.fillStyle='#16100c';
+        ctx.beginPath();ctx.moveTo(bx-S*.04,by-S*.48);ctx.lineTo(bx+S*.12,by-S*.42);ctx.lineTo(bx-S*.04,by-S*.36);ctx.fill();
+      }
       break;
     }
 
@@ -175,7 +702,31 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
       break;
     }
 
+    case 'sawmill':
     case 'segheria':{
+      {
+        ponteLegnoIso(bx+S*.04,by+S*.045,S,S*.66,S*.18,8);
+        for(let i=0;i<4;i++){
+          const logX=bx-S*.32+i*S*.14;
+          isoBox(logX,by+S*(.02-i*.018),S*.14,S*.1,S*.08,'#8a5724','#b06f2e','#6d4118');
+          ctx.strokeStyle='#4d2810';ctx.lineWidth=Math.max(.6,S*.008);
+          ctx.beginPath();ctx.ellipse(logX-S*.07,by+S*(.02-i*.018)-S*.04,S*.034,S*.018,0,0,Math.PI*2);ctx.stroke();
+        }
+        isoBox(bx+S*.17,by-S*.04,S*.34,S*.22,S*.24,'#8b612e','#bd8440','#6c4521');
+        disegnaAssiParete(bx+S*.17,by-S*.04,S,.32,.22);
+        isoRoof(bx+S*.17,by-S*.28,S*.38,S*.24,0,S*.12,'#51371e','#332315','#704a26');
+        ctx.fillStyle='#d5d7d0';
+        ctx.beginPath();
+        ctx.moveTo(bx-S*.05,by-S*.18);
+        ctx.lineTo(bx+S*.17,by-S*.2);
+        ctx.lineTo(bx+S*.2,by-S*.16);
+        ctx.lineTo(bx-S*.02,by-S*.13);
+        ctx.closePath();ctx.fill();
+        ctx.strokeStyle='#5a5a55';ctx.lineWidth=Math.max(.8,S*.01);ctx.stroke();
+        ctx.strokeStyle='#6f431d';ctx.lineWidth=Math.max(1,S*.018);
+        ctx.beginPath();ctx.moveTo(bx+S*.36,by-S*.03);ctx.lineTo(bx+S*.47,by-S*.28);ctx.lineTo(bx+S*.55,by-S*.05);ctx.stroke();
+        break;
+      }
       // tronchi impilati (ISO)
       for(let i=0;i<3;i++){
         const logX=bx-S*.22+i*S*.18;
@@ -276,41 +827,52 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'mercatonero':{
-      // tenda principale colorata
-      ctx.fillStyle='#8a1818';
-      ctx.beginPath();
-      ctx.moveTo(bx-S*.3,by-S*.04);
-      ctx.lineTo(bx,by-S*.44);
-      ctx.lineTo(bx+S*.3,by-S*.04);
-      ctx.closePath();ctx.fill();
-      ctx.strokeStyle='#c02020';ctx.lineWidth=1;ctx.stroke();
-      // ombra tenda sinistra
-      ctx.fillStyle='#6a0808';
-      ctx.beginPath();
-      ctx.moveTo(bx-S*.3,by-S*.04);
-      ctx.lineTo(bx,by-S*.44);
-      ctx.lineTo(bx,by-S*.04);
-      ctx.closePath();ctx.fill();
-      // bandierine
-      ctx.strokeStyle='#f0c040';ctx.lineWidth=1;
-      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.12);ctx.lineTo(bx+S*.26,by-S*.12);ctx.stroke();
-      for(let i=0;i<5;i++){
-        ctx.fillStyle=i%2===0?'#f0c040':'#c03030';
-        ctx.beginPath();
-        ctx.moveTo(bx-S*.26+i*S*.13,by-S*.12);
-        ctx.lineTo(bx-S*.2+i*S*.13,by-S*.04);
-        ctx.lineTo(bx-S*.14+i*S*.13,by-S*.12);
-        ctx.closePath();ctx.fill();
+      // Mercato nero: tenda dei contrabbandieri, casse e merci rubate.
+      ponteLegnoIso(bx,by+S*.055,S,S*.58,S*.15,7);
+      isoBox(bx-S*.2,by+S*.02,S*.22,S*.14,S*.12,'#6b451f','#9b6a30','#4b2d14');
+      isoBox(bx+S*.22,by+S*.025,S*.24,S*.15,S*.11,'#594020','#805c2b','#3d2814');
+      disegnaTendaPirata(bx,by+S*.01,S*.92,'#7f1b18','#e0b44c');
+      // telo laterale colorato e bancarella coperta
+      teloTropico(bx-S*.23,by-S*.08,S,'#c8a044');
+      ctx.fillStyle='rgba(18,10,5,.42)';
+      ctx.beginPath();ctx.ellipse(bx,by+S*.025,S*.3,S*.09,0,0,Math.PI*2);ctx.fill();
+      // merci di contrabbando
+      for(let i=0;i<4;i++){
+        isoBox(bx+S*(-.34+i*.16),by+S*(.095+(i%2)*.02),S*.1,S*.065,S*.065,'#6d4921','#9a6a32','#4e3017');
       }
-      // bancarelle sotto
-      isoBox(bx-S*.2,by+S*.02,S*.2,S*.14,S*.1,'#9a7228','#b88a38','#7a5218');
-      isoBox(bx+S*.2,by+S*.02,S*.2,S*.14,S*.1,'#7a5a18','#9a7028','#5a3e10');
-      // monete
-      ctx.fillStyle='#f0c040';ctx.beginPath();ctx.arc(bx-S*.2,by-S*.1,S*.04,0,Math.PI*2);ctx.fill();
+      barileMolo(bx+S*.31,by+S*.06,S,.052);
+      barileMolo(bx+S*.38,by+S*.09,S,.043);
+      // monete e bottino
+      ctx.fillStyle='#e8bd42';
+      for(let i=0;i<5;i++){ ctx.beginPath();ctx.arc(bx-S*.19+i*S*.025,by-S*.055+(i%2)*S*.01,S*.018,0,Math.PI*2);ctx.fill(); }
+      ctx.strokeStyle='rgba(35,18,8,.72)';ctx.lineWidth=Math.max(.8,S*.012);
+      ctx.beginPath();ctx.moveTo(bx-S*.09,by-S*.015);ctx.lineTo(bx+S*.1,by-S*.015);ctx.stroke();
+      ctx.fillStyle='#f3d071';ctx.font=`bold ${Math.max(8,S*.08)}px serif`;
+      ctx.textAlign='center';ctx.fillText('$',bx+S*.18,by-S*.19);
       break;
     }
 
+
     case 'casapirata':{
+      {
+        ponteLegnoIso(bx+S*.02,by+S*.04,S,S*.5,S*.16,6);
+        isoBox(bx-S*.04,by-S*.04,S*.42,S*.25,S*.22,'#755027','#a06a34','#68401f');
+        disegnaAssiParete(bx-S*.04,by-S*.04,S,.4,.22);
+        isoRoof(bx-S*.04,by-S*.26,S*.48,S*.29,0,S*.16,'#5c4325','#3b2a1a','#76552e');
+        isoBox(bx+S*.24,by-S*.02,S*.16,S*.13,S*.14,'#5b3e21','#82572b','#4b3019');
+        isoRoof(bx+S*.24,by-S*.16,S*.18,S*.15,0,S*.07,'#3d2d1c','#2a2016','#5a3f24');
+        ctx.fillStyle='#241008';
+        ctx.fillRect(bx-S*.09,by-S*.13,S*.1,S*.13);
+        ctx.beginPath();ctx.arc(bx-S*.04,by-S*.13,S*.05,Math.PI,0,false);ctx.fill();
+        isoWindow(bx+S*.08,by-S*.17,true,S*.055);
+        ctx.strokeStyle='#6a3a14';ctx.lineWidth=Math.max(1.2,S*.018);
+        ctx.beginPath();ctx.moveTo(bx-S*.27,by-S*.06);ctx.lineTo(bx-S*.34,by-S*.28);ctx.stroke();
+        ctx.fillStyle='#0b0b0b';
+        ctx.beginPath();ctx.moveTo(bx-S*.34,by-S*.28);ctx.lineTo(bx-S*.21,by-S*.25+Math.sin(frame*.08)*S*.01);ctx.lineTo(bx-S*.34,by-S*.2);ctx.fill();
+        barileMolo(bx+S*.28,by+S*.035,S,.048);
+        isoBox(bx-S*.26,by+S*.035,S*.12,S*.08,S*.07,'#7c5527','#a47335','#56351a');
+        break;
+      }
       isoBox(bx,by,S*.38,S*.24,S*.22,'#9a7040','#c09050','#7a5020');
       isoRoof(bx,by-S*.22,S*.38,S*.24,0,S*.18,'#8a2020','#6a1010','#9a2828');
       isoWindow(bx-S*.1,by-S*.18,true);
@@ -329,6 +891,25 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'bordello':{
+      {
+        ponteLegnoIso(bx+S*.03,by+S*.045,S,S*.54,S*.14,7);
+        isoBox(bx,by-S*.03,S*.48,S*.3,S*.31,'#b67758','#d78f74','#a65f4a');
+        isoRoof(bx,by-S*.34,S*.52,S*.32,0,S*.18,'#9b5b24','#713817','#bd7430');
+        isoBox(bx+S*.17,by-S*.49,S*.12,S*.08,S*.12,'#c68b74','#e2a28a','#a96855');
+        isoRoof(bx+S*.17,by-S*.61,S*.13,S*.09,0,S*.06,'#9b5b24','#713817','#bd7430');
+        isoWindow(bx-S*.13,by-S*.25,true,S*.07);
+        isoWindow(bx+S*.14,by-S*.25,true,S*.07);
+        ctx.fillStyle='#34120c';
+        ctx.fillRect(bx-S*.055,by-S*.15,S*.11,S*.15);
+        teloTropico(bx-S*.12,by-S*.24,S,'#be1f24');
+        teloTropico(bx+S*.14,by-S*.23,S,'#1776a7');
+        lanternaRossa(bx-S*.25,by-S*.18,S);
+        lanternaRossa(bx+S*.27,by-S*.16,S);
+        ctx.fillStyle='#f4d172';ctx.font=`bold ${Math.max(8,S*.09)}px serif`;
+        ctx.textAlign='center';ctx.fillText('L',bx,by-S*.47);
+        barileMolo(bx+S*.31,by+S*.03,S,.045);
+        break;
+      }
       isoBox(bx,by,S*.44,S*.28,S*.28,'#6a1a3a','#9a2858','#4a1028');
       isoRoof(bx,by-S*.28,S*.44,S*.28,0,S*.18,'#8a1848','#6a1030','#a82060');
       // finestre illuminate rosa
@@ -371,29 +952,35 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'cantastorie':{
-      // palco con sipari
-      isoBox(bx,by+S*.02,S*.46,S*.28,S*.12,'#7a5a20','#9a7230','#5a4010');
-      // montanti sipario
-      isoBox(bx-S*.26,by-S*.1,S*.08,S*.06,S*.38,'#5a3a10','#7a5020','#3a2008');
-      isoBox(bx+S*.26,by-S*.1,S*.08,S*.06,S*.38,'#5a3a10','#7a5020','#3a2008');
-      // sipari rossi
-      ctx.fillStyle='#8a1a1a';
-      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.48);ctx.lineTo(bx-S*.04,by-S*.48);ctx.lineTo(bx-S*.1,by-S*.1);ctx.lineTo(bx-S*.26,by-S*.1);ctx.closePath();ctx.fill();
-      ctx.fillStyle='#8a1a1a';
-      ctx.beginPath();ctx.moveTo(bx+S*.26,by-S*.48);ctx.lineTo(bx+S*.04,by-S*.48);ctx.lineTo(bx+S*.1,by-S*.1);ctx.lineTo(bx+S*.26,by-S*.1);ctx.closePath();ctx.fill();
-      // frange oro
-      ctx.strokeStyle='#f0c040';ctx.lineWidth=1.2;
-      ctx.beginPath();ctx.moveTo(bx-S*.28,by-S*.48);ctx.lineTo(bx+S*.28,by-S*.48);ctx.stroke();
-      // figurina
-      ctx.fillStyle='#c8a06e';ctx.beginPath();ctx.arc(bx,by-S*.22,S*.07,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#2a1a0a';ctx.beginPath();ctx.ellipse(bx,by-S*.12,S*.05,S*.08,0,0,Math.PI*2);ctx.fill();
-      // note musicali flottanti
-      ctx.fillStyle='rgba(240,192,64,.75)';ctx.font=`${S*.18}px serif`;
+      // Cantastorie: piccolo teatro da porto, più legno e meno placeholder.
+      ponteLegnoIso(bx,by+S*.055,S,S*.56,S*.16,7);
+      isoBox(bx,by+S*.01,S*.5,S*.3,S*.13,'#6f4b21','#a07034','#4c2f13');
+      isoBox(bx-S*.25,by-S*.1,S*.07,S*.055,S*.36,'#4f3113','#7a4b20','#321b0a');
+      isoBox(bx+S*.25,by-S*.1,S*.07,S*.055,S*.36,'#4f3113','#7a4b20','#321b0a');
+      isoRoof(bx,by-S*.43,S*.54,S*.14,0,S*.08,'#704018','#4f2b10','#95602a');
+      // sipario rosso diviso e drappi dorati
+      ctx.fillStyle='#8b1e18';
+      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.43);ctx.lineTo(bx-S*.02,by-S*.42);ctx.lineTo(bx-S*.08,by-S*.11);ctx.lineTo(bx-S*.26,by-S*.09);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#a32920';
+      ctx.beginPath();ctx.moveTo(bx+S*.26,by-S*.43);ctx.lineTo(bx+S*.02,by-S*.42);ctx.lineTo(bx+S*.08,by-S*.11);ctx.lineTo(bx+S*.26,by-S*.09);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#e0b44c';ctx.lineWidth=Math.max(1,S*.014);
+      ctx.beginPath();ctx.moveTo(bx-S*.28,by-S*.43);ctx.lineTo(bx+S*.28,by-S*.43);ctx.stroke();
+      for(let i=0;i<6;i++){
+        ctx.beginPath();ctx.moveTo(bx-S*.24+i*S*.096,by-S*.42);ctx.lineTo(bx-S*.21+i*S*.096,by-S*.37);ctx.stroke();
+      }
+      // narratore con pergamena
+      ctx.fillStyle='#c99a62';ctx.beginPath();ctx.arc(bx,by-S*.245,S*.055,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#2b1b0b';ctx.beginPath();ctx.ellipse(bx,by-S*.15,S*.055,S*.09,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#e8d3a0';ctx.fillRect(bx+S*.045,by-S*.205,S*.105,S*.07);
+      ctx.strokeStyle='rgba(75,45,18,.55)';ctx.strokeRect(bx+S*.045,by-S*.205,S*.105,S*.07);
+      // note/stelle leggere
+      ctx.fillStyle='rgba(240,192,64,.76)';ctx.font=`${Math.max(10,S*.14)}px serif`;
       ctx.textAlign='center';
-      ctx.fillText('♪',bx-S*.18,by-S*.32+Math.sin(frame*.06)*3);
-      ctx.fillText('♫',bx+S*.18,by-S*.38+Math.sin(frame*.06+1)*3);
+      ctx.fillText('♪',bx-S*.18,by-S*.30+Math.sin(frame*.06)*3);
+      ctx.fillText('✦',bx+S*.18,by-S*.34+Math.sin(frame*.06+1)*3);
       break;
     }
+
 
     case 'cappella':{
       // corpo bianco
@@ -421,43 +1008,57 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'infermeria':{
-      isoBox(bx,by,S*.42,S*.26,S*.28,'#e8e8e8','#f5f5f5','#d0d0d0');
-      isoBox(bx,by-S*.28,S*.44,S*.28,S*.06,'#5a6a7a','#6a7a8a','#4a5a6a');
-      // croce rossa grande
-      ctx.fillStyle='#cc2222';
-      ctx.fillRect(bx-S*.05,by-S*.34,S*.1,S*.24);
-      ctx.fillRect(bx-S*.14,by-S*.28,S*.28,S*.1);
-      // finestre
-      isoWindow(bx-S*.14,by-S*.2,true);
-      isoWindow(bx+S*.14,by-S*.2,true);
-      // porta
-      ctx.fillStyle='#4a3a2a';ctx.fillRect(bx-S*.07,by-S*.14,S*.14,S*.15);
-      // barella fuori
-      ctx.strokeStyle='#9a8a60';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(bx-S*.26,by-S*.06);ctx.lineTo(bx-S*.12,by-S*.06);ctx.stroke();
-      ctx.fillStyle='#e8d8b8';ctx.fillRect(bx-S*.25,by-S*.1,S*.13,S*.07);
+      // Infermeria coloniale: calce chiara, tetto in tegole e dettagli medici.
+      ponteLegnoIso(bx,by+S*.055,S,S*.5,S*.14,6);
+      isoBox(bx,by-S*.02,S*.46,S*.28,S*.3,'#d9d1bd','#f0e6cf','#b9ad93');
+      disegnaAssiParete(bx,by-S*.02,S,.42,.24);
+      isoRoof(bx,by-S*.32,S*.5,S*.3,0,S*.18,'#9a4a24','#6e2e16','#bd6630');
+      isoBox(bx+S*.18,by-S*.45,S*.11,S*.08,S*.12,'#d9d1bd','#f0e6cf','#b9ad93');
+      isoRoof(bx+S*.18,by-S*.57,S*.12,S*.09,0,S*.055,'#9a4a24','#6e2e16','#bd6630');
+      // croce rossa su insegna lignea, meno piatta sul muro
+      isoBox(bx-S*.18,by-S*.22,S*.13,S*.035,S*.09,'#70451f','#9b6830','#4b2b12');
+      ctx.fillStyle='#c82424';
+      ctx.fillRect(bx-S*.205,by-S*.285,S*.052,S*.115);
+      ctx.fillRect(bx-S*.236,by-S*.252,S*.114,S*.045);
+      isoWindow(bx+S*.06,by-S*.23,true,S*.065);
+      isoWindow(bx+S*.19,by-S*.22,true,S*.055);
+      ctx.fillStyle='#4a2c16';ctx.fillRect(bx-S*.055,by-S*.15,S*.11,S*.15);
+      ctx.beginPath();ctx.arc(bx,by-S*.15,S*.055,Math.PI,0,false);ctx.fill();
+      // barella e secchio fuori
+      ctx.strokeStyle='#8a6a36';ctx.lineWidth=Math.max(1,S*.012);
+      ctx.beginPath();ctx.moveTo(bx-S*.34,by-S*.045);ctx.lineTo(bx-S*.13,by-S*.025);ctx.stroke();
+      ctx.fillStyle='#e5d5ad';ctx.fillRect(bx-S*.32,by-S*.09,S*.17,S*.06);
+      barileMolo(bx+S*.31,by+S*.06,S,.04);
       break;
     }
 
+
     case 'bagni':{
-      isoBox(bx,by,S*.4,S*.26,S*.24,'#4a6a8a','#5a7a9a','#3a5a7a');
-      isoRoof(bx,by-S*.24,S*.4,S*.26,0,S*.1,'#3a4a6a','#2a3a5a','#4a5a7a');
-      // vasche (2 ellissi azzurre in prospettiva)
-      ctx.fillStyle=`rgba(80,180,220,${.7+Math.sin(frame*.04)*.08})`;
-      ctx.beginPath();ctx.ellipse(bx-S*.1,by-S*.1,S*.12,S*.06,0,0,Math.PI*2);ctx.fill();
-      ctx.beginPath();ctx.ellipse(bx+S*.1,by-S*.1,S*.12,S*.06,0,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='rgba(200,240,255,.8)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.ellipse(bx-S*.1,by-S*.1,S*.08,S*.04,0,0,Math.PI*2);ctx.stroke();
-      ctx.beginPath();ctx.ellipse(bx+S*.1,by-S*.1,S*.08,S*.04,0,0,Math.PI*2);ctx.stroke();
-      // vapore animato
-      for(let i=0;i<3;i++){
-        const vx=bx-S*.15+i*S*.15;
-        const vy=by-S*.18-Math.sin(frame*.05+i)*S*.04;
-        ctx.fillStyle=`rgba(200,240,255,${.15+Math.sin(frame*.04+i)*.05})`;
-        ctx.beginPath();ctx.arc(vx,vy,S*.04,0,Math.PI*2);ctx.fill();
+      // Bagni: edificio termale caraibico con vasca esterna e vapore.
+      ponteLegnoIso(bx,by+S*.06,S,S*.52,S*.16,7);
+      isoBox(bx,by-S*.02,S*.43,S*.27,S*.25,'#6b7d79','#8fa09a','#4e615d');
+      isoRoof(bx,by-S*.27,S*.45,S*.28,0,S*.14,'#4d3b25','#342719','#6a5031');
+      isoWindow(bx-S*.15,by-S*.19,true,S*.055);
+      isoWindow(bx+S*.14,by-S*.19,true,S*.055);
+      ctx.fillStyle='#352014';ctx.fillRect(bx-S*.055,by-S*.13,S*.11,S*.13);
+      // grande vasca davanti in pietra
+      ctx.fillStyle='#786b55';ctx.beginPath();ctx.ellipse(bx,by+S*.02,S*.28,S*.11,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=`rgba(78,178,204,${.72+Math.sin(frame*.04)*.06})`;
+      ctx.beginPath();ctx.ellipse(bx,by+S*.005,S*.22,S*.075,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(220,245,255,.72)';ctx.lineWidth=Math.max(.8,S*.01);
+      ctx.beginPath();ctx.ellipse(bx,by+S*.005,S*.16,S*.048,0,0,Math.PI*2);ctx.stroke();
+      // tinozze laterali e panni
+      barileMolo(bx-S*.3,by+S*.055,S,.055);
+      teloTropico(bx+S*.27,by-S*.08,S,'#d8c07a');
+      for(let i=0;i<4;i++){
+        const vx=bx-S*.14+i*S*.09;
+        const vy=by-S*.08-Math.sin(frame*.045+i)*S*.035;
+        ctx.fillStyle=`rgba(225,245,250,${.14+Math.sin(frame*.04+i)*.05})`;
+        ctx.beginPath();ctx.arc(vx,vy,S*(.032+i*.002),0,Math.PI*2);ctx.fill();
       }
       break;
     }
+
 
     case 'guardia':{
       // base larga
@@ -489,37 +1090,70 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'sarto':{
-      isoBox(bx,by,S*.36,S*.22,S*.26,'#9a7a4a','#c09860','#7a5a28');
-      isoRoof(bx,by-S*.26,S*.36,S*.22,0,S*.18,'#3a2a10','#2a1a08','#4a3818');
-      ctx.strokeStyle='#f0c040';ctx.lineWidth=1;
-      // vetrina con manichino
-      ctx.fillStyle='rgba(200,220,240,.35)';
-      ctx.fillRect(bx-S*.16,by-S*.28,S*.14,S*.2);
-      ctx.strokeStyle='#8a6a30';ctx.lineWidth=1.2;ctx.strokeRect(bx-S*.16,by-S*.28,S*.14,S*.2);
-      // manichino
-      ctx.fillStyle='#c8a060';ctx.beginPath();ctx.arc(bx-S*.09,by-S*.28,S*.05,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='#1a3a8a';ctx.beginPath();ctx.ellipse(bx-S*.09,by-S*.2,S*.06,S*.08,0,0,Math.PI*2);ctx.fill();
-      // stoffe colorate
-      ctx.fillStyle='#c03050';ctx.fillRect(bx+S*.02,by-S*.28,S*.06,S*.2);
-      ctx.fillStyle='#20608a';ctx.fillRect(bx+S*.1,by-S*.28,S*.06,S*.2);
-      // porta
-      ctx.fillStyle='#2a1a08';ctx.fillRect(bx-S*.06,by-S*.12,S*.12,S*.13);
-      ctx.beginPath();ctx.arc(bx,by-S*.12,S*.06,Math.PI,0,false);ctx.fill();
-      // insegna forbici
-      ctx.fillStyle='#f0c040';ctx.font=`${S*.16}px serif`;
-      ctx.textAlign='center';ctx.fillText('✂',bx+S*.14,by-S*.36);
+      // Sarto: bottega di tessuti con vetrina, stendardi e forbici.
+      ponteLegnoIso(bx,by+S*.055,S,S*.5,S*.14,6);
+      isoBox(bx,by-S*.02,S*.42,S*.26,S*.28,'#8d6838','#bd8b4c','#68451f');
+      disegnaAssiParete(bx,by-S*.02,S,.39,.23);
+      isoRoof(bx,by-S*.30,S*.46,S*.28,0,S*.17,'#4b2f18','#2d1c10','#6a4524');
+      isoBox(bx-S*.16,by-S*.22,S*.13,S*.035,S*.16,'#6a461f','#9a6b32','#4a2c14');
+      ctx.fillStyle='rgba(195,220,235,.38)';ctx.fillRect(bx-S*.21,by-S*.31,S*.12,S*.16);
+      ctx.strokeStyle='#8a6a30';ctx.lineWidth=Math.max(.8,S*.01);ctx.strokeRect(bx-S*.21,by-S*.31,S*.12,S*.16);
+      // manichino e abito
+      ctx.fillStyle='#c99a62';ctx.beginPath();ctx.arc(bx-S*.15,by-S*.29,S*.032,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#244c87';ctx.beginPath();ctx.ellipse(bx-S*.15,by-S*.22,S*.046,S*.065,0,0,Math.PI*2);ctx.fill();
+      // rotoli di stoffa e teli appesi
+      teloTropico(bx+S*.1,by-S*.22,S,'#be2e3f');
+      teloTropico(bx+S*.22,by-S*.20,S,'#1f6f91');
+      isoBox(bx+S*.25,by+S*.035,S*.12,S*.07,S*.07,'#705020','#9b7432','#513313');
+      ctx.fillStyle='#2a1a08';ctx.fillRect(bx-S*.035,by-S*.14,S*.1,S*.14);
+      ctx.beginPath();ctx.arc(bx+S*.015,by-S*.14,S*.05,Math.PI,0,false);ctx.fill();
+      ctx.fillStyle='#f0c040';ctx.font=`${Math.max(10,S*.14)}px serif`;
+      ctx.textAlign='center';ctx.fillText('✂',bx+S*.02,by-S*.43);
       break;
     }
 
-    case 'osservatorio': // già gestito sopra ma fallback
+
     default:{
-      // edificio generico iso
-      isoBox(bx,by,S*.36,S*.22,S*.22,'#6b5530','#8a7040','#4a3818');
-      isoRoof(bx,by-S*.22,S*.36,S*.22,0,S*.14,'#4a3010','#3a2008','#5a3c18');
-      isoWindow(bx,by-S*.18,true);
-      ctx.fillStyle='rgba(240,192,64,.5)';ctx.font=`${S*.22}px serif`;
-      ctx.textAlign='center';ctx.fillText(ED[tipo]?.icona||'🏠',bx,by-S*.36);
+      edificioGenericoTropico(bx,by,S,tipo);
     }
   }
+  dettagliBaseEdificio(tipo,bx,by,S,s);
+  ctx.restore();
+}
+
+
+// === FASE 4A PORTO VIVO ===
+function disegnaPortoVivoDecor(bx,by,S){
+  ctx.save();
+  // scialuppa
+  ctx.fillStyle='#6b4322';
+  ctx.beginPath();
+  ctx.ellipse(bx+S*.55,by+S*.05,S*.16,S*.05,-0.3,0,Math.PI*2);
+  ctx.fill();
+  // albero
+  ctx.strokeStyle='#4a2d12';
+  ctx.lineWidth=Math.max(1,S*.015);
+  ctx.beginPath(); ctx.moveTo(bx+S*.55,by+S*.02); ctx.lineTo(bx+S*.55,by-S*.22); ctx.stroke();
+  // vela
+  ctx.fillStyle='rgba(235,228,205,.9)';
+  ctx.beginPath();
+  ctx.moveTo(bx+S*.55,by-S*.2);
+  ctx.lineTo(bx+S*.67,by-S*.12);
+  ctx.lineTo(bx+S*.55,by-S*.05);
+  ctx.closePath(); ctx.fill();
+  // merci
+  for(let i=0;i<3;i++){
+    ctx.fillStyle=i%2?'#8b5a2b':'#a0703c';
+    ctx.fillRect(bx-S*.45+i*S*.08,by+S*.12,S*.06,S*.06);
+  }
+  // palo e corda
+  ctx.strokeStyle='#5a3818';
+  ctx.beginPath();
+  ctx.moveTo(bx-S*.38,by); ctx.lineTo(bx-S*.38,by-S*.15);
+  ctx.moveTo(bx-S*.18,by); ctx.lineTo(bx-S*.18,by-S*.15);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(bx-S*.38,by-S*.12); ctx.lineTo(bx-S*.18,by-S*.12);
+  ctx.stroke();
   ctx.restore();
 }

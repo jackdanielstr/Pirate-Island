@@ -14,7 +14,7 @@
 // bx,by = angolo in basso al centro del tile (punto di ancoraggio)
 // w = larghezza, d = profondità, h = altezza (in pixel)
 // colTop, colFront, colSide = colori delle tre facce
-function isoBox(bx,by,w,d,h,colTop,colFront,colSide){
+function isoBoxLegacy(bx,by,w,d,h,colTop,colFront,colSide){
   // Proiezione isometrica semplificata (2:1)
   // angolo base in basso-centro
   const ox=w/2, oz=d/2;
@@ -103,6 +103,36 @@ function isoRoof(bx,by,w,d,hBase,hPeak,colLeft,colRight,colFront){
   ctx.lineTo(bx+ox,baseY+oz*.5);
   ctx.lineTo(rx,ry+oz*.5);
   ctx.closePath();ctx.fill();
+
+  ctx.save();
+  ctx.lineWidth=Math.max(.45,w*.012);
+  ctx.strokeStyle='rgba(45,24,10,.34)';
+  ctx.beginPath();
+  ctx.moveTo(rx,ry-oz*.5);
+  ctx.lineTo(rx,ry+oz*.5);
+  ctx.stroke();
+  for(let i=1;i<=5;i++){
+    const t=i/6;
+    const lx=bx-ox+w*t;
+    ctx.strokeStyle=i%2?'rgba(255,225,150,.16)':'rgba(45,24,10,.22)';
+    ctx.beginPath();
+    ctx.moveTo(lx,baseY-oz*.5);
+    ctx.lineTo(rx+(lx-rx)*.18,ry-oz*.5+hPeak*.18);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(lx,baseY+oz*.5);
+    ctx.lineTo(rx+(lx-rx)*.18,ry+oz*.5+hPeak*.18);
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(255,230,170,.16)';
+  for(let j=1;j<=2;j++){
+    const y=baseY+oz*(j*.28-.5);
+    ctx.beginPath();
+    ctx.moveTo(bx-ox*.75,y);
+    ctx.lineTo(bx+ox*.75,y);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // Finestra isometrica su facciata sud
@@ -119,4 +149,46 @@ function isoWindow(bx,by,lit,sz){
     ctx.beginPath();ctx.moveTo(bx,by-h);ctx.lineTo(bx,by);ctx.stroke();
     ctx.beginPath();ctx.moveTo(bx-w/2,by-h/2);ctx.lineTo(bx+w/2,by-h/2);ctx.stroke();
   }
+}
+
+// Override piu isometrico: evita l'effetto "facciata frontale" degli edifici.
+function isoBox(bx,by,w,d,h,colTop,colFront,colSide){
+  const hw=w/2, hd=d/2;
+  const pts={
+    topBack:[bx,       by-h-hd],
+    topRight:[bx+hw,   by-h-hd*.5],
+    topFront:[bx,      by-h],
+    topLeft:[bx-hw,    by-h-hd*.5],
+    botBack:[bx,       by-hd],
+    botRight:[bx+hw,   by-hd*.5],
+    botFront:[bx,      by],
+    botLeft:[bx-hw,    by-hd*.5],
+  };
+
+  ctx.fillStyle=colFront;
+  ctx.beginPath();
+  ctx.moveTo(pts.topLeft[0],pts.topLeft[1]);
+  ctx.lineTo(pts.topFront[0],pts.topFront[1]);
+  ctx.lineTo(pts.botFront[0],pts.botFront[1]);
+  ctx.lineTo(pts.botLeft[0],pts.botLeft[1]);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=.7;ctx.stroke();
+
+  ctx.fillStyle=colSide;
+  ctx.beginPath();
+  ctx.moveTo(pts.topFront[0],pts.topFront[1]);
+  ctx.lineTo(pts.topRight[0],pts.topRight[1]);
+  ctx.lineTo(pts.botRight[0],pts.botRight[1]);
+  ctx.lineTo(pts.botFront[0],pts.botFront[1]);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.28)';ctx.lineWidth=.7;ctx.stroke();
+
+  ctx.fillStyle=colTop;
+  ctx.beginPath();
+  ctx.moveTo(pts.topBack[0],pts.topBack[1]);
+  ctx.lineTo(pts.topRight[0],pts.topRight[1]);
+  ctx.lineTo(pts.topFront[0],pts.topFront[1]);
+  ctx.lineTo(pts.topLeft[0],pts.topLeft[1]);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=.6;ctx.stroke();
 }

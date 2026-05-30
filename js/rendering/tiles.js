@@ -68,372 +68,238 @@ function hash(r, c, salt) {
   return (v & 0xffff) / 0xffff;
 }
 
-// ── Disegna un tile a rombo isometrico ──
-// (cx,cy) = centro in alto del rombo (punto più alto)
-function disegnaTileIso(t, cx, cy, r, c) {
-  const s  = G.ISO_SCALE;
-  const W  = G.ISO_W * s;   // larghezza rombo
-  const H  = G.ISO_H * s;   // altezza rombo
-  const hw = W / 2, hh = H / 2;
+// Nota tecnica: la vecchia implementazione di disegnaTileIso/disegnaTransizioni
+// e stata rimossa per evitare doppie definizioni. La versione attiva, piu
+// pittorica e vicina a Tropico 2, inizia sotto con gli helper del terreno.
 
-  // Percorso rombo: top → right → bottom → left
+// Pass grafico piu vicino a Tropico 2: terreno pittorico, niente griglia visibile,
+// sentieri stretti di ghiaia invece di tile interi marroni.
+function tilePathIso(cx,cy,W,H){
+  const hw=W/2+.75, hh=H/2+.4;
   ctx.beginPath();
-  ctx.moveTo(cx,      cy);       // top
-  ctx.lineTo(cx + hw, cy + hh);  // right
-  ctx.lineTo(cx,      cy + H);   // bottom
-  ctx.lineTo(cx - hw, cy + hh);  // left
+  ctx.moveTo(cx,cy-.4);
+  ctx.lineTo(cx+hw,cy+hh);
+  ctx.lineTo(cx,cy+H+.4);
+  ctx.lineTo(cx-hw,cy+hh);
   ctx.closePath();
+}
 
-  switch (t) {
-
-    case T.OCEANO: {
-      // Acqua caraibica più leggibile: profondità, onde morbide e riflessi.
-      const v = hash(r, c, 1);
-      const f1 = frame * .018 + c * .58 + r * .34;
-      const f2 = frame * .011 + c * .21 - r * .47;
-      const hue = 194 + v * 10;
-      const light = 22 + v * 7 + Math.sin(f1) * 2.4;
-      ctx.fillStyle = `hsl(${hue}, 76%, ${light}%)`;
-      ctx.fill();
-
-      // Velatura turchese centrale per effetto mare tropicale non piatto.
-      const grad = ctx.createLinearGradient(cx - hw, cy, cx + hw, cy + H);
-      grad.addColorStop(0, `rgba(85,210,225,${.10 + v*.04})`);
-      grad.addColorStop(.45, `rgba(30,145,190,${.08 + v*.035})`);
-      grad.addColorStop(1, `rgba(0,40,80,${.12 + v*.05})`);
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
-      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
-      ctx.closePath(); ctx.fill();
-
-      // Riflesso a rombo, più sottile e variabile.
-      const shimmer = .045 + Math.sin(f2) * .025;
-      ctx.fillStyle = `rgba(205,255,245,${shimmer})`;
-      ctx.beginPath();
-      ctx.moveTo(cx - hw * .46, cy + hh * .46);
-      ctx.lineTo(cx - hw * .06, cy + hh * .22);
-      ctx.lineTo(cx + hw * .34, cy + hh * .55);
-      ctx.lineTo(cx - hw * .16, cy + hh * .82);
-      ctx.closePath(); ctx.fill();
-
-      // Due piccole increspature animate, in stile Tropico 2/HD leggero.
-      ctx.lineWidth = Math.max(.75, 1.05 * s);
-      ctx.strokeStyle = `rgba(185,245,255,${.13 + Math.sin(f1) * .045})`;
-      ctx.beginPath();
-      ctx.moveTo(cx - hw * .72, cy + hh * .55 + Math.sin(f1) * 1.8 * s);
-      ctx.bezierCurveTo(
-        cx - hw * .28, cy + hh * .43 + Math.sin(f1+1)*2.2*s,
-        cx + hw * .18, cy + hh * .48 - Math.sin(f1+2)*2.2*s,
-        cx + hw * .68, cy + hh * .57 + Math.sin(f1+3)*1.8*s
-      );
-      ctx.stroke();
-      if (v > .43) {
-        ctx.strokeStyle = `rgba(220,255,255,${.08 + Math.sin(f2) * .035})`;
-        ctx.beginPath();
-        ctx.moveTo(cx - hw * .44, cy + hh * 1.18 + Math.sin(f2)*1.4*s);
-        ctx.bezierCurveTo(cx - hw*.12, cy+hh*1.05, cx+hw*.15, cy+hh*1.25, cx+hw*.48, cy+hh*1.12);
-        ctx.stroke();
-      }
-      break;
-    }
-
-    case T.BASSO: {
-      // Acqua bassa più luminosa: laguna, coralli e sabbia visibile sotto.
-      const sv = hash(r, c, 9);
-      const fb = frame*.016 + c*.48 + r*.28;
-      ctx.fillStyle = `hsl(${176+sv*12}, ${70+sv*12}%, ${38+sv*9}%)`;
-      ctx.fill();
-
-      const lagoon = ctx.createLinearGradient(cx-hw, cy, cx+hw, cy+H);
-      lagoon.addColorStop(0, `rgba(170,255,225,${.18+sv*.07})`);
-      lagoon.addColorStop(.55, `rgba(65,205,205,${.20+sv*.06})`);
-      lagoon.addColorStop(1, `rgba(20,95,135,${.18+sv*.05})`);
-      ctx.fillStyle = lagoon;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
-      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
-      ctx.closePath(); ctx.fill();
-
-      // Chiazze sabbiose sott'acqua.
-      for (let i = 0; i < 2; i++) {
-        const sx = cx + (hash(r,c,i+880)-.5)*W*.58;
-        const sy = cy + hh*.55 + hash(r,c,i+890)*hh*.85;
-        ctx.fillStyle = `rgba(235,210,145,${.11+hash(r,c,i+900)*.07})`;
-        ctx.beginPath();
-        ctx.ellipse(sx, sy, (5+hash(r,c,i+901)*8)*s, (2.5+hash(r,c,i+902)*4)*s, .25, 0, Math.PI*2);
-        ctx.fill();
-      }
-
-      // Coralli più piccoli, meno rumorosi.
-      for (let i = 0; i < 3; i++) {
-        const hx = cx + (hash(r,c,i+300)-.5)*W*.62;
-        const hy = cy + hh * .45 + hash(r,c,i+310)*hh*.82;
-        const col = hash(r,c,i+320);
-        ctx.fillStyle = col>.62 ? `rgba(242,155,90,${.13+col*.08})`
-                                : `rgba(170,70,90,${.10+col*.07})`;
-        ctx.beginPath();
-        ctx.arc(hx, hy, (1.4+col*2.4)*s, 0, Math.PI*2);
-        ctx.fill();
-      }
-
-      // Increspature chiare.
-      ctx.strokeStyle = `rgba(220,255,242,${.18+Math.sin(fb)*.07})`;
-      ctx.lineWidth = Math.max(.7, s);
-      ctx.beginPath();
-      ctx.moveTo(cx-hw*.6, cy+hh*.6+Math.sin(fb)*1.8*s);
-      ctx.bezierCurveTo(cx-hw*.2,cy+hh*.5, cx+hw*.2,cy+hh*.6, cx+hw*.6,cy+hh*.6+Math.sin(fb+2)*1.8*s);
-      ctx.stroke();
-      break;
-    }
-
-    case T.SABBIA: {
-      const sv = hash(r, c, 2);
-      const r1=215+sv*25|0, g1=190+sv*20|0, b1=130+sv*20|0;
-      ctx.fillStyle = `rgb(${r1},${g1},${b1})`;
-      ctx.fill();
-      // illuminazione NW (top face più chiara)
-      ctx.fillStyle = `rgba(255,250,220,${.12+sv*.06})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx-hw*.8, cy+hh*.8);
-      ctx.lineTo(cx, cy+H*.6);
-      ctx.lineTo(cx+hw*.2, cy+hh*.4);
-      ctx.closePath(); ctx.fill();
-      // granuli
-      for (let i=0; i<6; i++) {
-        const gx=cx+(hash(r,c,i+10)-.5)*W*.8;
-        const gy=cy+hh*.3+hash(r,c,i+20)*hh*1.2;
-        const gv=hash(r,c,i+30);
-        ctx.fillStyle=`rgba(${160+gv*60|0},${130+gv*40|0},${80+gv*40|0},${.12+gv*.1})`;
-        ctx.beginPath(); ctx.arc(gx,gy,(0.8+gv*1.5)*s,0,Math.PI*2); ctx.fill();
-      }
-      break;
-    }
-
-    case T.ERBA: {
-      const ev = hash(r, c, 3);
-      const hue = 108 + ev*12;
-      ctx.fillStyle = `hsl(${hue},${52+ev*18}%,${30+ev*10}%)`;
-      ctx.fill();
-      // NW highlight
-      ctx.fillStyle = `hsla(${hue+10},60%,${50+ev*10}%,${.12+ev*.06})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx-hw*.9, cy+hh*.9);
-      ctx.lineTo(cx-hw*.1, cy+H*.85);
-      ctx.lineTo(cx+hw*.4, cy+hh*.4);
-      ctx.closePath(); ctx.fill();
-      // ciuffi
-      ctx.lineWidth = s * .9;
-      for (let i=0; i<5; i++) {
-        const gx=cx+(hash(r,c,i+50)-.5)*W*.7;
-        const gy=cy+hh*.3+hash(r,c,i+60)*hh*1.3;
-        const gh=(4+hash(r,c,i+70)*5)*s;
-        ctx.strokeStyle=`hsla(${hue+15},${50+ev*20}%,${44+ev*12}%,.55)`;
-        ctx.beginPath();
-        ctx.moveTo(gx,gy);
-        ctx.lineTo(gx+(hash(r,c,i+80)-.5)*3*s, gy-gh);
-        ctx.stroke();
-      }
-      break;
-    }
-
-    case T.FORESTA: {
-      const fv = hash(r, c, 4);
-      ctx.fillStyle = `hsl(${118+fv*10},${58+fv*14}%,${14+fv*8}%)`;
-      ctx.fill();
-      // sottobosco scuro
-      ctx.fillStyle = `rgba(0,15,5,${.15+fv*.08})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
-      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
-      ctx.closePath(); ctx.fill();
-      // chiazze
-      for (let i=0; i<3; i++) {
-        const bv=hash(r,c,i+100);
-        ctx.fillStyle=`hsla(${115+bv*20},${50+bv*20}%,${12+bv*14}%,${.25+bv*.18})`;
-        ctx.beginPath();
-        ctx.arc(cx+(hash(r,c,i+90)-.5)*W*.6, cy+hh*.4+hash(r,c,i+95)*hh, (4+bv*7)*s, 0,Math.PI*2);
-        ctx.fill();
-      }
-      break;
-    }
-
-    case T.ROCCIA: {
-      const rv = hash(r, c, 5);
-      ctx.fillStyle = `rgb(${70+rv*22|0},${60+rv*18|0},${50+rv*14|0})`;
-      ctx.fill();
-      // highlight NW
-      ctx.fillStyle = `rgba(160,140,110,${.1+rv*.07})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx-hw*.8, cy+hh*.8);
-      ctx.lineTo(cx, cy+H*.5);
-      ctx.closePath(); ctx.fill();
-      break;
-    }
-
-    case T.COLLINA: {
-      const cv = hash(r, c, 6);
-      ctx.fillStyle = `rgb(${118+cv*22|0},${100+cv*18|0},${72+cv*14|0})`;
-      ctx.fill();
-      // luce forte NW
-      ctx.fillStyle = `rgba(255,240,180,${.18+cv*.08})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx-hw*.85, cy+hh*.85);
-      ctx.lineTo(cx-hw*.1, cy+H*.8);
-      ctx.lineTo(cx+hw*.3, cy+hh*.35);
-      ctx.closePath(); ctx.fill();
-      // ombra SE
-      ctx.fillStyle = `rgba(0,0,20,${.2+cv*.1})`;
-      ctx.beginPath();
-      ctx.moveTo(cx+hw, cy+hh);
-      ctx.lineTo(cx, cy+H);
-      ctx.lineTo(cx-hw*.2, cy+H*.9);
-      ctx.lineTo(cx+hw*.7, cy+hh*.4);
-      ctx.closePath(); ctx.fill();
-      break;
-    }
-
-    case T.FIUME: {
-      ctx.fillStyle = '#2a6040';
-      ctx.fill();
-      const ff = frame*.022 + c*.45 + r*.32;
-      ctx.fillStyle = `rgba(40,140,200,${.84+Math.sin(ff)*.06})`;
-      ctx.beginPath();
-      const fw=hw*.72, fh=hh*.72;
-      ctx.moveTo(cx,      cy+hh-fh);
-      ctx.lineTo(cx+fw,   cy+hh);
-      ctx.lineTo(cx,      cy+hh+fh);
-      ctx.lineTo(cx-fw,   cy+hh);
-      ctx.closePath(); ctx.fill();
-      // corrente
-      ctx.strokeStyle=`rgba(200,240,255,${.2+Math.sin(ff*1.4)*.1})`;
-      ctx.lineWidth=1.2*s;
-      ctx.beginPath();
-      ctx.moveTo(cx-fw*.7, cy+hh+Math.sin(ff)*2*s);
-      ctx.bezierCurveTo(cx-fw*.2,cy+hh*.8, cx+fw*.2,cy+hh+.5, cx+fw*.7,cy+hh+Math.sin(ff+2)*2*s);
-      ctx.stroke();
-      break;
-    }
-
-    case T.SENTIERO: {
-      const pv = hash(r, c, 7);
-      // Strada più importante e leggibile: base battuta + bordi consumati.
-      ctx.fillStyle = `rgb(${158+pv*18|0},${122+pv*12|0},${68+pv*8|0})`;
-      ctx.fill();
-      ctx.fillStyle = `rgba(230,190,105,${.28+pv*.1})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy+hh*.16);
-      ctx.lineTo(cx+hw*.42, cy+hh);
-      ctx.lineTo(cx, cy+hh*1.84);
-      ctx.lineTo(cx-hw*.42, cy+hh);
-      ctx.closePath(); ctx.fill();
-      // solchi paralleli da carro / piedi: più visibili in stile Tropico 2
-      ctx.strokeStyle=`rgba(80,52,22,${.42+pv*.16})`; ctx.lineWidth=Math.max(.8,1.25*s);
-      ctx.beginPath(); ctx.moveTo(cx-hw*.22,cy+hh*.28); ctx.lineTo(cx-hw*.22,cy+hh*1.72); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx+hw*.22,cy+hh*.28); ctx.lineTo(cx+hw*.22,cy+hh*1.72); ctx.stroke();
-      // ghiaia/pietruzze
-      for(let i=0;i<4;i++){
-        const gx=cx+(hash(r,c,i+700)-.5)*W*.55;
-        const gy=cy+hh*.35+hash(r,c,i+710)*hh*1.25;
-        ctx.fillStyle=`rgba(75,55,35,${.18+hash(r,c,i+720)*.18})`;
-        ctx.beginPath(); ctx.arc(gx,gy,(.7+hash(r,c,i+730)*1.2)*s,0,Math.PI*2); ctx.fill();
-      }
-      break;
-    }
-
-    case T.PALUDE: {
-      const mv = hash(r, c, 8);
-      ctx.fillStyle = `rgb(${45+mv*15|0},${65+mv*18|0},${35+mv*12|0})`;
-      ctx.fill();
-      // pozza scura
-      const wx=cx+(hash(r,c,200)-.5)*W*.5, wy=cy+hh*.6+hash(r,c,210)*hh*.8;
-      ctx.fillStyle=`rgba(20,50,40,${.55+hash(r,c,220)*.2})`;
-      ctx.beginPath(); ctx.ellipse(wx,wy,(5+hash(r,c,221)*8)*s,(3+hash(r,c,222)*4)*s,0,0,Math.PI*2); ctx.fill();
-      // nebbia
-      ctx.fillStyle=`rgba(120,180,120,${.06+mv*.03})`;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy); ctx.lineTo(cx+hw, cy+hh);
-      ctx.lineTo(cx, cy+H); ctx.lineTo(cx-hw, cy+hh);
-      ctx.closePath(); ctx.fill();
-      break;
-    }
-
-    default:
-      ctx.fillStyle = '#222'; ctx.fill();
+function tileVicino(r,c,tipi){
+  for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,1],[-1,1],[1,-1]]){
+    const t=G.mappa[r+dr]&&G.mappa[r+dr][c+dc];
+    if(tipi.includes(t)) return true;
   }
+  return false;
+}
 
-  // Bordo tile sottile (solo terra/isola)
-  if (t !== T.OCEANO && t !== T.BASSO) {
-    ctx.strokeStyle = 'rgba(0,0,0,.08)';
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
+function riempiRomboIso(cx,cy,W,H,fill){
+  tilePathIso(cx,cy,W,H);
+  ctx.fillStyle=fill;
+  ctx.fill();
+}
+
+function granelliIso(cx,cy,W,H,r,c,s,baseSalt,colore,quantita,alpha=.16){
+  const hw=W/2, hh=H/2;
+  for(let i=0;i<quantita;i++){
+    const a=hash(r,c,baseSalt+i);
+    const b=hash(r,c,baseSalt+100+i);
+    const x=cx+(a-.5)*W*.78;
+    const y=cy+hh*.2+b*hh*1.45;
+    ctx.fillStyle=colore(alpha*(.55+hash(r,c,baseSalt+200+i)*.9));
+    ctx.beginPath();
+    ctx.arc(x,y,(.55+hash(r,c,baseSalt+300+i)*1.25)*s,0,Math.PI*2);
+    ctx.fill();
   }
 }
 
-// ── Transizioni biomi (sfumature ai bordi) ──
-// Nel sistema iso le transizioni sono gestite direttamente nelle texture del tile.
-// Questa funzione è mantenuta per compatibilità ma fa poco in iso vero.
-function disegnaTransizioni() {
-  // Foam costiero più evidente: acqua bassa/oceano vicino alla spiaggia.
-  const s = G.ISO_SCALE;
-  const W = G.ISO_W * s, H = G.ISO_H * s;
-  const hw = W/2, hh = H/2;
+function disegnaSentieroOrganico(cx,cy,r,c,W,H,s){
+  const hw=W/2, hh=H/2;
+  const costa=tileVicino(r,c,[T.SABBIA,T.BASSO,T.OCEANO]);
+  const verde=tileVicino(r,c,[T.ERBA,T.FORESTA,T.PALUDE]);
+  const base=costa&&!verde
+    ? `hsl(${42+hash(r,c,410)*8},42%,${58+hash(r,c,411)*8}%)`
+    : `hsl(${88+hash(r,c,412)*13},${32+hash(r,c,413)*12}%,${30+hash(r,c,414)*8}%)`;
+  riempiRomboIso(cx,cy,W,H,base);
+  granelliIso(cx,cy,W,H,r,c,s,2200,a=>`rgba(50,70,25,${a})`,8,.10);
 
-  for (let r=0; r<G.RIGHE; r++) for (let c=0; c<G.COLS; c++) {
-    const tile = G.mappa[r][c];
-    if (tile !== T.SABBIA && tile !== T.SENTIERO) continue;
+  const centro={x:cx,y:cy+hh};
+  const punti=[
+    {dr:-1,dc:0,x:cx+hw*.78,y:cy+hh*.18},
+    {dr:1,dc:0,x:cx-hw*.78,y:cy+hh*1.82},
+    {dr:0,dc:-1,x:cx-hw*.78,y:cy+hh*.18},
+    {dr:0,dc:1,x:cx+hw*.78,y:cy+hh*1.82},
+  ];
+  const conns=punti.filter(p=>G.mappa[r+p.dr]&&G.mappa[r+p.dr][c+p.dc]===T.SENTIERO);
+  const targets=conns.length?conns:punti.slice(0,2);
+  ctx.save();
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  ctx.strokeStyle=`rgba(${132+hash(r,c,2300)*28|0},${129+hash(r,c,2301)*24|0},${112+hash(r,c,2302)*22|0},.9)`;
+  ctx.lineWidth=Math.max(6.5,9.5*s);
+  for(const p of targets){
+    const j=(hash(r,c,2303+p.dr*9+p.dc*11)-.5)*5*s;
+    ctx.beginPath();
+    ctx.moveTo(centro.x,centro.y);
+    ctx.quadraticCurveTo((centro.x+p.x)/2+j,(centro.y+p.y)/2-j*.35,p.x,p.y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle='rgba(228,224,188,.34)';
+  ctx.lineWidth=Math.max(2.4,3.1*s);
+  for(const p of targets){
+    ctx.beginPath();
+    ctx.moveTo(centro.x,centro.y);
+    ctx.quadraticCurveTo((centro.x+p.x)/2,(centro.y+p.y)/2,p.x,p.y);
+    ctx.stroke();
+  }
+  ctx.restore();
 
-    const p = isoProj(c, r);
-    const cx = p.x, cy = p.y;
-    const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+  granelliIso(cx,cy,W,H,r,c,s,2400,a=>`rgba(55,50,38,${a*.85})`,7,.18);
+}
 
-    for (const [dr,dc] of dirs) {
-      const nr=r+dr, nc=c+dc;
-      if (nr<0||nc<0||nr>=G.RIGHE||nc>=G.COLS) continue;
-      const nt = G.mappa[nr][nc];
-      if (nt !== T.OCEANO && nt !== T.BASSO) continue;
+function disegnaTileIso(t, cx, cy, r, c) {
+  const s=G.ISO_SCALE;
+  const W=G.ISO_W*s, H=G.ISO_H*s;
+  const hw=W/2, hh=H/2;
+  const v=hash(r,c,1);
 
-      const t = frame*.025 + r*.45 + c*.37 + dr*.9 + dc*.6;
-      const foam = nt===T.BASSO ? .13 : .19;
-
-      // Piccola linea ondulata sul bordo del rombo verso l'acqua.
-      ctx.save();
-      ctx.strokeStyle = `rgba(245,255,235,${foam + Math.sin(t)*.055})`;
-      ctx.lineWidth = Math.max(.9, 1.45*s);
+  switch(t){
+    case T.OCEANO:{
+      const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
+      g.addColorStop(0,`hsl(${190+v*1.5},62%,${28+v*1.5}%)`);
+      g.addColorStop(.55,`hsl(${196+v*1.5},70%,${23+v*1.5}%)`);
+      g.addColorStop(1,`hsl(${204+v*1.5},68%,${16+v}%)`);
+      riempiRomboIso(cx,cy,W,H,g);
+      ctx.strokeStyle=`rgba(170,230,235,${.08+Math.sin(frame*.017+r*.4+c*.3)*.03})`;
+      ctx.lineWidth=Math.max(.6,1*s);
       ctx.beginPath();
-
-      if (dr === -1) { // lato nord
-        ctx.moveTo(cx, cy + Math.sin(t)*1.2*s);
-        ctx.quadraticCurveTo(cx-hw*.22, cy+hh*.22, cx-hw*.5, cy+hh*.5);
-      } else if (dr === 1) { // lato sud
-        ctx.moveTo(cx, cy+H + Math.sin(t)*1.2*s);
-        ctx.quadraticCurveTo(cx+hw*.22, cy+hh*1.78, cx+hw*.5, cy+hh*1.5);
-      } else if (dc === -1) { // lato ovest
-        ctx.moveTo(cx-hw, cy+hh + Math.sin(t)*1.2*s);
-        ctx.quadraticCurveTo(cx-hw*.62, cy+hh*.75, cx, cy);
-      } else { // lato est
-        ctx.moveTo(cx+hw, cy+hh + Math.sin(t)*1.2*s);
-        ctx.quadraticCurveTo(cx+hw*.62, cy+hh*.75, cx, cy);
-      }
+      ctx.moveTo(cx-hw*.62,cy+hh*.55);
+      ctx.bezierCurveTo(cx-hw*.25,cy+hh*.44,cx+hw*.22,cy+hh*.64,cx+hw*.62,cy+hh*.52);
       ctx.stroke();
-
-      // Schiuma interna molto leggera, per costa più morbida.
-      ctx.globalAlpha = .16 + Math.sin(t+1.5)*.04;
-      ctx.fillStyle = '#ffffff';
+      break;
+    }
+    case T.BASSO:{
+      const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
+      g.addColorStop(0,`hsl(${174+v*2},70%,${48+v*2}%)`);
+      g.addColorStop(.65,`hsl(${184+v*2},67%,${40+v*2}%)`);
+      g.addColorStop(1,`hsl(${192+v*2},62%,${32+v*1.5}%)`);
+      riempiRomboIso(cx,cy,W,H,g);
+      granelliIso(cx,cy,W,H,r,c,s,3100,a=>`rgba(230,215,145,${a})`,5,.11);
+      break;
+    }
+    case T.SABBIA:{
+      const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
+      g.addColorStop(0,`hsl(${44+v*1.5},54%,${70+v*1.5}%)`);
+      g.addColorStop(.8,`hsl(${39+v*1.5},42%,${60+v*1.6}%)`);
+      riempiRomboIso(cx,cy,W,H,g);
+      granelliIso(cx,cy,W,H,r,c,s,3200,a=>`rgba(125,95,48,${a})`,9,.13);
+      break;
+    }
+    case T.ERBA:{
+      const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
+      g.addColorStop(0,`hsl(${102+v*2.5},46%,${36+v*1.6}%)`);
+      g.addColorStop(.7,`hsl(${112+v*2},50%,${29+v*1.5}%)`);
+      riempiRomboIso(cx,cy,W,H,g);
+      granelliIso(cx,cy,W,H,r,c,s,3300,a=>`rgba(180,210,95,${a})`,6,.11);
+      granelliIso(cx,cy,W,H,r,c,s,3350,a=>`rgba(18,65,22,${a})`,5,.13);
+      break;
+    }
+    case T.FORESTA:{
+      const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
+      g.addColorStop(0,`hsl(${116+v*2},48%,${25+v*1.5}%)`);
+      g.addColorStop(.72,`hsl(${126+v*2},46%,${14+v*1.5}%)`);
+      riempiRomboIso(cx,cy,W,H,g);
+      for(let i=0;i<4;i++){
+        ctx.fillStyle=`rgba(20,75,22,${.18+hash(r,c,3400+i)*.16})`;
+        ctx.beginPath();
+        ctx.ellipse(cx+(hash(r,c,3410+i)-.5)*W*.66,cy+hh*.35+hash(r,c,3420+i)*hh,6*s,3.5*s,hash(r,c,3430+i)*Math.PI,0,Math.PI*2);
+        ctx.fill();
+      }
+      break;
+    }
+    case T.ROCCIA:
+    case T.COLLINA:{
+      const rocky=t===T.ROCCIA;
+      const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
+      g.addColorStop(0,rocky?`hsl(38,12%,${46+v*9}%)`:`hsl(38,28%,${48+v*8}%)`);
+      g.addColorStop(1,rocky?`hsl(34,16%,${27+v*7}%)`:`hsl(35,24%,${34+v*7}%)`);
+      riempiRomboIso(cx,cy,W,H,g);
+      granelliIso(cx,cy,W,H,r,c,s,3500,a=>`rgba(45,35,28,${a})`,10,.16);
+      break;
+    }
+    case T.FIUME:{
+      riempiRomboIso(cx,cy,W,H,`hsl(138,32%,24%)`);
+      ctx.fillStyle=`rgba(35,135,175,.78)`;
       ctx.beginPath();
-      ctx.ellipse(
-        cx + dc*hw*.48 - dr*hw*.08,
-        cy + hh + dr*hh*.46 + dc*hh*.05,
-        W*.10, H*.045,
-        dc ? .55 : -.55,
-        0, Math.PI*2
-      );
+      ctx.moveTo(cx,cy+hh*.15);ctx.lineTo(cx+hw*.48,cy+hh);ctx.lineTo(cx,cy+hh*1.85);ctx.lineTo(cx-hw*.48,cy+hh);ctx.closePath();
       ctx.fill();
+      break;
+    }
+    case T.SENTIERO:{
+      disegnaSentieroOrganico(cx,cy,r,c,W,H,s);
+      break;
+    }
+    case T.PALUDE:{
+      riempiRomboIso(cx,cy,W,H,`hsl(${92+v*10},34%,${22+v*5}%)`);
+      ctx.fillStyle=`rgba(20,55,45,${.28+v*.12})`;
+      ctx.beginPath();ctx.ellipse(cx+(v-.5)*W*.3,cy+hh*.85,W*.16,H*.12,.2,0,Math.PI*2);ctx.fill();
+      break;
+    }
+    default:
+      riempiRomboIso(cx,cy,W,H,'#223');
+  }
+}
+
+function disegnaTransizioni(){
+  const s=G.ISO_SCALE, W=G.ISO_W*s, H=G.ISO_H*s, hw=W/2, hh=H/2;
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    const tile=G.mappa[r][c];
+    const terra=tile!==T.OCEANO&&tile!==T.BASSO&&tile!==T.FIUME;
+    if(!terra) continue;
+    const p=isoProj(c,r), cx=p.x, cy=p.y;
+    for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const nt=G.mappa[r+dr]&&G.mappa[r+dr][c+dc];
+      if(nt!==T.OCEANO&&nt!==T.BASSO) continue;
+      const t=frame*.022+r*.44+c*.29+dr*.8+dc*.55;
+      ctx.save();
+      ctx.strokeStyle=`rgba(248,244,220,${.20+Math.sin(t)*.05})`;
+      ctx.lineWidth=Math.max(1.2,2.2*s);
+      ctx.beginPath();
+      if(dr===-1){ ctx.moveTo(cx-hw*.48,cy+hh*.47); ctx.quadraticCurveTo(cx,cy+hh*.1,cx+hw*.48,cy+hh*.47); }
+      else if(dr===1){ ctx.moveTo(cx-hw*.48,cy+hh*1.53); ctx.quadraticCurveTo(cx,cy+hh*1.9,cx+hw*.48,cy+hh*1.53); }
+      else if(dc===-1){ ctx.moveTo(cx-hw*.9,cy+hh); ctx.quadraticCurveTo(cx-hw*.46,cy+hh*.36,cx,cy+hh*.08); }
+      else { ctx.moveTo(cx+hw*.9,cy+hh); ctx.quadraticCurveTo(cx+hw*.46,cy+hh*.36,cx,cy+hh*.08); }
+      ctx.stroke();
       ctx.restore();
     }
   }
+}
+
+function disegnaVelatureTerreno(){
+  const s=G.ISO_SCALE, W=G.ISO_W*s, H=G.ISO_H*s, hh=H/2;
+  ctx.save();
+  for(let r=0;r<G.RIGHE;r++) for(let c=0;c<G.COLS;c++){
+    const tile=G.mappa[r][c];
+    const v=hash(r,c,5100);
+    if(v<.36) continue;
+    const p=isoProj(c,r);
+    const cx=p.x+(hash(r,c,5101)-.5)*W*.45;
+    const cy=p.y+hh+(hash(r,c,5102)-.5)*H*.55;
+    let fill=null;
+    let rx=W*(.42+hash(r,c,5103)*.28);
+    let ry=H*(.18+hash(r,c,5104)*.12);
+    if(tile===T.ERBA) fill=v>.7?'rgba(112,150,55,.11)':'rgba(32,92,32,.10)';
+    else if(tile===T.FORESTA) fill='rgba(18,70,28,.14)';
+    else if(tile===T.SABBIA) fill=v>.68?'rgba(238,220,158,.10)':'rgba(172,130,70,.09)';
+    else if(tile===T.COLLINA||tile===T.ROCCIA) fill='rgba(96,82,60,.10)';
+    else if(tile===T.OCEANO||tile===T.BASSO){
+      fill=tile===T.BASSO?'rgba(120,230,210,.08)':'rgba(14,90,130,.10)';
+      rx*=1.25; ry*=.9;
+    }
+    if(!fill) continue;
+    ctx.fillStyle=fill;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,rx,ry,(hash(r,c,5105)-.5)*.8,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.restore();
 }

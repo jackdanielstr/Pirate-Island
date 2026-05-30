@@ -3,6 +3,51 @@
 
 // ═══════════════════════════════════════
 // MODULO: RENDERER_SCENE
+
+function disegnaPerimetriEdificiOccupati(s){
+  if(!G.edifici||!G.edifici.length||typeof celleEdificio!=='function'||typeof isoProj!=='function') return;
+  const IW=G.ISO_W*s, IH=G.ISO_H*s, hw=IW/2, hh=IH/2;
+  ctx.save();
+  for(const ed of G.edifici){
+    const celle=celleEdificio(ed.tipo,ed.r,ed.c);
+    const selected = G.edificioSelezionato===ed || G.edificioSelezionato===ed.id || G.hoverEdificio===ed;
+    for(const cell of celle){
+      if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) continue;
+      const p=isoProj(cell.c,cell.r);
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y);
+      ctx.lineTo(p.x+hw,p.y+hh);
+      ctx.lineTo(p.x,p.y+IH);
+      ctx.lineTo(p.x-hw,p.y+hh);
+      ctx.closePath();
+      ctx.fillStyle = selected ? 'rgba(245,190,62,.22)' : 'rgba(48,28,12,.16)';
+      ctx.strokeStyle = selected ? 'rgba(255,220,95,.95)' : 'rgba(42,24,10,.58)';
+      ctx.lineWidth = selected ? Math.max(2,1.8*s) : Math.max(1,1.15*s);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Bordo esterno più marcato: fa capire subito dove finisce l'ingombro dell'edificio.
+    ctx.strokeStyle = selected ? 'rgba(255,235,130,.98)' : 'rgba(250,190,70,.48)';
+    ctx.lineWidth = selected ? Math.max(2.4,2.1*s) : Math.max(1.2,1.35*s);
+    for(const cell of celle){
+      const edges=[
+        {dr:-1,dc:0,a:0,b:1}, {dr:0,dc:1,a:1,b:2},
+        {dr:1,dc:0,a:2,b:3}, {dr:0,dc:-1,a:3,b:0}
+      ];
+      const p=isoProj(cell.c,cell.r);
+      const pts=[{x:p.x,y:p.y},{x:p.x+hw,y:p.y+hh},{x:p.x,y:p.y+IH},{x:p.x-hw,y:p.y+hh}];
+      for(const e of edges){
+        const nr=cell.r+e.dr,nc=cell.c+e.dc;
+        const inside=celle.some(q=>q.r===nr&&q.c===nc);
+        if(inside) continue;
+        ctx.beginPath(); ctx.moveTo(pts[e.a].x,pts[e.a].y); ctx.lineTo(pts[e.b].x,pts[e.b].y); ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+
 // ═══════════════════════════════════════
 // ── DRAW PRINCIPALE — Isometrico 2:1 con depth sorting ──
 function disegnaScena(dt=0.016){
@@ -43,7 +88,12 @@ function disegnaScena(dt=0.016){
   }
 
   // ── 2. FOAM/TRANSIZIONI spiaggia ──
+  if(typeof disegnaVelatureTerreno==='function') disegnaVelatureTerreno();
   disegnaTransizioni();
+
+  // ── 2b. Perimetro e footprint tile occupati dagli edifici ──
+  // Sempre visibile, così si distingue l'ingombro reale dal disegno alto dell'edificio.
+  if(typeof disegnaPerimetriEdificiOccupati==='function') disegnaPerimetriEdificiOccupati(s);
 
   // ── 3. Raccoglie tutti gli oggetti da disegnare con depth key ──
   // depth = row*2 + col*2 (con tie-breaking per altezza)
@@ -59,6 +109,13 @@ function disegnaScena(dt=0.016){
     const p = isoProj(a.c, a.r);
     oggetti.push({ depth: a.r*2+a.c*2, tipo:'albero', data:a, px:p.x, py:p.y });
   }
+  // Props ambiente vivo: coste, sentieri, vegetazione bassa e clutter vicino agli edifici
+  if(typeof assicuraAmbienteVivo==='function') assicuraAmbienteVivo();
+  for (const ap of (G.ambienteProps||[])){
+    const p = isoProj(ap.c, ap.r);
+    oggetti.push({ depth: ap.r*2+ap.c*2+(ap.z||0.2), tipo:'ambienteProp', data:ap, px:p.x, py:p.y });
+  }
+
   // Props porto vivo / clutter scenico
   if(typeof assicuraPortoVivo==='function') assicuraPortoVivo();
   for (const pr of (G.portoProps||[])){
@@ -109,6 +166,8 @@ function disegnaScena(dt=0.016){
         disegnaRocciaIso(cx, cy, data.scala, s); break;
       case 'albero':
         disegnaAlberoIso(cx, cy, data.scala, data.tinta, data.palude, s); break;
+      case 'ambienteProp':
+        if(typeof disegnaPropAmbiente==='function') disegnaPropAmbiente(data, cx, cy, s); break;
       case 'portoProp':
         if(typeof disegnaPropPorto==='function') disegnaPropPorto(data, cx, cy, s); break;
       case 'edificio':
@@ -129,8 +188,7 @@ function disegnaScena(dt=0.016){
         if(!G.battagliaAttiva) muoviPirata(data,dtMovimento);
         break;
       case 'schiavo':
-        if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s);
-        if(typeof disegnaCaricoSchiavo==='function') disegnaCaricoSchiavo(data,cx,cy,s);
+        if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s,data);
         break;
       case 'poi':
         disegnaPOI(data, cx, cy, s); break;
@@ -152,16 +210,21 @@ function disegnaScena(dt=0.016){
       const rr=G.hoverR, cc=G.hoverC;
       ok = (typeof tileValidoPerSentiero==='function' ? tileValidoPerSentiero(rr,cc) : false) && G.oro>=2;
     }else{
-      ok = puoCostruire(G.hoverR, G.hoverC);
-      originePreview=(typeof origineEdificioDaCentro==='function')
+      const statoPreview=(typeof statoCostruzioneEdificio==='function')
+        ? statoCostruzioneEdificio(G.hoverR, G.hoverC, G.modalitaCostruzione)
+        : {ok:puoCostruire(G.hoverR, G.hoverC),motivo:'ok'};
+      ok = !!statoPreview.ok;
+      originePreview=statoPreview.origine || ((typeof origineEdificioDaCentro==='function')
         ? origineEdificioDaCentro(G.modalitaCostruzione,G.hoverR,G.hoverC)
-        : {r:G.hoverR,c:G.hoverC};
-      cellePreview=(typeof celleEdificio==='function')
+        : {r:G.hoverR,c:G.hoverC});
+      cellePreview=statoPreview.celle || ((typeof celleEdificio==='function')
         ? celleEdificio(G.modalitaCostruzione,originePreview.r,originePreview.c)
-        : [{r:G.hoverR,c:G.hoverC}];
+        : [{r:G.hoverR,c:G.hoverC}]);
+      G.previewCostruzioneMotivo = statoPreview.motivo || 'ok';
     }
-    ctx.fillStyle   = ok ? 'rgba(80,220,80,.28)' : 'rgba(220,60,60,.28)';
-    ctx.strokeStyle = ok ? '#4f4' : '#f44';
+    const mancaSentiero=!isRoad && G.previewCostruzioneMotivo==='manca-sentiero';
+    ctx.fillStyle   = ok ? 'rgba(80,220,80,.28)' : (mancaSentiero ? 'rgba(255,170,40,.30)' : 'rgba(220,60,60,.28)');
+    ctx.strokeStyle = ok ? '#4f4' : (mancaSentiero ? '#ffaa28' : '#f44');
     ctx.lineWidth   = 1.5;
     for(const cell of cellePreview){
       if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) continue;
@@ -171,6 +234,18 @@ function disegnaScena(dt=0.016){
       ctx.moveTo(pcx, pcy); ctx.lineTo(pcx+hw, pcy+hh);
       ctx.lineTo(pcx, pcy+IH); ctx.lineTo(pcx-hw, pcy+hh);
       ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    if (mancaSentiero){
+      const pp=isoProj(G.hoverC,G.hoverR);
+      ctx.save();
+      ctx.font=Math.max(10,12*s)+'px Georgia, serif';
+      ctx.textAlign='center';
+      ctx.lineWidth=3;
+      ctx.strokeStyle='rgba(55,32,12,.85)';
+      ctx.fillStyle='#ffd37a';
+      ctx.strokeText('Serve sentiero',pp.x,pp.y-IH*s*.35);
+      ctx.fillText('Serve sentiero',pp.x,pp.y-IH*s*.35);
+      ctx.restore();
     }
     if (ok && !isRoad){
       ctx.globalAlpha = .45;
@@ -198,6 +273,8 @@ function disegnaScena(dt=0.016){
   if(typeof disegnaIndicatoriEdifici==="function") disegnaIndicatoriEdifici(s);
   // ── 7c. Navi animate ──
   if(typeof disegnaNaviMare==="function") disegnaNaviMare(s);
+  // ── 7d. Atmosfera Tropico 2: fumo, luci, gabbiani, schiuma portuale ──
+  if(typeof disegnaAtmosferaTropico==="function") disegnaAtmosferaTropico(s);
 
   // ── 8. Ombra globale drammatica (sole NW a ~45°) ──
   // Disegnata come ellisse allungata verso SE per ogni oggetto alto
@@ -205,14 +282,14 @@ function disegnaScena(dt=0.016){
   ctx.globalCompositeOperation = 'multiply';
   ctx.fillStyle = '#506040';
   const shadowAlts = {fortezza:.55,guardia:.65,osservatorio:.6,cantiere:.3,cappella:.5,caserma:.38,taverna:.42,cantastorie:.48};
-  ctx.globalAlpha = .22;
+  ctx.globalAlpha = .12;
   for (const b of G.edifici){
     const fp=(typeof ingombroEdificio==='function') ? ingombroEdificio(b.tipo) : {w:1,h:1};
     const centro=(typeof centroEdificioGriglia==='function') ? centroEdificioGriglia(b) : {r:b.r,c:b.c};
     const p = isoProj(centro.c, centro.r);
     const bx = p.x, by = p.y + IH/2;
-    const scalaIngombro=Math.min(1.36,1+(Math.max(fp.w||1,fp.h||1)-1)*0.18);
-    const altH = (shadowAlts[b.tipo]||.35) * G.ISO_H * s * 1.8 * scalaIngombro;
+    const scalaIngombro=Math.min(1.24,1+(Math.max(fp.w||1,fp.h||1)-1)*0.13);
+    const altH = (shadowAlts[b.tipo]||.28) * G.ISO_H * s * 1.55 * scalaIngombro;
     ctx.beginPath();
     ctx.ellipse(bx + altH*.6, by + altH*.32, altH*.65, altH*.18, .25, 0, Math.PI*2);
     ctx.fill();
@@ -249,3 +326,9 @@ function disegnaPOI(poi, cx, cy, s){
 }
 
 function coloreUmore(u){ return u>70?'#4fc04f':u>40?'#f0c040':'#c0392b'; }
+
+
+// PORTO_VIVO_FASE4A
+(function(){
+ const oldDrawBuilding = window.drawBuilding || window.disegnaEdificio;
+})();
