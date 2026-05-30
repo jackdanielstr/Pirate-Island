@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Isla del Diablo - Modulare</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=tropico8c">
 </head>
-<body>
+<body class="tab-costruisci">
 <!-- TITOLO -->
 <div id="schermata-titolo">
   <div class="teschio">💀</div>
@@ -65,6 +65,7 @@
       <button class="btn-azione" id="bt-chiudi" style="display:none" onclick="chiudiBattaglia()">Continua</button>
     </div>
 
+    <div id="consiglio-ui">🏴 Seleziona una categoria in basso o tocca un edificio per aprire la scheda.</div>
     <div id="log-msg"></div>
   </div>
 
@@ -86,13 +87,13 @@
 
   <div id="pannello-dx">
     <div id="tab-pannello">
-      <button class="ptab attivo" onclick="mostraTab('costruisci')">🏗</button>
-      <button class="ptab" onclick="mostraTab('ciurma')">☠</button>
-      <button class="ptab" onclick="mostraTab('flotta')">⛵</button>
-      <button class="ptab" onclick="mostraTab('ricerca')">🔭</button>
-      <button class="ptab" onclick="mostraTab('fazioni')">🌐</button>
-      <button class="ptab" onclick="mostraTab('missioni')">📜</button>
-      <button class="ptab" onclick="mostraTab('bisogni')">❤</button>
+      <button class="ptab attivo" onclick="mostraTab('costruisci')" title="Costruisci" data-label="Costruisci">🏗</button>
+      <button class="ptab" onclick="mostraTab('ciurma')" title="Ciurma" data-label="Ciurma">☠</button>
+      <button class="ptab" onclick="mostraTab('flotta')" title="Flotta" data-label="Flotta">⛵</button>
+      <button class="ptab" onclick="mostraTab('ricerca')" title="Ricerca" data-label="Ricerca">🔭</button>
+      <button class="ptab" onclick="mostraTab('fazioni')" title="Fazioni" data-label="Fazioni">🌐</button>
+      <button class="ptab" onclick="mostraTab('missioni')" title="Missioni" data-label="Missioni">📜</button>
+      <button class="ptab" onclick="mostraTab('bisogni')" title="Bisogni" data-label="Bisogni">❤</button>
     </div>
     <div id="contenuto-pannello"></div>
   </div>
@@ -100,11 +101,11 @@
 
 <!-- BARRA INFERIORE -->
 <div id="barra-inf">
-  <button class="btn-azione" onclick="inviaRaid()">⚔ Raid</button>
-  <button class="btn-azione" onclick="apriCommercio()">🤝 Commercio</button>
-  <button class="btn-azione" onclick="apriEditti()">📜 Editti</button>
-  <button class="btn-azione" onclick="apriPrigione()">⛓ Prigione</button>
-  <button class="btn-azione" onclick="apriGestioneSchiavi()">⛏ Schiavi</button>
+  <button class="btn-azione" onclick="apriPortoPirata()" title="Gestisci porto e raid">⚓ Porto</button>
+  <button class="btn-azione" onclick="apriCommercio()" title="Scambi e contratti">🤝 Commercio</button>
+  <button class="btn-azione" onclick="apriEditti()" title="Ordini del governatore">📜 Editti</button>
+  <button class="btn-azione" onclick="apriPrigione()" title="Prigionieri e riscatti">⛓ Prigione</button>
+  <button class="btn-azione" onclick="apriGestioneSchiavi()" title="Assegna lavoratori">⛏ Schiavi</button>
   <button class="btn-azione pericolo" id="btn-annulla" onclick="annullaCostruzione()">✕ Annulla</button>
   <button id="btn-velocita" onclick="cambiaVelocita()">▶▶ Veloce</button>
   <button id="btn-musica" onclick="toggleMusica()" title="Musica">🎵</button>
@@ -180,35 +181,36 @@
 <!-- NOTIFICHE -->
 <div id="area-notifiche"></div>
 <script src="js/audio/music.js" defer></script>
-<script src="js/core/state.js" defer></script>
-<script src="js/world/map.js" defer></script>
-<script src="js/rendering/tiles.js" defer></script>
+<script src="js/core/state.js?v=tropico7" defer></script>
+<script src="js/world/map.js?v=tropico2" defer></script>
+<script src="js/rendering/tiles.js?v=tropico13" defer></script>
 <script src="js/rendering/nature.js" defer></script>
-<script src="js/rendering/iso_helpers.js" defer></script>
-<script src="js/rendering/buildings.js" defer></script>
+<script src="js/rendering/iso_helpers.js?v=tropico10" defer></script>
+<script src="js/rendering/buildings.js?v=tropico12" defer></script>
 <script src="js/rendering/units.js" defer></script>
-<script src="js/rendering/scene.js" defer></script>
-<script src="js/simulation/slaves.js" defer></script>
-<script src="js/world/buildings_hud.js" defer></script>
-<script src="js/core/startup.js" defer></script>
-<script src="js/world/building_placement.js" defer></script>
-<script src="js/raid/ships_raid.js" defer></script>
-<script src="js/raid/raid_sequence.js" defer></script>
-<script src="js/simulation/prison_trade.js" defer></script>
-<script src="js/core/tick.js" defer></script>
+<script src="js/rendering/atmosphere.js" defer></script>
+<script src="js/rendering/scene.js?v=tropico11" defer></script>
+<script src="js/simulation/slaves.js?v=tropico3" defer></script>
+<script src="js/world/buildings_hud.js?v=tropico8" defer></script>
+<script src="js/core/startup.js?v=tropico5" defer></script>
+<script src="js/world/building_placement.js?v=tropico2" defer></script>
+<script src="js/raid/ships_raid.js?v=tropico8" defer></script>
+<script src="js/raid/raid_sequence.js?v=tropico7" defer></script>
+<script src="js/simulation/prison_trade.js?v=tropico3" defer></script>
+<script src="js/core/tick.js?v=tropico4" defer></script>
 <script src="js/events/sea_events.js" defer></script>
 <script src="js/events/crew_events.js" defer></script>
 <script src="js/events/political_events.js" defer></script>
 <script src="js/events/events_logic.js" defer></script>
-<script src="js/ui/panel.js" defer></script>
+<script src="js/ui/panel.js?v=tropico3" defer></script>
 <script src="js/ui/pirate_cards.js" defer></script>
-<script src="js/ui/views.js" defer></script>
-<script src="js/ui/manage.js" defer></script>
+<script src="js/ui/views.js?v=tropico2" defer></script>
+<script src="js/ui/manage.js?v=tropico8" defer></script>
 <script src="js/input/input.js" defer></script>
-<script src="js/core/pathfinding.js" defer></script>
+<script src="js/core/pathfinding.js?v=tropico4" defer></script>
 <script src="js/rendering/portrait.js" defer></script>
-<script src="js/core/core.js" defer></script>
-<script src="js/core/main.js" defer></script>
+<script src="js/core/core.js?v=tropico4" defer></script>
+<script src="js/core/main.js?v=tropico4" defer></script>
 <script src="js/core/stability.js" defer></script>
 </body>
 </html>
