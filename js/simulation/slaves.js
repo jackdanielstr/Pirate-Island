@@ -331,7 +331,7 @@ function muoviSchiavi(dt){
       const tx=stepTarget.c+.5, ty=stepTarget.r+.5;
       const dx=tx-s.mc, dy=ty-s.mr;
       const dist=Math.sqrt(dx*dx+dy*dy);
-      const speed=(0.46+(s.felicita||50)/210)*dt;
+      const speed=(0.34+(s.felicita||50)/260)*dt;
       if(dist>0.04){
         const oldC=s.mc, oldR=s.mr;
         const roadBoost=bonusSentieroPer(s.mr,s.mc);
@@ -353,11 +353,11 @@ function muoviSchiavi(dt){
             tr.fase='a_porto';
             tr.carry=true;
             tr.risorsa=RISORSE_PORTO[Math.floor(Math.random()*RISORSE_PORTO.length)];
-            tr.attesa=.25+Math.random()*.5;
+            tr.attesa=.45+Math.random()*.9;
           } else {
             tr.fase='a_edificio';
             tr.carry=false;
-            tr.attesa=.4+Math.random()*1.2;
+            tr.attesa=.7+Math.random()*1.7;
           }
           s.percorso=null; s.percorsoIdx=0; s._targetKey=null;
         }
