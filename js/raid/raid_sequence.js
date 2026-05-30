@@ -114,6 +114,7 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
   const ov=document.getElementById('overlay-campana');
   if(ov) ov.classList.remove('aperto');
   notifica('🔔 Campana del Porto', (bersaglio.missione?.icona||'⚔')+' '+bersaglio.nome+' — la ciurma si imbarca.');
+  if(typeof creaEffettoPortoRaid==='function') creaEffettoPortoRaid('campana',nave,{crew:equipaggioRaid.length});
   aggMsg('🔔 La campana suona: '+nave.nome+' prepara il raid.','info');
 
   const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0));
@@ -140,7 +141,10 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
     if(fase!==ultimoMsg){
       ultimoMsg=fase;
       if(fase===0)      aggMsg('🏃 La ciurma corre al porto... '+arrivati+'/'+equipaggioRaid.length,'info');
-      else if(fase===1) aggMsg('🪵 Caricamento di rum, polvere e provviste su '+nave.nome+'...','info');
+      else if(fase===1){
+        if(typeof creaEffettoPortoRaid==='function') creaEffettoPortoRaid('imbarco',nave,{crew:equipaggioRaid.length,quanti:equipaggioRaid.length});
+        aggMsg('🪵 Caricamento di rum, polvere e provviste su '+nave.nome+'...','info');
+      }
       else              aggMsg('⛵ Gli ultimi pirati salgono a bordo...','info');
     }
 
@@ -172,6 +176,7 @@ function salpaNave(nave, bersaglio, tattica, durata, equipaggioRaid){
     _naviMare[nave.id]._dockInit=false;
     _naviMare[nave.id]._raidWater=null;
   }
+  if(typeof creaEffettoPortoRaid==='function') creaEffettoPortoRaid('salpa',nave,{crew:crew.length});
 
   G.cooldownRaid  = 4;
   G.contatori.raid++;
@@ -205,7 +210,8 @@ function tickEventiSpedizioneRaid(nave){
   rd.extraBottino = rd.extraBottino || {oro:0,cibo:0,legno:0,rum:0,ricerca:0};
 
   // Non tutti i giorni succede qualcosa: deve dare sapore, non spam.
-  const pericolo = rd.bersaglio?.difficolta || 1;
+  const pattuglia = rd.bersaglio?.pattuglia || 0;
+  const pericolo = (rd.bersaglio?.difficolta || 1) + Math.floor(pattuglia/3);
   const chance = Math.min(.58, .24 + pericolo*.07);
   if(Math.random()>chance) return;
 
@@ -264,11 +270,12 @@ function tickEventiSpedizioneRaid(nave){
       }
     },
     {
-      id:'pattuglia', peso:pericolo>=3?3:1,
+      id:'pattuglia', peso:pericolo>=3?3+pattuglia:1,
       fn:()=>{
         const dmg=3+Math.floor(Math.random()*(4+pericolo*3));
         nave.hp=Math.max(5,(nave.hp||nave.hpMax)-dmg);
-        const msg='👑 Pattuglia reale avvistata: '+nave.nome+' subisce -'+dmg+' HP.';
+        const pot=rd.bersaglio?.potenza;
+        const msg=(pot?.icona||'👑')+' Pattuglia '+(pot?.nome||'nemica')+' avvistata: '+nave.nome+' subisce -'+dmg+' HP.';
         rd.log?.push(msg); aggMsg(msg,'male');
       }
     },
@@ -290,6 +297,7 @@ function registraStoriaRaid(nave, bersaglio, vinto, bottino, scoperta){
     nave:nave.nome,
     missione:bersaglio?.missione?.nome||'Raid',
     territorio:bersaglio?.territorio?.nome||bersaglio?.nome||'Mare aperto',
+    potenza:bersaglio?.potenza?.nome||null,
     vinto:!!vinto,
     bottino:bottino||{},
     scoperta:scoperta||null,
@@ -308,6 +316,7 @@ function rientroNave(nave){
   nave._faseRaid='scarico';
   nave._faseRaidTick=90;
   if(typeof _naviMare!=='undefined' && _naviMare[nave.id]) _naviMare[nave.id]._dockInit=false;
+  if(typeof creaEffettoPortoRaid==='function') creaEffettoPortoRaid('rientro',nave);
 
   // Al rientro la ciurma riappare al porto insieme alla nave.
   const puntoPorto=trovaPortoRaid();
@@ -419,6 +428,14 @@ function rientroNave(nave){
     for(const[k,v] of Object.entries(bersaglio.rep))
       if(v && G.fazioni[k]) G.fazioni[k].rep=Math.max(-100,Math.min(100,G.fazioni[k].rep+v));
 
+    const potId=bersaglio.potenza?.id||bersaglio.territorio?.potenza;
+    if(potId && typeof modificaAllertaRaid==='function'){
+      const mid=bersaglio.missione?.id||'raid';
+      const deltaAllerta=mid==='esplorazione' ? 1 : mid==='falsa_bandiera' ? 2 : 6+(bersaglio.pattuglia||0)*2+(bersaglio.difficolta||1);
+      const nuovaAllerta=modificaAllertaRaid(potId,deltaAllerta);
+      if(deltaAllerta>1) aggMsg((bersaglio.potenza?.icona||'⚓')+' Allerta '+(bersaglio.potenza?.nome||'nemica')+' sale a '+nuovaAllerta+'.','info');
+    }
+
     if(bersaglio.missione?.falsaBandiera)
       aggMsg('🏳 Falsa bandiera riuscita: la Corona sospetta altri corsari, non la tua cala.','bene');
 
@@ -489,10 +506,16 @@ function rientroNave(nave){
     notifica('⚔ Raid Riuscito!', bersaglio.icona+' '+bersaglio.nome+' saccheggiata! '+bottinoStr);
     aggMsg('💰 '+nave.nome+' rientra: '+bottinoStr+' (danno -'+dannoNave+'hp)','bene');
     if(typeof creaScaricoRaidPorto==='function') creaScaricoRaidPorto(nave,{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ricFinale});
+    if(typeof creaEffettoPortoRaid==='function') creaEffettoPortoRaid('scarico',nave,{bottino:{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ricFinale}});
 
   } else {
     for(const p of crew) p.umore=Math.max(5,p.umore-18);
     if(Math.random()<0.35) catturaPrigioniero(bersaglio.rep.reale<0?'Marina Reale':'Mercante');
+    const potId=bersaglio.potenza?.id||bersaglio.territorio?.potenza;
+    if(potId && typeof modificaAllertaRaid==='function'){
+      const nuovaAllerta=modificaAllertaRaid(potId,3+Math.floor((bersaglio.pattuglia||0)/2));
+      aggMsg((bersaglio.potenza?.icona||'⚓')+' Le difese di '+(bersaglio.potenza?.nome||'quella potenza')+' restano in allerta: '+nuovaAllerta+'.','info');
+    }
     registraStoriaRaid(nave,bersaglio,false,{danno:dannoNave},null);
     notifica('💀 Raid Fallito',
       bersaglio.icona+' '+bersaglio.nome+' ha respinto l\'attacco. '+nave.nome+' rientra danneggiata.','male');

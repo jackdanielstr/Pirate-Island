@@ -39,7 +39,7 @@ function inviaRaid(){
   if(G.cooldownRaid>0){aggMsg('Attendi ancora '+G.cooldownRaid+' giorni prima del prossimo raid.','male');return;}
   if(G.pirati.length<2){aggMsg('Servono almeno 2 pirati!','male');return;}
   if(G.battagliaAttiva){aggMsg('Una battaglia è già in corso!','male');return;}
-  apriPianificazioneRaid();
+  apriPortoPirata();
 }
 
 // ═══════════════════════════════════════════════════
@@ -99,6 +99,16 @@ const TATTICHE_RAID=[
    desc:'Tenti di avvicinarti senza combattere. Può fallire clamorosamente.', bonus:{evasion:true}, cost_rum:0},
 ];
 
+const POTENZE_CARAIBI={
+  spagna:{id:'spagna',nome:'Corona Spagnola',icona:'👑',colore:'#b93722',repKey:'reale',allerta:+1.1,bottino:{oro:1.15,rum:.85,cibo:.9},nota:'Porti ricchi, guarnigioni severe.'},
+  inghilterra:{id:'inghilterra',nome:'Marina Inglese',icona:'⚓',colore:'#244f9e',repKey:'reale',allerta:+1.0,bottino:{oro:1.0,legno:1.15,cibo:1.0},nota:'Rotte militari e navi robuste.'},
+  francia:{id:'francia',nome:'Colonie Francesi',icona:'⚜',colore:'#5b67c8',repKey:'reale',allerta:+.9,bottino:{oro:.95,rum:1.2,cibo:1.05},nota:'Porti vivaci, scorte di rum e viveri.'},
+  olanda:{id:'olanda',nome:'Compagnia Olandese',icona:'🟧',colore:'#c46a1f',repKey:'mercante',allerta:+.8,bottino:{oro:1.05,legno:1.05,ricerca:1.1},nota:'Mercanti ben organizzati, mappe e merci.'},
+  mercanti:{id:'mercanti',nome:'Leghe Mercantili',icona:'🤝',colore:'#b8860b',repKey:'mercante',allerta:+.55,bottino:{oro:1.0,rum:1.1,cibo:1.05},nota:'Bottino regolare, scorte leggere.'},
+  corsari:{id:'corsari',nome:'Corsari Rivali',icona:'☠',colore:'#5f4b8b',repKey:'corsaro',allerta:+.65,bottino:{oro:.95,rum:1.15},nota:'Rivali sporchi, ma pieni di informazioni.'},
+  selvaggia:{id:'selvaggia',nome:'Acque Libere',icona:'🧭',colore:'#4b8b7a',repKey:null,allerta:0,bottino:{ricerca:1.25,oro:.9},nota:'Misteri, rovine e brutte sorprese.'},
+};
+
 // ═══════════════════════════════════════════════════
 // PIANIFICAZIONE RAID — modello Tropico 2
 // Flusso: scegli nave → scegli missione → scegli territorio sulla mappa.
@@ -145,22 +155,40 @@ MISSIONI_RAID.splice(0, MISSIONI_RAID.length,
 
 const TERRITORI_RAID=[
   {id:'rotta_nord', nome:'Rotta del Nord', icona:'🧭', x:18, y:26,
-   tipo:'convoglio_mercante', pericolo:1, durata:+0, rep:{mercante:-10,reale:-4,corsaro:+4},
+   tipo:'convoglio_mercante', potenza:'mercanti', merci:['oro','rum','cibo'], pattuglia:1,
+   pericolo:1, durata:+0, rep:{mercante:-10,reale:-4,corsaro:+4},
    nota:'Convogli piccoli, buoni per iniziare.'},
   {id:'baia_zucchero', nome:'Baia dello Zucchero', icona:'🌴', x:38, y:48,
-   tipo:'porto_coloniale', pericolo:2, durata:+1, rep:{mercante:-8,reale:-14,corsaro:+8},
+   tipo:'porto_coloniale', potenza:'spagna', merci:['cibo','rum','prigionieri'], pattuglia:2,
+   pericolo:2, durata:+1, rep:{mercante:-8,reale:-14,corsaro:+8},
    nota:'Piantagioni, viveri e molti prigionieri.'},
+  {id:'canale_olandese', nome:'Canale Olandese', icona:'🟧', x:31, y:67,
+   tipo:'convoglio_mercante', potenza:'olanda', merci:['oro','legno','mappe'], pattuglia:2,
+   pericolo:2, durata:+1, rep:{mercante:-18,reale:-6,corsaro:+8},
+   nota:'Navi della Compagnia cariche di mappe, tavole e merci.'},
   {id:'porto_oro', nome:'Puerto del Oro', icona:'🏛', x:62, y:35,
-   tipo:'porto_coloniale', pericolo:3, durata:+1, rep:{mercante:-12,reale:-24,corsaro:+14},
+   tipo:'porto_coloniale', potenza:'spagna', merci:['oro','prigionieri','armi'], pattuglia:3,
+   pericolo:3, durata:+1, rep:{mercante:-12,reale:-24,corsaro:+14},
    nota:'Porto ricco con guarnigione seria.'},
+  {id:'martinica', nome:'Martinica Francese', icona:'⚜', x:68, y:73,
+   tipo:'porto_coloniale', potenza:'francia', merci:['rum','cibo','specialisti'], pattuglia:2,
+   pericolo:3, durata:+2, rep:{mercante:-10,reale:-18,corsaro:+12},
+   nota:'Colonia francese piena di rum, ufficiali e artigiani.'},
+  {id:'passo_inglese', nome:'Passo Inglese', icona:'⚓', x:80, y:46,
+   tipo:'convoglio_mercante', potenza:'inghilterra', merci:['legno','cannoni','oro'], pattuglia:3,
+   pericolo:3, durata:+1, rep:{mercante:-8,reale:-22,corsaro:+12},
+   nota:'Rotta navale controllata da fregate inglesi.'},
   {id:'costa_nebbia', nome:'Costa della Nebbia', icona:'🌫', x:78, y:62,
-   tipo:'nave_corsara', pericolo:3, durata:+0, rep:{corsaro:+18,reale:0,mercante:0},
+   tipo:'nave_corsara', potenza:'corsari', merci:['rum','mappe','onore'], pattuglia:2,
+   pericolo:3, durata:+0, rep:{corsaro:+18,reale:0,mercante:0},
    nota:'Corsari rivali e rotte nascoste.'},
   {id:'isola_ossa', nome:'Isola delle Ossa', icona:'💀', x:46, y:76,
-   tipo:'isola_tesoro', pericolo:2, durata:+2, rep:{corsaro:+5},
+   tipo:'isola_tesoro', potenza:'selvaggia', merci:['ricerca','tesoro'], pattuglia:0,
+   pericolo:2, durata:+2, rep:{corsaro:+5},
    nota:'Mappe antiche e brutte sorprese.'},
   {id:'galeone_corona', nome:'Rotta del Galeone Reale', icona:'👑', x:86, y:22,
-   tipo:'galeone_reale', pericolo:4, durata:+1, req:()=>G.navi.length>=3,
+   tipo:'galeone_reale', potenza:'spagna', merci:['oro','cibo','gloria'], pattuglia:4,
+   pericolo:4, durata:+1, req:()=>G.navi.length>=3,
    rep:{reale:-45,corsaro:+25,mercante:-5},
    nota:'Serve una flotta degna. Ricompensa leggendaria.'},
 ];
@@ -171,6 +199,62 @@ function assicuraRaidTropico2(){
   if(!G.raid) G.raid={};
   if(!Array.isArray(G.raid.scoperti)) G.raid.scoperti=['rotta_nord','baia_zucchero','isola_ossa'];
   if(!Array.isArray(G.raid.storia)) G.raid.storia=[];
+  if(!G.raid.allerta) G.raid.allerta={};
+  for(const id of Object.keys(POTENZE_CARAIBI)){
+    if(!isFinite(G.raid.allerta[id])) G.raid.allerta[id]=id==='spagna'?8:id==='mercanti'?2:0;
+  }
+}
+function potenzaRaid(id){ return POTENZE_CARAIBI[id]||POTENZE_CARAIBI.selvaggia; }
+function potenzaTerritorioRaid(t){ return potenzaRaid(t?.potenza||'selvaggia'); }
+function allertaPotenzaRaid(id){
+  assicuraRaidTropico2();
+  return Math.max(0,Math.min(100,Math.floor(G.raid.allerta[id]||0)));
+}
+function modificaAllertaRaid(id, delta){
+  assicuraRaidTropico2();
+  if(!id || !POTENZE_CARAIBI[id]) return 0;
+  G.raid.allerta[id]=Math.max(0,Math.min(100,Math.floor((G.raid.allerta[id]||0)+delta)));
+  return G.raid.allerta[id];
+}
+function pattugliaTerritorioRaid(t){
+  if(!t) return 0;
+  const pot=potenzaTerritorioRaid(t);
+  const allerta=allertaPotenzaRaid(pot.id);
+  return Math.max(0,Math.min(6,Math.floor((t.pattuglia||0)+(allerta/25)*(pot.allerta||1))));
+}
+function testoPattugliaRaid(t){
+  const p=pattugliaTerritorioRaid(t);
+  return p<=0?'nessuna':'⚓'.repeat(Math.max(1,p));
+}
+function merciTerritorioRaid(t){
+  return (t?.merci||[]).map(x=>({
+    oro:'oro', rum:'rum', cibo:'cibo', legno:'legno', prigionieri:'prigionieri',
+    specialisti:'specialisti', armi:'armi', cannoni:'cannoni', mappe:'mappe',
+    ricerca:'ricerca', tesoro:'tesoro', gloria:'gloria', onore:'onore'
+  }[x]||x)).join(', ');
+}
+function intelTerritorioRaid(t, scoperto=territorioScoperto(t?.id)){
+  if(!t) return '';
+  if(!scoperto) return 'Potenza ignota · pattuglie ignote · merci sconosciute';
+  const pot=potenzaTerritorioRaid(t);
+  return `${pot.icona} ${pot.nome} · Pattuglie ${testoPattugliaRaid(t)} · Merci: ${merciTerritorioRaid(t)||'varie'}`;
+}
+function atlanteRaidHtml(){
+  assicuraRaidTropico2();
+  const visibili=raidTerritoriDisponibili();
+  const scoperti=visibili.filter(t=>territorioScoperto(t.id)).length;
+  const chips=Object.values(POTENZE_CARAIBI)
+    .filter(p=>p.id!=='selvaggia')
+    .map(p=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 6px;border:1px solid ${p.colore};border-radius:5px;background:rgba(255,255,255,.16);font-size:.62rem;color:var(--sabbia)">
+      ${p.icona} ${p.nome.split(' ')[0]} <b style="color:var(--oro)">${allertaPotenzaRaid(p.id)}</b>
+    </span>`).join('');
+  return `<div style="margin:-4px 0 14px;padding:8px 10px;border:1px solid rgba(90,50,20,.28);border-radius:7px;background:rgba(255,248,218,.32)">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px">
+      <b style="font-family:'Cinzel',serif;color:var(--oro);font-size:.72rem">Atlante dei Caraibi</b>
+      <span style="font-size:.62rem;color:var(--sabbia)">Rotte ${scoperti}/${visibili.length}</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
+  </div>`;
 }
 function territorioScoperto(id){
   assicuraRaidTropico2();
@@ -205,7 +289,7 @@ function costoPreparazioneRaid(nave, missione, territorio, crew){
   const c=crew&&crew.length?crew:[];
   const prep=m.prep||{};
   const durata=durataStimataRaid(nave,m,t);
-  const pericolo=t.pericolo||1;
+  const pericolo=Math.max(t.pericolo||1,pattugliaTerritorioRaid(t)||0);
   return {
     cibo:Math.max(4,Math.ceil(c.length*(prep.cibo||1)+durata*2)),
     rum:Math.max(0,Math.ceil(c.length*(prep.rum||0)+pericolo*.8)),
@@ -247,10 +331,11 @@ function territorioButtonRaid(t){
   const scoperto=territorioScoperto(t.id);
   const sel=statoPianificazione.territorio?.id===t.id;
   const abilitato=territorioSelezionabileRaid(t);
+  const pot=potenzaTerritorioRaid(t);
   return `<button type="button" onclick="selTerritorioRaid('${t.id}')" id="ptx-${t.id}"
-    title="${scoperto?t.nome:'Acque sconosciute'}"
+    title="${scoperto?t.nome+' · '+pot.nome:'Acque sconosciute'}"
     style="position:absolute;left:${t.x}%;top:${t.y}%;transform:translate(-50%,-50%)${sel?' scale(1.16)':''};min-width:44px;min-height:38px;border-radius:999px;
-    border:2px solid ${sel?'var(--oro)':abilitato?'var(--bordo)':'rgba(120,120,120,.35)'};background:${sel?'rgba(240,192,64,.28)':abilitato?'rgba(0,0,0,.55)':'rgba(0,0,0,.35)'};
+    border:2px solid ${sel?'var(--oro)':scoperto?pot.colore:abilitato?'var(--bordo)':'rgba(120,120,120,.35)'};background:${sel?'rgba(240,192,64,.28)':abilitato?'rgba(0,0,0,.55)':'rgba(0,0,0,.35)'};
     color:${abilitato?'var(--pergamena)':'#777'};font-size:1.2rem;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,.45)">
     ${scoperto?t.icona:'?'}
   </button>`;
@@ -262,9 +347,10 @@ function aggiornaMappaTerritoriRaid(){
     const scoperto=territorioScoperto(t.id);
     const sel=statoPianificazione.territorio?.id===t.id;
     const abilitato=territorioSelezionabileRaid(t);
+    const pot=potenzaTerritorioRaid(t);
     el.textContent=scoperto?t.icona:'?';
-    el.title=scoperto?t.nome:'Acque sconosciute';
-    el.style.borderColor=sel?'var(--oro)':abilitato?'var(--bordo)':'rgba(120,120,120,.35)';
+    el.title=scoperto?t.nome+' · '+pot.nome:'Acque sconosciute';
+    el.style.borderColor=sel?'var(--oro)':scoperto?pot.colore:abilitato?'var(--bordo)':'rgba(120,120,120,.35)';
     el.style.background=sel?'rgba(240,192,64,.28)':abilitato?'rgba(0,0,0,.55)':'rgba(0,0,0,.35)';
     el.style.color=abilitato?'var(--pergamena)':'#777';
     el.style.transform=sel?'translate(-50%,-50%) scale(1.16)':'translate(-50%,-50%)';
@@ -277,7 +363,7 @@ function storicoRaidHtml(){
   return `<div style="margin:-4px 0 14px;padding:8px 10px;border:1px solid rgba(240,192,64,.18);border-radius:6px;background:rgba(0,0,0,.18)">
     <div style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:1px;text-transform:uppercase;color:var(--oro);margin-bottom:5px">Ultime spedizioni</div>
     ${righe.map(r=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:.62rem;color:var(--sabbia);margin-top:3px">
-      <span>${r.vinto?'✓':'×'} G${r.giorno} · ${r.missione}</span>
+      <span>${r.vinto?'✓':'×'} G${r.giorno} · ${r.missione}${r.potenza?' · '+r.potenza:''}</span>
       <span style="color:${r.scoperta?'var(--oro)':'var(--pergamena)'}">${r.scoperta?'Nuova rotta: '+r.scoperta:r.territorio}</span>
     </div>`).join('')}
   </div>`;
@@ -310,15 +396,24 @@ function creaBersaglioDaPiano(){
   if(!missione||!territorio) return null;
   assicuraRaidTropico2();
   const giaScoperto=territorioScoperto(territorio.id);
+  const pot=potenzaTerritorioRaid(territorio);
+  const pattuglia=pattugliaTerritorioRaid(territorio);
+  const allerta=allertaPotenzaRaid(pot.id);
   const base=baseBersaglioDaTerritorio(territorio);
   const mod=missione.mod||{};
-  const pericolo=territorio.pericolo||base.difficolta||1;
+  const pericoloBase=territorio.pericolo||base.difficolta||1;
+  const pericolo=Math.max(1,Math.min(5,pericoloBase+Math.floor(pattuglia/3)));
   const bottino={};
-  for(const [k,r] of Object.entries(base.bottino||{})) bottino[k]=modificaRange(r, mod[k]||1);
+  for(const [k,r] of Object.entries(base.bottino||{})){
+    const potMult=pot.bottino?.[k]||1;
+    const terrMult=territorio.bottinoMod?.[k]||1;
+    bottino[k]=modificaRange(r, (mod[k]||1)*potMult*terrMult);
+  }
   if(missione.id==='tesoro' && !bottino.ricerca) bottino.ricerca=[18,40];
   const nemico={...(base.nemico||{})};
-  nemico.hp=Math.floor((nemico.hp||60)*(0.86+pericolo*.12));
-  nemico.atk=Math.floor((nemico.atk||8)*(0.85+pericolo*.1));
+  const allertaMod=1+Math.min(.35,allerta/260);
+  nemico.hp=Math.floor((nemico.hp||60)*(0.86+pericolo*.12)*allertaMod);
+  nemico.atk=Math.floor((nemico.atk||8)*(0.85+pericolo*.1)*(1+Math.min(.25,allerta/300)));
   nemico.difesa=Math.floor((nemico.difesa||2)+(pericolo-1));
   let rep=sommaRep(base.rep, territorio.rep);
   if(missione.falsaBandiera){
@@ -335,8 +430,12 @@ function creaBersaglioDaPiano(){
     icona: giaScoperto?territorio.icona:'🧭',
     territorio,
     missione,
+    potenza:pot,
+    pattuglia,
+    allertaPotenza:allerta,
+    merci:territorio.merci||[],
     esplorazioneNuova:missione.id==='esplorazione'&&!giaScoperto,
-    difficolta: Math.max(1,Math.min(4,pericolo)),
+    difficolta: Math.max(1,Math.min(5,pericolo)),
     durataBase: Math.max(1,(base.durataBase||2)+(territorio.durata||0)+(missione.id==='esplorazione'?1:0)),
     bottino,
     nemico,
@@ -347,6 +446,7 @@ function creaBersaglioDaPiano(){
   bersaglio.nome=missione.nome+' — '+(giaScoperto?territorio.nome:'Acque Sconosciute');
   if(missione.id==='esplorazione'){
     bersaglio.difficolta=Math.max(1,territorio.pericolo-1);
+    bersaglio.pattuglia=Math.max(0,pattuglia-1);
     bersaglio.nemico={nome:'Mare Incerto',hp:45+territorio.pericolo*12,atk:6+territorio.pericolo*2,difesa:1+territorio.pericolo,icona:'🧭'};
     bersaglio.bottino={oro:modificaRange(base.bottino.oro||[40,90],.45), ricerca:[18,38]};
     bersaglio.rep={corsaro:+3};
@@ -354,7 +454,155 @@ function creaBersaglioDaPiano(){
   return bersaglio;
 }
 
+function naviAttraccateRaid(){
+  return (G.navi||[]).filter(n=>!n.inMare && n._faseRaid!=='salpando');
+}
+function statoNavePortoHtml(n){
+  if(!n) return '';
+  if(n.inMare){
+    const rd=n.raidData;
+    return `<div style="font-size:.72rem;color:var(--sabbia);line-height:1.45">
+      <b style="color:var(--oro)">In mare</b><br>
+      ${rd?.bersaglio?.missione?.icona||'⚓'} ${rd?.bersaglio?.nome||'Spedizione in corso'}<br>
+      Rientro previsto tra ${n.timerRaid||1} giorni.
+    </div>`;
+  }
+  const crew=equipaggioStimatoRaid(n);
+  const capitano=capitanoNaveRaid(n);
+  const hpPct=Math.round((n.hp||0)/Math.max(1,n.hpMax||1)*100);
+  const scorte=G.scorte||{};
+  return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px">
+    <div style="background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.18);border-radius:6px;padding:7px">
+      <span style="display:block;font-size:.58rem;color:var(--sabbia);text-transform:uppercase;letter-spacing:.8px">Scafo</span>
+      <b style="font-family:'Cinzel',serif;color:${hpPct>60?'var(--verde-ch)':hpPct>30?'var(--oro)':'var(--rum-chiaro)'}">${n.hp}/${n.hpMax}</b>
+    </div>
+    <div style="background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.18);border-radius:6px;padding:7px">
+      <span style="display:block;font-size:.58rem;color:var(--sabbia);text-transform:uppercase;letter-spacing:.8px">Equipaggio</span>
+      <b style="font-family:'Cinzel',serif;color:var(--pergamena)">${crew.length}/${n.capienza||6}</b>
+    </div>
+    <div style="background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.18);border-radius:6px;padding:7px">
+      <span style="display:block;font-size:.58rem;color:var(--sabbia);text-transform:uppercase;letter-spacing:.8px">Capitano</span>
+      <b style="font-family:'Cinzel',serif;color:${capitano?'var(--oro)':'var(--rum-chiaro)'}">${capitano?capitano.nome.split(' ')[0]:'assente'}</b>
+    </div>
+    <div style="background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.18);border-radius:6px;padding:7px">
+      <span style="display:block;font-size:.58rem;color:var(--sabbia);text-transform:uppercase;letter-spacing:.8px">Stiva</span>
+      <b style="font-family:'Cinzel',serif;color:var(--pergamena)">🥫 ${scorte.razioni||0} · ⚔ ${scorte.armi||0}</b>
+    </div>
+  </div>`;
+}
+function missioniNavePortoHtml(){
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px" id="piano-missioni">
+    ${MISSIONI_RAID.map(m=>`
+      <button type="button" onclick="selMissioneRaid('${m.id}')" id="pm-${m.id}"
+        style="text-align:left;background:${statoPianificazione.missione?.id===m.id?'rgba(240,192,64,.16)':'rgba(255,255,255,.09)'};border:1px solid ${statoPianificazione.missione?.id===m.id?'var(--oro)':'rgba(90,50,20,.22)'};
+        border-radius:6px;padding:8px 9px;cursor:pointer;transition:all .15s;color:var(--pergamena);font-family:Georgia,'Times New Roman',serif">
+        <span style="display:block;font-size:.78rem;font-weight:700;margin-bottom:2px">${m.icona} ${m.nome}</span>
+        <span style="display:block;font-size:.62rem;color:var(--sabbia);line-height:1.3">${m.desc}</span>
+      </button>`).join('')}
+  </div>`;
+}
+function mappaStrategicaNaveHtml(){
+  return `<div id="mappa-raid-caraibi" style="position:relative;height:220px;border:1px solid rgba(90,50,20,.35);border-radius:8px;overflow:hidden;
+    background:radial-gradient(ellipse at 40% 45%,rgba(80,160,170,.38),rgba(10,45,70,.92) 58%,rgba(5,18,35,.98));box-shadow:inset 0 0 50px rgba(0,0,0,.35);margin-top:6px">
+    <div style="position:absolute;inset:0;opacity:.18;background-image:linear-gradient(30deg,transparent 46%,rgba(240,192,64,.25) 49%,transparent 52%),linear-gradient(120deg,transparent 47%,rgba(240,192,64,.18) 50%,transparent 53%);background-size:58px 58px"></div>
+    ${raidTerritoriDisponibili().map(t=>territorioButtonRaid(t)).join('')}
+    <div id="territorio-info" style="position:absolute;left:8px;right:8px;bottom:8px;padding:8px 10px;border-radius:6px;background:rgba(0,0,0,.58);border:1px solid rgba(240,192,64,.18);font-size:.68rem;color:var(--sabbia)">
+      Scegli una rotta o manda la nave in esplorazione.
+    </div>
+  </div>`;
+}
+function apriPortoPirata(edificio=null, forzaLista=false){
+  assicuraRaidTropico2();
+  const attraccate=naviAttraccateRaid();
+  const inMare=(G.navi||[]).filter(n=>n.inMare);
+  if(attraccate.length===1 && !forzaLista){
+    apriSchedaNavePorto(attraccate[0].id,'porto');
+    return;
+  }
+  const portoNome=edificio&&ED[edificio.tipo]?ED[edificio.tipo].nome:'Porto dei Pirati';
+  const html=`
+    <div style="font-family:Georgia,'Times New Roman',serif">
+      <div style="display:grid;grid-template-columns:82px 1fr;gap:12px;align-items:center;margin-bottom:12px">
+        <div style="height:78px;border:1px solid rgba(90,50,20,.35);border-radius:7px;background:linear-gradient(180deg,rgba(30,85,105,.35),rgba(20,45,55,.75));display:flex;align-items:center;justify-content:center;font-size:2.4rem">⚓</div>
+        <div>
+          <div style="font-family:'Cinzel',serif;color:var(--oro);font-size:.95rem">${portoNome}</div>
+          <div style="font-size:.72rem;color:var(--sabbia);line-height:1.45">Le navi attraccate ricevono ordini qui: missione, bersaglio, rifornimenti e partenza.</div>
+        </div>
+      </div>
+      ${atlanteRaidHtml()}
+      ${storicoRaidHtml()}
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--sabbia);margin-bottom:7px">Navi attraccate</div>
+      ${attraccate.length?attraccate.map(n=>{
+        const pct=Math.round(n.hp/Math.max(1,n.hpMax)*100);
+        const capitano=capitanoNaveRaid(n);
+        return `<button type="button" onclick="apriSchedaNavePorto(${n.id},'porto')" style="width:100%;text-align:left;background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.24);border-radius:7px;padding:9px 10px;margin-bottom:6px;cursor:pointer;color:var(--pergamena);font-family:Georgia,'Times New Roman',serif">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <b style="font-family:'Cinzel',serif;color:var(--oro)">⛵ ${n.nome}</b>
+            <span style="font-size:.66rem;color:${pct>60?'var(--verde-ch)':pct>30?'var(--oro)':'var(--rum-chiaro)'}">Scafo ${pct}%</span>
+          </div>
+          <div style="font-size:.66rem;color:var(--sabbia);margin-top:3px">Ciurma ${testoEquipaggioRaid(n)} · Capitano ${capitano?capitano.nome:'assente'}</div>
+        </button>`;
+      }).join(''):`<div style="font-size:.75rem;color:var(--rum-chiaro);margin-bottom:8px">Nessuna nave pronta in porto.</div>`}
+      ${inMare.length?`<div style="font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--sabbia);margin:11px 0 7px">In mare</div>
+        ${inMare.map(n=>`<div style="font-size:.68rem;color:var(--sabbia);display:flex;justify-content:space-between;margin-bottom:3px"><span>⚓ ${n.nome}</span><span>${n.timerRaid||1}g</span></div>`).join('')}`:''}
+    </div>`;
+  apriModale('⚓ Porto dei Pirati',html);
+}
+function apriSchedaNavePorto(id, origine='porto'){
+  const n=G.navi.find(x=>x.id===id);
+  if(!n) return;
+  if(n.inMare){
+    const log=n.raidData?.log||[];
+    apriModale('⛵ '+n.nome,`
+      <div style="font-family:Georgia,'Times New Roman',serif">
+        ${statoNavePortoHtml(n)}
+        ${log.length?`<div style="margin-top:10px;font-family:'Cinzel',serif;font-size:.68rem;color:var(--oro)">Diario di bordo</div>
+          ${log.slice(-5).map(x=>`<div style="font-size:.68rem;color:var(--sabbia);border-bottom:1px solid rgba(90,50,20,.12);padding:4px 0">${x}</div>`).join('')}`:''}
+        <button class="mbtn secondario" style="width:100%;margin-top:12px" onclick="apriPortoPirata(null,true)">Torna al porto</button>
+      </div>`);
+    return;
+  }
+
+  const missione=n.ordineMissione ? missioneRaidById(n.ordineMissione) : MISSIONI_RAID[0];
+  const territorio=n.ordineTerritorio ? territorioRaidById(n.ordineTerritorio) : null;
+  statoPianificazione={nave:n, missione, territorio};
+  const equipaggio=testoEquipaggioRaid(n);
+  const html=`
+    <div id="piano-raid" style="font-family:Georgia,'Times New Roman',serif">
+      <div style="display:grid;grid-template-columns:98px 1fr;gap:12px;align-items:center;margin-bottom:12px">
+        <div style="height:88px;border:1px solid rgba(90,50,20,.35);border-radius:7px;background:linear-gradient(180deg,rgba(40,95,120,.32),rgba(16,38,50,.78));display:flex;align-items:center;justify-content:center;font-size:2.6rem;box-shadow:inset 0 -18px 30px rgba(0,0,0,.25)">⛵</div>
+        <div>
+          <div style="font-family:'Pirata One',cursive;font-size:1.25rem;color:var(--oro);line-height:1.05">${n.nome}</div>
+          <div style="font-size:.72rem;color:var(--sabbia);margin-top:3px">${n.tipo} · attraccata al molo</div>
+          <div style="font-size:.68rem;color:var(--sabbia);margin-top:5px">Ciurma pronta: ${equipaggio}</div>
+        </div>
+      </div>
+      ${statoNavePortoHtml(n)}
+      <div style="display:flex;gap:6px;margin:10px 0 14px">
+        <button class="mbtn secondario" style="flex:1" onclick="apriPortoPirata(null,true)">⚓ Porto</button>
+        <button class="mbtn secondario" style="flex:1" onclick="apriOfficinaNave(${n.id})">🛠 Officina</button>
+      </div>
+      ${atlanteRaidHtml()}
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--sabbia);margin-bottom:7px">Ordine missione</div>
+      ${missioniNavePortoHtml()}
+      <div style="font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--sabbia);margin:13px 0 3px">Mappa strategica</div>
+      ${mappaStrategicaNaveHtml()}
+      <div id="piano-riepilogo" style="background:rgba(240,192,64,.08);border:1px solid rgba(90,50,20,.26);border-radius:6px;padding:10px;margin:12px 0;display:none">
+        <div id="piano-riepilogo-testo" style="font-size:.75rem;color:var(--sabbia)"></div>
+      </div>
+      <button id="btn-lancia-raid" onclick="lanciaRaidTattico()" disabled
+        style="width:100%;font-family:'Pirata One',cursive;font-size:1.08rem;background:linear-gradient(135deg,var(--oro-scuro),var(--oro));color:var(--inchiostro);border:none;padding:10px;border-radius:5px;cursor:pointer;opacity:.4;transition:all .2s">
+        ⚓ Molla gli ormeggi
+      </button>
+    </div>`;
+  apriModale('⛵ Ordini della Nave',html);
+  aggiornaMappaTerritoriRaid();
+  aggiornaPianoRiepilogo();
+}
+
 function apriPianificazioneRaid(){
+  apriPortoPirata();
+  return;
   const naviDisponibili=G.navi.filter(n=>!n.inMare && n._faseRaid!=='salpando');
   statoPianificazione={
     nave:naviDisponibili[0]||null,
@@ -368,6 +616,7 @@ function apriPianificazioneRaid(){
       <b style="color:var(--oro);font-family:'Cinzel',serif">Raid stile Tropico 2</b><br>
       Scegli la nave, scegli la missione, poi clicca un territorio sulla mappa. Dopo la conferma suona la campana e la ciurma corre al porto.
     </div>
+    ${atlanteRaidHtml()}
     ${storicoRaidHtml()}
 
     <div style="margin-bottom:14px">
@@ -442,6 +691,7 @@ function selNaveRaid(id){
 
 function selMissioneRaid(id){
   statoPianificazione.missione=missioneRaidById(id);
+  if(statoPianificazione.nave) statoPianificazione.nave.ordineMissione=id;
   if(statoPianificazione.territorio && !territorioSelezionabileRaid(statoPianificazione.territorio)) statoPianificazione.territorio=null;
   document.querySelectorAll('[id^="pm-"]').forEach(el=>{
     const mid=el.id.replace('pm-','');
@@ -462,6 +712,7 @@ function selTerritorioRaid(id){
     aggiornaPianoRiepilogo();
     return;
   }
+  if(statoPianificazione.nave) statoPianificazione.nave.ordineTerritorio=id;
   document.querySelectorAll('[id^="ptx-"]').forEach(el=>{
     const tid=el.id.replace('ptx-','');
     const sel=tid===id;
@@ -475,10 +726,11 @@ function selTerritorioRaid(id){
   if(info&&t){
     const diff='⚔'.repeat(t.pericolo)+'·'.repeat(Math.max(0,4-t.pericolo));
     const scoperto=territorioScoperto(t.id);
+    const intel=intelTerritorioRaid(t,scoperto);
     const nome=scoperto?t.nome:'Acque Sconosciute';
     const icona=scoperto?t.icona:'?';
     const nota=scoperto?t.nota:'La rotta non e ancora sulle carte: serve una spedizione di esplorazione.';
-    info.innerHTML=`<b style="color:var(--oro);font-family:'Cinzel',serif">${icona} ${nome}</b><br>${nota}<br><span style="color:${t.pericolo>2?'var(--rum-chiaro)':t.pericolo>1?'var(--oro)':'var(--verde-ch)'}">Pericolo ${diff}</span>`;
+    info.innerHTML=`<b style="color:var(--oro);font-family:'Cinzel',serif">${icona} ${nome}</b><br>${nota}<br><span style="color:var(--pergamena)">${intel}</span><br><span style="color:${t.pericolo>2?'var(--rum-chiaro)':t.pericolo>1?'var(--oro)':'var(--verde-ch)'}">Pericolo ${diff}</span>`;
   }
   aggiornaPianoRiepilogo();
 }
@@ -514,6 +766,10 @@ function aggiornaPianoRiepilogo(){
     const bonusCap=capitano ? 8 : -8;
     const terrScoperto=territorioScoperto(territorio.id);
     const terrLabel=(terrScoperto?territorio.icona:'?')+' '+(terrScoperto?territorio.nome:'Acque Sconosciute');
+    const potenza=potenzaTerritorioRaid(territorio);
+    const potenzaLabel=terrScoperto ? potenza.icona+' '+potenza.nome : '? ignota';
+    const pattuglia=terrScoperto ? testoPattugliaRaid(territorio) : 'ignote';
+    const merci=terrScoperto ? (merciTerritorioRaid(territorio)||'varie') : 'sconosciute';
     const forzaAtk=Math.floor(8+(mediaCombo*.12)+(mediaNav*.035)+(mediaMorale-50)*.04+(nave.livCannoni||0)*4+(tattica.bonus.atk||0)+bonusCap);
     const nemDif=(bersaglio.nemico.difesa||0)+(bersaglio.nemico.atk||8)*.3;
     const chVitt=Math.min(92,Math.max(12,Math.round(55+(forzaAtk-nemDif)*3)));
@@ -527,6 +783,9 @@ function aggiornaPianoRiepilogo(){
         <span>⛵ Nave:</span><span style="color:var(--pergamena)">${nave.nome}</span>
         <span>📜 Missione:</span><span style="color:var(--pergamena)">${missione.icona} ${missione.nome}</span>
         <span>🗺 Territorio:</span><span style="color:var(--pergamena)">${terrLabel}</span>
+        <span>🏴 Potenza:</span><span style="color:var(--pergamena);font-size:.62rem">${potenzaLabel}</span>
+        <span>⚓ Pattuglie:</span><span style="color:${terrScoperto&&pattuglia!=='nessuna'?'var(--oro)':'var(--sabbia)'};font-size:.62rem">${pattuglia}</span>
+        <span>📦 Merci:</span><span style="color:var(--sabbia);font-size:.62rem">${merci}</span>
         <span>☠ Ciurma:</span><span style="color:var(--pergamena);font-size:.62rem">${testoEquipaggioRaid(nave)}</span>
         <span>★ Capitano:</span><span style="color:${capitano?'var(--oro)':'var(--rum-chiaro)'};font-size:.62rem">${capitano?capitano.nome:'nessun capitano assegnato'}</span>
         <span>🥫 Rifornimenti:</span><span style="color:${prepOk.ok?'var(--pergamena)':'var(--rum-chiaro)'};font-size:.62rem">${testoCostoPreparazione(costoPrep)}</span>
@@ -571,6 +830,8 @@ function lanciaRaidTattico(){
   if(tattica.cost_rum>0) G.rum-=tattica.cost_rum;
 
   const bersaglio=creaBersaglioDaPiano();
+  nave.ordineMissione=missione.id;
+  nave.ordineTerritorio=territorio.id;
   bersaglio.preparazione=costoPrep;
   bersaglio.capitanoId=capitanoNaveRaid(nave)?.id || null;
   chiudiModale();
