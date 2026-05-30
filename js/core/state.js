@@ -16,7 +16,7 @@ const G={
   camX:0, camY:0,
   // Proiezione isometrica 2:1
   ISO_W:64, ISO_H:32, ISO_SCALE:1,
-  velocita:1, tickMs:10000,  // 1 giorno = 10s normale, /velocita in cicloGioco
+  velocita:1, tickMs:12000,  // Ritmo gestionale stile Tropico 2: 1 giorno = 12s a velocità normale
   modalitaCostruzione:null, pirataSelezionato:null,
   cooldownRaid:0, tick:0,
   tabCorrente:'costruisci',
@@ -30,11 +30,17 @@ const G={
   battagliaAttiva:false,
   contatori:{raid:0, riscatti:0},
   bisogni:{
-    divertimento:50,  // bordello, arena, cantastorie
-    spirito:40,       // cappella, stregone
+    // Fase 9A — bisogni pirati ispirati a Tropico 2.
+    // Fame/Rum/Divertimento/Salute/Alloggio sono il nucleo;
+    // spirito/sicurezza/lusso restano come bisogni secondari della cala.
+    fame:65,          // cibo, fattorie, mensa, locanda
+    rum:60,           // distilleria, taverna, bettola
+    divertimento:50,  // taverna, bordello, arena, sala da gioco
     salute:60,        // infermeria, bagni
+    alloggio:45,      // case pirata, navi in porto, locanda
+    spirito:40,       // cappella, controllo morale
     sicurezza:50,     // guardia, fortezza
-    lusso:20,         // mercante lusso, sarto
+    lusso:20,         // mercato nero, sarto
   },
   scorte:{
     canna:0, tabacco:0, ferro:0, metallo:0,
@@ -46,11 +52,12 @@ const G={
   bilanciamento:{
     piratiIniziali:8,
     consumo:{ciboPerPirata:1.25, rumPerPirata:.45, pagaFattore:.55, coperturaCasa:3, coperturaNave:1},
-    movimento:{normale:.92, veloce:1.08, max:1.24},
+    movimento:{normale:.72, veloce:.88, max:1.02}, // Movimento visivo volutamente più lento del calendario
   },
   raid:{
     scoperti:['rotta_nord','baia_zucchero','isola_ossa'],
     storia:[],
+    allerta:{spagna:8, inghilterra:4, francia:4, olanda:3, mercanti:2, corsari:0},
   },
   fineGioco:false,
   giorniSenzaRisorse:0,  // counter for game over

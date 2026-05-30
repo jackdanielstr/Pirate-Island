@@ -6,6 +6,10 @@
 // ═══════════════════════════════════════
 // ── AVVIO GIOCO, PIRATI, CAPITANI ──
 function avviaGioco(){
+  // La partita parte già con la plancia costruzione in basso, stile Tropico 2.
+  // Evita il flash iniziale del vecchio pannello laterale destro.
+  document.body.classList.add('tab-costruisci');
+  if(window.G) G.tabCorrente='costruisci';
   document.getElementById('schermata-titolo').style.display='none';
   document.getElementById('barra-sup').style.display='flex';
   document.getElementById('principale').style.display='flex';
@@ -45,6 +49,9 @@ function avviaGioco(){
   impostaMobile();
   notifica('⚓ Benvenuto, Governatore Pirata!','La cala parte con una vera ciurma, scorte iniziali e una nave pronta a salpare.');
   aggiornaUI();
+  // Secondo resize dopo il primo render della UI: la mappa calcola subito
+  // lo spazio sopra la barra costruzione, senza scatti visivi.
+  requestAnimationFrame(()=>{ridimensionaCanvas(); if(typeof disegna==='function') disegna();});
   cicloGioco();
   // Musica: parte al primo click (policy autoplay browser)
   document.addEventListener("click", avviaMusicaAlPrimoClick, {once:true});
@@ -68,6 +75,13 @@ function creaaPirata(override={}){
     naveId:null, paga:override.paga||4,
     tratto:override.tratto||tratto,
     oggetto:override.oggetto||null,  // {id, nome, icona, bonus}
+    bisogni:override.bisogni||{
+      fame:60+Math.random()*25,
+      rum:55+Math.random()*25,
+      divertimento:45+Math.random()*30,
+      salute:60+Math.random()*25,
+      alloggio:40+Math.random()*25,
+    },
     xp:override.xp||0,
     livello:override.livello||1,
     capitano:override.capitano||false,  // è un capitano famoso?

@@ -39,6 +39,88 @@ function trovaTileCamminabileVicino(r,c,raggio=6){
   return {r:Math.floor(G.RIGHE/2),c:Math.floor(G.COLS/2)};
 }
 
+function tileSentieroLibero(r,c){
+  r=Math.floor(r); c=Math.floor(c);
+  if(r<0||c<0||r>=G.RIGHE||c>=G.COLS) return false;
+  if(G.mappa[r][c]!==T.SENTIERO) return false;
+  return !(typeof edificioInTile==='function' ? edificioInTile(r,c) : false);
+}
+
+function trovaSentieroVicino(r,c,raggio=8){
+  r=Math.round(r); c=Math.round(c);
+  if(tileSentieroLibero(r,c)) return {r,c};
+  for(let rad=1;rad<=raggio;rad++){
+    let best=null, bestD=Infinity;
+    for(let dr=-rad;dr<=rad;dr++) for(let dc=-rad;dc<=rad;dc++){
+      if(Math.abs(dr)!==rad && Math.abs(dc)!==rad) continue;
+      const nr=r+dr,nc=c+dc;
+      if(!tileSentieroLibero(nr,nc)) continue;
+      const d=Math.abs(dr)+Math.abs(dc);
+      if(d<bestD){ best={r:nr,c:nc}; bestD=d; }
+    }
+    if(best) return best;
+  }
+  return trovaTileCamminabileVicino(r,c,raggio);
+}
+
+function accessiSentieroEdificioPirata(ed){
+  if(!ed) return [];
+  const celle=(typeof anelloEdificio==='function')
+    ? anelloEdificio(ed)
+    : [[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]].map(([dr,dc])=>({r:ed.r+dr,c:ed.c+dc}));
+  return celle.filter(p=>tileSentieroLibero(p.r,p.c));
+}
+
+function accessoPirataEdificio(ed, daR=null, daC=null){
+  const acc=accessiSentieroEdificioPirata(ed);
+  if(!acc.length) return null;
+  if(daR!==null){
+    acc.sort((a,b)=>heuristica(a.r,a.c,daR,daC)-heuristica(b.r,b.c,daR,daC));
+  }
+  return acc[0];
+}
+
+function astarSentieri(sr,sc,er,ec){
+  sr=Math.floor(sr); sc=Math.floor(sc); er=Math.floor(er); ec=Math.floor(ec);
+  if(sr===er&&sc===ec) return [];
+  const key=(r,c)=>r*1000+c;
+  const open=new Map([[key(sr,sc),{r:sr,c:sc}]]);
+  const g=new Map([[key(sr,sc),0]]);
+  const f=new Map([[key(sr,sc),heuristica(sr,sc,er,ec)]]);
+  const parent=new Map();
+  const closed=new Set();
+  let iter=0;
+  while(open.size && iter++<900){
+    let bestK=null,bestF=Infinity;
+    for(const[k] of open){ const fv=f.get(k)||Infinity; if(fv<bestF){bestF=fv;bestK=k;} }
+    const cur=open.get(bestK); open.delete(bestK); closed.add(bestK);
+    if(cur.r===er && cur.c===ec){
+      const path=[]; let k=key(er,ec);
+      while(parent.has(k)){ const n=parent.get(k); path.unshift({r:n.r,c:n.c}); k=key(n.r,n.c); }
+      path.push({r:er,c:ec}); return path;
+    }
+    for(const[dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      const nr=cur.r+dr,nc=cur.c+dc,nk=key(nr,nc);
+      if(closed.has(nk)||!tileSentieroLibero(nr,nc)) continue;
+      const ng=(g.get(bestK)||0)+1;
+      if(!open.has(nk)||ng<(g.get(nk)||Infinity)){
+        g.set(nk,ng); f.set(nk,ng+heuristica(nr,nc,er,ec));
+        parent.set(nk,{r:cur.r,c:cur.c}); open.set(nk,{r:nr,c:nc});
+      }
+    }
+  }
+  return null;
+}
+
+function trovaPercorsoPirataVersoEdificio(sr,sc,ed){
+  if(!ed) return null;
+  const start=trovaSentieroVicino(sr,sc,8);
+  const end=accessoPirataEdificio(ed,start.r,start.c);
+  if(!end) return null;
+  const path=astarSentieri(start.r,start.c,end.r,end.c);
+  return path && path.length ? {path,dest:end} : null;
+}
+
 function bonusSentieroPer(r,c){
   const rr=Math.floor(r), cc=Math.floor(c);
   const t=G.mappa[rr]&&G.mappa[rr][cc];
@@ -186,7 +268,7 @@ function astar(sr,sc,er,ec){
 // ═══════════════════════════════════════════════════
 
 // Velocità di camminata base in tile/secondo
-const PIRATA_SPEED = 0.82;
+const PIRATA_SPEED = 0.62;
 
 function scalaMovimentoMondo(){
   const v=G.velocita||0;
@@ -205,7 +287,7 @@ function aggiornaPirata(p){
   // Se ha raggiunto l'accesso dell'edificio, sosta e applica micro-effetto sociale.
   if(p._stato==='cammina' && p.percorso && p.percorsoIdx>=(p.percorso.length||0)){
     p._stato='pausa';
-    p._pausaSec = 4 + Math.random()*7;
+    p._pausaSec = 7 + Math.random()*12;
     applicaEffettoSostaPirata(p);
     return;
   }
@@ -213,13 +295,13 @@ function aggiornaPirata(p){
   if(p._stato!=='cammina'){
     p._vagaSec = (p._vagaSec||0) - Math.max(1,(G.tickMs/1000)/(G.velocita||1));
     if(p._vagaSec > 0) return;
-    p._vagaSec = 5 + Math.random()*9;
+    p._vagaSec = 9 + Math.random()*14;
 
     const target=scegliDestinazioneSocialePirata(p);
     if(target){
       const sr=Math.max(0,Math.min(G.RIGHE-1,Math.floor(p.mr)));
       const sc=Math.max(0,Math.min(G.COLS-1,Math.floor(p.mc)));
-      const res=trovaPercorsoVersoEdificio(sr,sc,target);
+      const res=(typeof trovaPercorsoPirataVersoEdificio==='function') ? trovaPercorsoPirataVersoEdificio(sr,sc,target) : trovaPercorsoVersoEdificio(sr,sc,target);
       if(res && res.path && res.path.length>0){
         p.dest={r:res.dest.r,c:res.dest.c};
         p._destEdificio={tipo:target.tipo,r:target.r,c:target.c};
@@ -272,7 +354,7 @@ function muoviPirata(p, dt){
     // Vaga: piccolo movimento casuale nel tile corrente
     if(!p._vagaDx || Math.random()<0.01){
       const a=Math.random()*Math.PI*2;
-      const v=0.15+Math.random()*0.2; // 0.15-0.35 tile/sec quando vaga
+      const v=0.07+Math.random()*0.09; // 0.07-0.16 tile/sec: idle lento, più gestionale/Tropico 2
       p._vagaDx=Math.cos(a)*v;
       p._vagaDy=Math.sin(a)*v;
     }
@@ -283,7 +365,7 @@ function muoviPirata(p, dt){
     p.mr+=dvy*dt;
     // Bug visivo: mai far vagare i pirati su mare/fiume. Se la deriva casuale
     // li porta fuori dai tile camminabili, annulla il passo e scegli nuova direzione.
-    if(!tileCamminabile(p.mr,p.mc)){
+    if(!tileSentieroLibero(Math.floor(p.mr),Math.floor(p.mc))){
       p.mc=oldC; p.mr=oldR;
       p._vagaDx=0; p._vagaDy=0;
     }
@@ -293,8 +375,8 @@ function muoviPirata(p, dt){
   const margin=1.5;
   p.mc=Math.max(margin,Math.min(G.COLS-margin,p.mc));
   p.mr=Math.max(margin,Math.min(G.RIGHE-margin,p.mr));
-  if(!tileCamminabile(p.mr,p.mc)){
-    const safe=trovaTileCamminabileVicino(p.mr,p.mc,8);
+  if(!tileSentieroLibero(Math.floor(p.mr),Math.floor(p.mc))){
+    const safe=trovaSentieroVicino(p.mr,p.mc,10);
     p.mr=safe.r+.5; p.mc=safe.c+.5;
     p._stato='vaga'; p.percorso=null; p.percorsoIdx=0;
   }

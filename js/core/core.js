@@ -393,7 +393,7 @@ const VELOCITA_LIVELLI = [
   { val:0,   label:'⏸',       title:'Pausa'  },
   { val:1,   label:'▶',       title:'Normale' },
   { val:2,   label:'▶▶',      title:'Veloce'  },
-  { val:4,   label:'▶▶▶',     title:'Max'     },
+  { val:3,   label:'▶▶▶',     title:'Max'     },
 ];
 let _velIdx = 1; // parte in Normale
 
