@@ -1,46 +1,5 @@
 /* ── SISTEMA TIPOGRAFICO ──
    Titoli decorativi : Pirata One
-   Label / UI chrome : Cinzel (leggibile, small-caps feeling)
-   Testo corrente    : Inter (massima leggibilità su mobile)
-   Font size base    : 15px — mai sotto 13px su nessun elemento
-   ─────────────────────────────────────────────────────────── */
-:root{
-  --oro:#f0c040;--oro-scuro:#b8860b;--sabbia:#c8a96e;--inchiostro:#1a0a00;
-  --pergamena:#f4e4bc;--rum:#8b1a1a;--rum-chiaro:#c0392b;--verde:#2d6a2d;--verde-ch:#4a9c4a;
-  --panel:rgba(8,18,30,0.95);--bordo:rgba(240,192,64,0.35);
-
-  /* Scala tipografica — tutto in rem, base 15px */
-  --fs-xs:   0.75rem;   /* 11px → mai usare sotto questo */
-  --fs-sm:   0.8rem;    /* 12px */
-  --fs-base: 0.9rem;    /* 13.5px */
-  --fs-md:   1rem;      /* 15px */
-  --fs-lg:   1.1rem;    /* 16.5px */
-  --fs-xl:   1.25rem;   /* 18px */
-
-  /* Font stack */
-  --font-titolo: 'Pirata One', cursive;
-  --font-label:  'Cinzel', 'Georgia', serif;
-  --font-body:   'Inter', 'Segoe UI', system-ui, sans-serif;
-}
-
-/* Dimensione base root — 15px invece di 16px (più compatto ma leggibile) */
-html{ font-size: 15px; }
-
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;}
-body{
-  font-family: var(--font-body);
-  font-size: var(--fs-md);
-  line-height: 1.5;
-  background:#060e18;
-  color:var(--pergamena);
-  display:flex;flex-direction:column;height:100dvh;width:100vw;user-select:none;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-/* ── SISTEMA TIPOGRAFICO ──
-   Titoli decorativi : Pirata One
    Label / UI chrome : Cinzel
    Testo corrente    : Inter (massima leggibilità mobile)
    Mai sotto 13px su nessun elemento
@@ -52,7 +11,7 @@ body{
   --font-titolo:'Pirata One',cursive;
   --font-label:'Cinzel','Georgia',serif;
   --font-body:'Inter','Segoe UI',system-ui,sans-serif;
-  --fs-xs:.8rem;--fs-sm:.875rem;--fs-base:.95rem;--fs-md:1rem;
+  --fs-xs:.8rem;--fs-sm:.875rem;--fs-base:.95rem;--fs-md:1rem;--fs-lg:1.1rem;--fs-xl:1.25rem;
 }
 html{font-size:15px;}
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -60,7 +19,7 @@ html,body{height:100%;overflow:hidden;}
 body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   background:#060e18;color:var(--pergamena);
   display:flex;flex-direction:column;height:100dvh;width:100vw;user-select:none;
-  -webkit-font-smoothing:antialiased;}
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
 
 /* TITOLO */
 #schermata-titolo{position:fixed;inset:0;z-index:200;
@@ -655,7 +614,7 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
 #btn-musica:hover{background:rgba(240,192,64,.18);border-color:var(--oro);}
 
 
-   Fallback visibile per dispositivi dove il pinch browser/OS intercetta il gesto. */
+/* Fallback visibile per dispositivi dove il pinch browser/OS intercetta il gesto. */
 @media(max-width:600px) and (orientation:portrait){
 }
 @media(max-height:500px) and (orientation:landscape){
@@ -798,7 +757,58 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   border-bottom:1px solid rgba(90,50,20,.35);
   padding-bottom:6px;
 }
-#box-modale p,#corpo-modale{color:#3a210c;}
+#box-modale p,#corpo-modale{color:#2a1608;font-family:Georgia,'Times New Roman',serif;font-weight:500;}
+#box-modale p{font-size:.92rem;line-height:1.65;}
+#corpo-modale{font-size:.9rem;line-height:1.5;}
+#box-modale small,#box-modale em{color:#4b2a10;}
+#box-modale [style*="var(--sabbia)"],
+#box-modale [style*="var(--pergamena)"]{
+  color:#2a1608 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+#box-modale [style*="var(--oro)"]{
+  color:#5a2108 !important;
+  text-shadow:0 1px 0 rgba(255,240,180,.45) !important;
+}
+#box-modale [style*="var(--rum-chiaro)"]{
+  color:#8a1e12 !important;
+  font-weight:700 !important;
+}
+#box-modale [style*="font-style:italic"]{
+  font-style:normal !important;
+}
+#box-modale [style*="font-size:.62rem"],
+#box-modale [style*="font-size:.65rem"],
+#box-modale [style*="font-size:.68rem"]{
+  font-size:.74rem !important;
+  line-height:1.45 !important;
+}
+#box-modale [style*="font-size:.7rem"],
+#box-modale [style*="font-size:.72rem"],
+#box-modale [style*="font-size:.75rem"]{
+  font-size:.82rem !important;
+  line-height:1.5 !important;
+}
+#piano-raid{
+  font-family:Georgia,'Times New Roman',serif !important;
+  color:#2a1608 !important;
+}
+#piano-raid [style*="letter-spacing:2px"],
+#piano-raid [style*="letter-spacing:1px"]{
+  letter-spacing:.7px !important;
+  font-size:.78rem !important;
+}
+#piano-raid [id^="pm-"],
+#piano-raid [id^="pnave-"]{
+  background:rgba(255,248,218,.42) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 1px 4px rgba(62,34,10,.18);
+}
+#piano-raid #territorio-info{
+  background:rgba(255,244,205,.88) !important;
+  color:#2a1608 !important;
+  border-color:rgba(90,50,20,.35) !important;
+}
 #chiudi-modale{color:#5a2108;text-shadow:0 1px 0 rgba(255,240,180,.5);}
 .mbtn.primario{background:linear-gradient(180deg,#e2b653,#9b661c);color:#261000;border:1px solid #70410e;}
 .mbtn.secondario{background:linear-gradient(180deg,#7a471e,#351909);border-color:#7a4a1a;color:#f4e4bc;}
@@ -828,4 +838,581 @@ body{font-family:var(--font-body);font-size:var(--fs-md);line-height:1.5;
   #pannello-dx{background:linear-gradient(160deg,rgba(50,26,10,.98),rgba(12,8,6,.99)) !important;}
   #tab-pannello::before{background:rgba(255,214,106,.55);}
   .btn-azione{font-size:.72rem;}
+}
+
+/* ════════════════════════════════════════════════════════
+   FASE 8A — Barra costruzione in basso stile Tropico 2
+   Mappa sopra, costruzioni su plancia inferiore, categorie iconiche.
+   ════════════════════════════════════════════════════════ */
+body.tab-costruisci #principale{position:relative;}
+body.tab-costruisci #pannello-dx{
+  position:fixed !important;
+  left:0 !important;right:0 !important;bottom:48px !important;
+  width:100% !important;height:218px !important;max-height:42vh !important;
+  border-left:none !important;border-top:3px solid #7b4a1c !important;
+  border-radius:18px 18px 0 0 !important;
+  background:
+    linear-gradient(180deg,rgba(91,49,18,.98),rgba(25,13,6,.99)),
+    repeating-linear-gradient(90deg,rgba(255,235,170,.04) 0 3px,rgba(0,0,0,.05) 3px 11px) !important;
+  box-shadow:0 -8px 28px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,224,130,.22) !important;
+  z-index:70 !important;overflow:hidden !important;display:flex !important;flex-direction:column !important;
+}
+body.tab-costruisci #tab-pannello{
+  height:34px;min-height:34px;flex:0 0 34px;
+  justify-content:center;background:linear-gradient(180deg,rgba(42,20,8,.95),rgba(18,8,3,.96));
+  border-bottom:1px solid rgba(217,164,65,.5);
+}
+body.tab-costruisci .ptab{
+  flex:0 0 52px;min-height:32px;padding:4px 3px;font-size:1rem;border-right:1px solid rgba(217,164,65,.15);
+}
+body.tab-costruisci #contenuto-pannello{
+  padding:7px 12px 10px !important;overflow:hidden !important;flex:1;
+}
+.build-dock{height:100%;display:grid;grid-template-rows:auto 42px 1fr;gap:6px;}
+.build-dock-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;min-height:22px;}
+.build-title{font-family:var(--font-titolo);font-size:1.05rem;color:#ffd66a;text-shadow:0 2px 0 #000;letter-spacing:1px;white-space:nowrap;}
+.build-hint{font-family:var(--font-label);font-size:.64rem;color:#d7bd7a;opacity:.78;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.build-cat-row{display:flex;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;padding-bottom:2px;scrollbar-width:thin;}
+.build-cat{min-width:92px;height:38px;border-radius:7px;border:1px solid rgba(217,164,65,.42);color:#e8d19a;background:linear-gradient(180deg,#6c3b17,#2c1306);font-family:var(--font-label);font-size:.7rem;font-weight:700;letter-spacing:.4px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;box-shadow:inset 0 1px 0 rgba(255,230,160,.12),0 2px 4px rgba(0,0,0,.28);}
+.build-cat:hover:not(:disabled){border-color:#ffd66a;color:#fff0bf;background:linear-gradient(180deg,#965b24,#3b1907);}
+.build-cat.attiva{border-color:#ffd66a;color:#2a1608;background:linear-gradient(180deg,#ffd66a,#b9802e);text-shadow:0 1px 0 rgba(255,250,210,.65);}
+.build-cat:disabled{opacity:.35;cursor:not-allowed;}
+.build-cat-ico{font-size:1rem;line-height:1;}
+.build-shelf{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:2px 0 6px;align-items:stretch;scrollbar-width:thin;}
+.build-card{width:156px;min-width:156px;height:72px;border-radius:8px;border:1px solid rgba(217,164,65,.48);background:linear-gradient(180deg,rgba(244,220,150,.17),rgba(80,43,16,.32)),rgba(20,10,4,.78);color:#f4e4bc;display:grid;grid-template-columns:34px 1fr;grid-template-rows:1fr auto;gap:2px 6px;align-items:center;padding:7px 8px;text-align:left;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,235,170,.11),0 2px 5px rgba(0,0,0,.3);font-family:var(--font-body);}
+.build-card:hover:not(:disabled){border-color:#ffd66a;background:linear-gradient(180deg,rgba(240,192,64,.26),rgba(84,45,15,.42));transform:translateY(-1px);}
+.build-card:disabled{opacity:.36;cursor:not-allowed;filter:saturate(.55);}
+.build-card.attivo-strumento{border-color:#ffe28c;background:linear-gradient(180deg,rgba(255,214,106,.32),rgba(90,48,14,.45));box-shadow:0 0 0 1px rgba(255,214,106,.26),inset 0 0 14px rgba(240,192,64,.16);}
+.build-card-icon{grid-row:1/3;font-size:1.45rem;width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.18);border:1px solid rgba(217,164,65,.25);border-radius:7px;}
+.build-card-main{min-width:0;display:flex;flex-direction:column;line-height:1.15;}
+.build-card-main b{font-size:.82rem;color:#fff1c2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.build-card-main small{font-size:.64rem;color:#d1b579;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.build-card-cost{grid-column:2;font-family:var(--font-label);font-size:.68rem;color:#ffd66a;font-weight:700;text-shadow:0 1px 0 #000;justify-self:start;}
+.build-road{border-color:rgba(120,190,120,.55);}
+.build-empty{min-width:260px;color:#d1b579;font-family:var(--font-label);font-size:.78rem;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(217,164,65,.35);border-radius:8px;padding:12px;}
+body.tab-costruisci #log-msg{bottom:276px;}
+body.tab-costruisci #portrait-hud{bottom:280px;}
+
+@media(max-width:900px){
+  body.tab-costruisci #pannello-dx{bottom:0 !important;height:58vh !important;max-height:58vh !important;border-radius:16px 16px 0 0 !important;z-index:88 !important;}
+  body.tab-costruisci #barra-inf{transform:translateY(100%);pointer-events:none;}
+  body.tab-costruisci .build-dock{grid-template-rows:auto 40px 1fr;}
+  body.tab-costruisci #tab-pannello{height:36px;flex-basis:36px;}
+  .build-dock-head{display:block;}
+  .build-title{font-size:1rem;}
+  .build-hint{display:none;}
+  .build-cat{min-width:86px;height:36px;font-size:.66rem;}
+  .build-shelf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow-y:auto;overflow-x:hidden;align-content:start;padding-right:4px;}
+  .build-card{width:auto;min-width:0;height:68px;}
+  body.tab-costruisci #log-msg{bottom:calc(58vh + 8px);}
+}
+
+@media(max-width:600px){
+  body.tab-costruisci .build-shelf{grid-template-columns:1fr;}
+  body.tab-costruisci .ptab{flex:1;font-size:.95rem;}
+  .build-cat{min-width:78px;}
+}
+
+
+/* ════════════════════════════════════════════════════════
+   FASE 8B — HUD e pannelli in stile Tropico 2
+   Tooltip, schede più leggibili, risorse evidenziate, mobile più chiaro.
+   ════════════════════════════════════════════════════════ */
+#consiglio-ui{
+  position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:45;
+  max-width:min(720px,calc(100vw - 260px));padding:7px 14px;border-radius:999px;
+  background:linear-gradient(180deg,rgba(69,38,14,.92),rgba(19,10,5,.9));
+  border:1px solid rgba(217,164,65,.55);color:#f7e6b8;
+  font-family:var(--font-label);font-size:.72rem;letter-spacing:.35px;text-align:center;
+  box-shadow:0 3px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,230,160,.16);
+  pointer-events:none;text-shadow:0 1px 0 #000;
+}
+#consiglio-ui.costruzione{border-color:#ffd66a;background:linear-gradient(180deg,rgba(101,61,20,.96),rgba(35,16,5,.94));}
+#consiglio-ui.avviso{border-color:#d05a3a;color:#ffd8c8;background:linear-gradient(180deg,rgba(95,35,20,.96),rgba(32,8,5,.94));}
+.res{position:relative;transition:background .2s,border-color .2s,transform .2s;}
+.res.basso{border-color:rgba(205,70,45,.75) !important;background:rgba(120,30,18,.28) !important;box-shadow:0 0 10px rgba(205,70,45,.22) inset;}
+.res.basso .val{color:#ffb09a !important;}
+.res.abbondante{border-color:rgba(120,190,100,.45) !important;background:rgba(35,90,35,.16) !important;}
+.res.abbondante .val{color:#b9ff9a !important;}
+.ptab{position:relative;}
+.ptab::after{
+  content:attr(data-label);position:absolute;left:50%;bottom:-18px;transform:translateX(-50%);
+  font-family:var(--font-label);font-size:.52rem;color:#d9bd78;letter-spacing:.4px;opacity:0;transition:opacity .15s,bottom .15s;pointer-events:none;white-space:nowrap;
+}
+.ptab:hover::after,.ptab.attivo::after{opacity:.92;bottom:-14px;}
+body.tab-costruisci .ptab::after{display:none;}
+.build-card{position:relative;}
+.build-card::after{
+  content:attr(data-tip);display:none;position:fixed;left:50%;bottom:278px;transform:translateX(-50%);
+  width:min(420px,calc(100vw - 26px));padding:8px 12px;border-radius:8px;
+  background:linear-gradient(180deg,rgba(245,224,172,.98),rgba(198,151,78,.98));
+  color:#241006;border:2px solid #6a3a12;font-family:Georgia,'Times New Roman',serif;
+  font-size:.78rem;line-height:1.35;text-align:center;box-shadow:0 5px 20px rgba(0,0,0,.45);z-index:160;text-shadow:none;
+}
+.build-card:hover::after{display:block;}
+.titolo-sez{
+  background:linear-gradient(90deg,rgba(217,164,65,.18),rgba(217,164,65,.02));
+  border-left:3px solid #d9a441;padding:5px 7px;border-radius:4px;
+  color:#ffd66a !important;text-shadow:0 1px 0 #000;
+}
+.carta-pirata,.carta-nave,.nodo-tech,.carta-missione,.bisogno-riga,.riga-fazione{
+  background:linear-gradient(180deg,rgba(255,231,170,.08),rgba(42,21,8,.28)) !important;
+  border-color:rgba(217,164,65,.42) !important;border-radius:8px !important;
+  box-shadow:inset 0 1px 0 rgba(255,235,180,.08),0 2px 5px rgba(0,0,0,.18);
+}
+.carta-pirata:hover,.carta-nave:hover,.nodo-tech.disponibile:hover,.carta-missione:hover{
+  border-color:#ffd66a !important;background:linear-gradient(180deg,rgba(255,216,110,.14),rgba(50,25,8,.34)) !important;
+}
+.nome-p,.nome-n,.nome-t,.titolo-missione{color:#fff0bf !important;text-shadow:0 1px 0 #000;}
+.ruolo-p,.stato-n,.desc-t,.desc-missione,.bisogno-nota{color:#d7bd7a !important;}
+.barra-umore,.barra-fazione,.bisogno-barra{
+  background:rgba(0,0,0,.32) !important;border:1px solid rgba(217,164,65,.18);box-shadow:inset 0 1px 3px rgba(0,0,0,.45);
+}
+#box-modale{max-height:86vh;overflow:auto;}
+.scheda-edificio-head{text-align:center;margin-bottom:12px;padding:8px 8px 10px;border-radius:10px;background:rgba(255,248,218,.42);border:1px solid rgba(90,50,20,.24);}
+.scheda-edificio-icona{font-size:2.4rem;filter:drop-shadow(0 2px 1px rgba(80,35,5,.25));}
+.scheda-edificio-nome{font-family:var(--font-titolo);color:#5a2108;font-size:1.35rem;letter-spacing:.5px;text-shadow:0 1px 0 rgba(255,240,180,.7);}
+.scheda-edificio-effetto{font-size:.84rem;color:#3a1b08;font-style:italic;margin-top:4px;line-height:1.35;}
+.scheda-edificio-box,.scheda-edificio-produzione{
+  background:rgba(255,248,218,.5);border:1px solid rgba(90,50,20,.28);border-radius:8px;
+  padding:8px 10px;margin-bottom:10px;font-size:.82rem;color:#2a1608;line-height:1.45;
+}
+.scheda-edificio-produzione{display:flex;justify-content:center;gap:16px;}
+.scheda-edificio-azioni{display:flex;gap:8px;margin-top:12px;}
+.scheda-edificio-azioni .mbtn{flex:1;min-height:36px;}
+#area-notifiche{z-index:180;}
+.notifica,.msg{border-radius:9px !important;}
+@media(max-width:900px){
+  #consiglio-ui{top:8px;max-width:calc(100vw - 20px);font-size:.66rem;padding:6px 10px;}
+  .build-card::after{bottom:calc(58vh + 10px);font-size:.74rem;}
+  #portrait-hud{max-width:180px;}
+}
+@media(max-width:600px){
+  #consiglio-ui{display:none;}
+  .ptab::after{display:none;}
+  .build-card::after{display:none;}
+  #box-modale{width:94vw;max-height:82vh;}
+  .scheda-edificio-azioni{flex-direction:column;}
+  .carta-pirata,.carta-nave,.nodo-tech,.carta-missione,.bisogno-riga{padding:9px 10px !important;}
+}
+
+
+/* ════════════════════════════════════════════════════════
+   FIX UI — plancia costruzione già in basso all'avvio
+   e proporzioni mappa/menu più vicine a Tropico 2.
+   ════════════════════════════════════════════════════════ */
+body.tab-costruisci #principale{
+  position:relative;
+  flex-direction:row;
+}
+body.tab-costruisci #mappa-wrap{
+  flex:1 1 auto;
+  min-height:0;
+}
+body.tab-costruisci #pannello-dx{
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:46px !important;
+  width:100% !important;
+  height:176px !important;
+  max-height:30vh !important;
+  border-left:none !important;
+  border-top:3px solid #7b4a1c !important;
+  border-radius:14px 14px 0 0 !important;
+  z-index:72 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+}
+body.tab-costruisci #tab-pannello{
+  height:30px !important;
+  min-height:30px !important;
+  flex:0 0 30px !important;
+}
+body.tab-costruisci .ptab{
+  min-height:28px !important;
+  padding:3px 3px !important;
+  font-size:.92rem !important;
+}
+body.tab-costruisci #contenuto-pannello{
+  padding:5px 10px 7px !important;
+  overflow:hidden !important;
+}
+body.tab-costruisci .build-dock{
+  grid-template-rows:20px 34px 1fr !important;
+  gap:5px !important;
+}
+body.tab-costruisci .build-title{
+  font-size:.96rem !important;
+}
+body.tab-costruisci .build-hint{
+  font-size:.58rem !important;
+}
+body.tab-costruisci .build-cat{
+  min-width:82px !important;
+  height:32px !important;
+  font-size:.64rem !important;
+}
+body.tab-costruisci .build-card{
+  width:138px !important;
+  min-width:138px !important;
+  height:58px !important;
+  grid-template-columns:28px 1fr !important;
+  padding:5px 7px !important;
+}
+body.tab-costruisci .build-card-icon{
+  width:26px !important;
+  height:26px !important;
+  font-size:1.2rem !important;
+}
+body.tab-costruisci .build-card-main b{
+  font-size:.74rem !important;
+}
+body.tab-costruisci .build-card-main small,
+body.tab-costruisci .build-card-cost{
+  font-size:.58rem !important;
+}
+body.tab-costruisci #log-msg{
+  bottom:218px !important;
+}
+body.tab-costruisci #portrait-hud{
+  bottom:222px !important;
+}
+body.tab-costruisci .build-card::after{
+  bottom:220px !important;
+}
+
+@media(max-width:900px){
+  body.tab-costruisci #pannello-dx{
+    bottom:0 !important;
+    height:38vh !important;
+    max-height:38vh !important;
+    min-height:188px !important;
+    z-index:88 !important;
+  }
+  body.tab-costruisci .build-shelf{
+    display:flex !important;
+    overflow-x:auto !important;
+    overflow-y:hidden !important;
+  }
+  body.tab-costruisci .build-card{
+    width:136px !important;
+    min-width:136px !important;
+    height:58px !important;
+  }
+  body.tab-costruisci #log-msg{
+    bottom:calc(38vh + 8px) !important;
+  }
+  body.tab-costruisci #portrait-hud{
+    bottom:calc(38vh + 12px) !important;
+  }
+}
+
+@media(max-width:600px){
+  body.tab-costruisci #pannello-dx{
+    height:34vh !important;
+    max-height:34vh !important;
+    min-height:176px !important;
+  }
+  body.tab-costruisci .build-dock{
+    grid-template-rows:18px 32px 1fr !important;
+  }
+  body.tab-costruisci .build-title{font-size:.9rem !important;}
+  body.tab-costruisci .build-cat{min-width:72px !important;height:30px !important;font-size:.58rem !important;}
+  body.tab-costruisci .build-card{width:126px !important;min-width:126px !important;height:54px !important;}
+  body.tab-costruisci #log-msg{bottom:calc(34vh + 8px) !important;}
+  #consiglio-ui{max-width:calc(100vw - 22px);font-size:.62rem;top:42px;}
+}
+
+/* ════════════════════════════════════════════════════════
+   PATCH UX — pergamene/eventi sopra la plancia costruzione
+   Il menu resta sotto e non copre più le finestre centrali.
+   ════════════════════════════════════════════════════════ */
+#overlay-evento{
+  z-index:1200 !important;
+  background:rgba(5,3,1,.74) !important;
+  backdrop-filter:blur(2px);
+  pointer-events:auto !important;
+}
+#box-evento{
+  z-index:1201 !important;
+  position:relative;
+  width:min(500px,94vw) !important;
+  max-height:min(86vh,680px) !important;
+  box-shadow:0 18px 80px rgba(0,0,0,.72),0 0 0 3px rgba(61,30,8,.45),inset 0 0 28px rgba(90,45,12,.18) !important;
+}
+#overlay-modale{
+  z-index:1150 !important;
+  background:rgba(5,3,1,.72) !important;
+  backdrop-filter:blur(2px);
+  pointer-events:auto !important;
+}
+#box-modale{z-index:1151 !important;position:relative;}
+#overlay-battaglia{z-index:1120 !important;}
+#overlay-campana{z-index:1040 !important;}
+#area-notifiche{z-index:980 !important;}
+.build-card::after{z-index:760 !important;}
+body.tab-costruisci #pannello-dx{z-index:72 !important;}
+#barra-inf{z-index:70 !important;}
+
+/* Piccola riduzione della plancia per lasciare più mappa, senza perdere leggibilità. */
+body.tab-costruisci #pannello-dx{
+  height:160px !important;
+  max-height:26vh !important;
+}
+body.tab-costruisci .build-dock{grid-template-rows:18px 32px 1fr !important;gap:4px !important;}
+body.tab-costruisci #tab-pannello{height:28px !important;min-height:28px !important;flex-basis:28px !important;}
+body.tab-costruisci #contenuto-pannello{padding:4px 9px 6px !important;}
+body.tab-costruisci .build-cat{height:30px !important;min-width:78px !important;}
+body.tab-costruisci .build-card{height:54px !important;width:132px !important;min-width:132px !important;}
+body.tab-costruisci #log-msg{bottom:198px !important;}
+body.tab-costruisci #portrait-hud{bottom:202px !important;}
+body.tab-costruisci .build-card::after{bottom:202px !important;}
+
+@media(max-width:900px){
+  body.tab-costruisci #pannello-dx{
+    height:32vh !important;
+    max-height:32vh !important;
+    min-height:164px !important;
+  }
+  body.tab-costruisci #log-msg{bottom:calc(32vh + 8px) !important;}
+  body.tab-costruisci #portrait-hud{bottom:calc(32vh + 12px) !important;}
+}
+@media(max-width:600px){
+  body.tab-costruisci #pannello-dx{
+    height:30vh !important;
+    max-height:30vh !important;
+    min-height:156px !important;
+  }
+  body.tab-costruisci .build-card{height:52px !important;width:122px !important;min-width:122px !important;}
+  body.tab-costruisci #log-msg{bottom:calc(30vh + 8px) !important;}
+}
+
+/* ════════════════════════════════════════════════════════
+   FASE 8C — HUD Tropico 2 definitivo
+   Tutti i tab principali restano nella plancia inferiore, non solo Costruisci.
+   La mappa rimane sopra e gli overlay/pergamene hanno priorità assoluta.
+   ════════════════════════════════════════════════════════ */
+:root{
+  --hud-bottom-h:46px;
+  --dock-h:160px;
+  --dock-total-h:206px;
+}
+#principale{
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  top:42px !important;
+  bottom:var(--dock-total-h) !important;
+  display:none;
+  flex-direction:row !important;
+  overflow:hidden !important;
+}
+#schermata-titolo[style*="display: none"] ~ #principale,
+body:not(.titolo-attivo) #principale[style*="display: flex"]{
+  display:flex !important;
+}
+#mappa-wrap{
+  flex:1 1 auto !important;
+  width:100% !important;
+  height:100% !important;
+  min-height:0 !important;
+  overflow:hidden !important;
+}
+#pannello-dx,
+body.tab-costruisci #pannello-dx{
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:var(--hud-bottom-h) !important;
+  width:100% !important;
+  height:var(--dock-h) !important;
+  max-height:26vh !important;
+  border-left:none !important;
+  border-top:3px solid #7b4a1c !important;
+  border-radius:14px 14px 0 0 !important;
+  z-index:72 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  overflow:hidden !important;
+  box-shadow:0 -8px 28px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,220,130,.15) !important;
+}
+#tab-pannello,
+body.tab-costruisci #tab-pannello{
+  height:28px !important;
+  min-height:28px !important;
+  flex:0 0 28px !important;
+  display:flex !important;
+  overflow:hidden !important;
+}
+.ptab,
+body.tab-costruisci .ptab{
+  min-height:28px !important;
+  padding:3px 3px !important;
+  font-size:.92rem !important;
+}
+#contenuto-pannello,
+body.tab-costruisci #contenuto-pannello{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  padding:4px 9px 6px !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+}
+#barra-inf{
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:0 !important;
+  height:var(--hud-bottom-h) !important;
+  min-height:var(--hud-bottom-h) !important;
+  z-index:70 !important;
+  padding:4px 8px !important;
+  gap:6px !important;
+  display:none;
+  align-items:center !important;
+  justify-content:center !important;
+  flex-wrap:nowrap !important;
+}
+#barra-inf[style*="display: flex"]{display:flex !important;}
+#barra-inf .btn-azione,#btn-velocita,#btn-musica{
+  min-height:32px !important;
+  height:32px !important;
+  padding:4px 9px !important;
+  font-size:.78rem !important;
+  white-space:nowrap !important;
+}
+body.tab-costruisci #barra-inf{
+  transform:none !important;
+  pointer-events:auto !important;
+}
+body.tab-costruisci .build-dock{grid-template-rows:18px 32px 1fr !important;gap:4px !important;height:100%;}
+body.tab-costruisci .build-cat{height:30px !important;min-width:78px !important;}
+body.tab-costruisci .build-card{height:52px !important;width:126px !important;min-width:126px !important;}
+body.tab-costruisci .build-card-icon{width:25px !important;height:25px !important;font-size:1.15rem !important;}
+body.tab-costruisci .build-card-main b{font-size:.72rem !important;}
+body.tab-costruisci .build-card-main small,
+body.tab-costruisci .build-card-cost{font-size:.56rem !important;}
+#log-msg,
+body.tab-costruisci #log-msg{bottom:calc(var(--dock-total-h) + 8px) !important;}
+#portrait-hud,
+body.tab-costruisci #portrait-hud{bottom:calc(var(--dock-total-h) + 12px) !important;}
+.build-card::after,
+body.tab-costruisci .build-card::after{bottom:calc(var(--dock-total-h) + 10px) !important;}
+#overlay-evento,#overlay-modale,#overlay-fine,#overlay-battaglia{z-index:1200 !important;}
+#box-evento,#box-modale,#box-fine{z-index:1201 !important;position:relative;}
+
+@media(max-width:900px){
+  :root{--hud-bottom-h:44px;--dock-h:156px;--dock-total-h:200px;}
+  #principale{top:34px !important;bottom:var(--dock-total-h) !important;padding-top:0 !important;}
+  #pannello-dx,body.tab-costruisci #pannello-dx{
+    bottom:var(--hud-bottom-h) !important;
+    height:var(--dock-h) !important;
+    max-height:30vh !important;
+    min-height:0 !important;
+    z-index:72 !important;
+  }
+  body.tab-costruisci .build-shelf{display:flex !important;overflow-x:auto !important;overflow-y:hidden !important;}
+  body.tab-costruisci .build-card{height:52px !important;width:122px !important;min-width:122px !important;}
+  body.pannello-aperto #barra-inf{transform:none !important;pointer-events:auto !important;}
+  #btn-toggle-pannello{display:none !important;}
+  #drawer-overlay{display:none !important;}
+}
+@media(max-width:600px){
+  :root{--hud-bottom-h:42px;--dock-h:148px;--dock-total-h:190px;}
+  #barra-inf{justify-content:flex-start !important;overflow-x:auto !important;overflow-y:hidden !important;padding:4px 6px !important;}
+  #barra-inf .btn-azione,#btn-velocita,#btn-musica{min-width:max-content !important;font-size:.7rem !important;padding:4px 7px !important;}
+  #tab-pannello,body.tab-costruisci #tab-pannello{height:26px !important;min-height:26px !important;flex-basis:26px !important;}
+  .ptab,body.tab-costruisci .ptab{font-size:.85rem !important;min-height:26px !important;}
+  #contenuto-pannello,body.tab-costruisci #contenuto-pannello{padding:3px 7px 5px !important;}
+  body.tab-costruisci .build-dock{grid-template-rows:16px 30px 1fr !important;gap:3px !important;}
+  body.tab-costruisci .build-title{font-size:.86rem !important;}
+  body.tab-costruisci .build-cat{height:28px !important;min-width:68px !important;font-size:.55rem !important;}
+  body.tab-costruisci .build-card{height:48px !important;width:112px !important;min-width:112px !important;padding:4px 6px !important;}
+  #consiglio-ui{top:6px !important;}
+}
+
+
+/* ════════════════════════════════════════════════════════
+   PATCH 8D — Menu ottimizzato da base 8C
+   - niente flash/effetto spegnimento al cambio scheda
+   - plancia più compatta
+   - schede non-costruzione in card leggibili stile Tropico 2
+   ════════════════════════════════════════════════════════ */
+:root{
+  --hud-bottom-h:44px !important;
+  --dock-h:148px !important;
+  --dock-total-h:192px !important;
+}
+#principale{bottom:var(--dock-total-h) !important;transition:none !important;}
+#mappa-wrap,#canvas-wrap,#game-canvas,#pannello-dx,#contenuto-pannello,#tab-pannello,.ptab{
+  transition:none !important;
+  animation:none !important;
+}
+#pannello-dx,
+body.tab-costruisci #pannello-dx{
+  height:var(--dock-h) !important;
+  max-height:24vh !important;
+  min-height:0 !important;
+  background:linear-gradient(180deg,rgba(72,38,14,.98),rgba(36,20,9,.99)) !important;
+}
+#tab-pannello,body.tab-costruisci #tab-pannello{
+  height:26px !important;min-height:26px !important;flex-basis:26px !important;
+}
+.ptab,body.tab-costruisci .ptab{
+  min-height:26px !important;padding:2px 3px !important;font-size:.86rem !important;
+}
+#contenuto-pannello,body.tab-costruisci #contenuto-pannello{
+  padding:4px 8px 5px !important;
+  overflow-y:auto !important;
+}
+#barra-inf{height:var(--hud-bottom-h) !important;min-height:var(--hud-bottom-h) !important;}
+#barra-inf .btn-azione,#btn-velocita,#btn-musica{height:30px !important;min-height:30px !important;font-size:.74rem !important;padding:3px 8px !important;}
+body.tab-costruisci .build-dock{grid-template-rows:16px 28px 1fr !important;gap:3px !important;}
+body.tab-costruisci .build-title{font-size:.86rem !important;line-height:16px !important;}
+body.tab-costruisci .build-hint{display:none !important;}
+body.tab-costruisci .build-cat-row{gap:5px !important;padding-bottom:1px !important;}
+body.tab-costruisci .build-cat{height:27px !important;min-width:70px !important;padding:2px 6px !important;font-size:.56rem !important;}
+body.tab-costruisci .build-card{height:48px !important;width:116px !important;min-width:116px !important;padding:4px 6px !important;gap:5px !important;}
+body.tab-costruisci .build-card-icon{width:23px !important;height:23px !important;font-size:1rem !important;}
+body.tab-costruisci .build-card-main b{font-size:.68rem !important;line-height:1.05 !important;}
+body.tab-costruisci .build-card-main small,body.tab-costruisci .build-card-cost{font-size:.52rem !important;}
+#log-msg,body.tab-costruisci #log-msg{bottom:calc(var(--dock-total-h) + 8px) !important;}
+#portrait-hud,body.tab-costruisci #portrait-hud{bottom:calc(var(--dock-total-h) + 12px) !important;}
+.build-card::after,body.tab-costruisci .build-card::after{bottom:calc(var(--dock-total-h) + 10px) !important;}
+
+/* Card compatte per tutte le schede della plancia */
+.panel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:7px;align-items:stretch;}
+.panel-card{
+  background:linear-gradient(180deg,rgba(255,238,177,.13),rgba(64,34,12,.35));
+  border:1px solid rgba(217,164,65,.42);border-radius:9px;padding:7px 9px;
+  box-shadow:inset 0 1px 0 rgba(255,231,160,.12);min-height:54px;
+}
+.panel-card.compact{min-height:42px;padding:6px 8px;}
+.panel-card.clickable{cursor:pointer;}
+.panel-card.clickable:hover{background:linear-gradient(180deg,rgba(255,238,177,.2),rgba(90,50,20,.45));border-color:rgba(255,214,106,.65);}
+.panel-card-title{font-family:var(--font-titolo);color:var(--oro);font-size:.86rem;line-height:1.1;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.panel-card-sub{font-size:.62rem;color:var(--sabbia);line-height:1.25;opacity:.9;}
+.panel-card-row{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.panel-stat-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px;font-size:.62rem;color:var(--sabbia);}
+.panel-chip{display:inline-flex;align-items:center;gap:3px;border:1px solid rgba(217,164,65,.3);border-radius:999px;padding:1px 6px;background:rgba(0,0,0,.18);}
+.titolo-sez{font-size:.82rem !important;margin:0 0 5px !important;letter-spacing:1px !important;}
+.carta-pirata,.carta-nave,.nodo-tech,.carta-missione,.bisogno-riga,.registro-governatore{
+  margin-bottom:6px !important;padding:6px 8px !important;border-radius:8px !important;
+}
+.barra-umore,.barra-fazione,.bisogno-barra{height:5px !important;}
+
+@media(max-width:900px){
+  :root{--hud-bottom-h:42px !important;--dock-h:144px !important;--dock-total-h:186px !important;}
+  #pannello-dx,body.tab-costruisci #pannello-dx{max-height:28vh !important;}
+  .panel-grid{display:flex;overflow-x:auto;overflow-y:hidden;gap:6px;}
+  .panel-card{min-width:170px;}
+}
+@media(max-width:600px){
+  :root{--hud-bottom-h:40px !important;--dock-h:136px !important;--dock-total-h:176px !important;}
+  #tab-pannello,body.tab-costruisci #tab-pannello{height:24px !important;min-height:24px !important;flex-basis:24px !important;}
+  .ptab,body.tab-costruisci .ptab{font-size:.78rem !important;min-height:24px !important;}
+  body.tab-costruisci .build-card{height:44px !important;width:106px !important;min-width:106px !important;}
+  .panel-card{min-width:158px;}
 }
