@@ -23,6 +23,9 @@ function apriGestioneNave(id){
   const hpPct=Math.round(n.hp/n.hpMax*100);
   const usuraPct=Math.round(n.usura);
   const colHp=hpPct>60?'var(--verde-ch)':hpPct>30?'var(--oro)':'var(--rum-chiaro)';
+  const cap=(typeof assicuraCapitanoNave==='function') ? assicuraCapitanoNave(n) : n.capitano;
+  const xpNext=(typeof xpProssimoCapitano==='function') ? xpProssimoCapitano(cap) : ((cap?.livello||1)*90);
+  const xpPct=cap ? Math.max(0,Math.min(100,((cap.esperienza||0)/Math.max(1,xpNext))*100)) : 0;
 
   // upgrade costs (scale with level)
   const costiUpg={
@@ -74,6 +77,22 @@ function apriGestioneNave(id){
       <div style="font-family:'Pirata One',cursive;font-size:1.2rem;color:var(--oro)">${n.nome}</div>
       <div style="font-size:.72rem;color:var(--sabbia);font-style:italic">${n.tipo} ${n.inMare?'· In mare':'· In porto'}</div>
     </div>
+
+    ${cap?`
+    <div style="background:rgba(120,70,25,.24);border:1px solid rgba(240,192,64,.35);border-radius:8px;padding:9px;margin-bottom:12px">
+      <div style="font-family:'Cinzel',serif;color:var(--oro);font-size:.82rem;margin-bottom:5px">🎩 ${cap.titolo} ${cap.nome}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:.66rem;color:var(--sabbia)">
+        <span class="panel-chip">Lv ${cap.livello}</span>
+        <span class="panel-chip">🧭 ${cap.navigazione}</span>
+        <span class="panel-chip">⚔ ${cap.combattimento}</span>
+        <span class="panel-chip">🍻 ${cap.carisma}</span>
+        <span class="panel-chip">Raid ${cap.raid||0}</span>
+      </div>
+      <div style="height:4px;background:#1a2a1a;border-radius:2px;margin-top:7px">
+        <div style="height:100%;width:${xpPct}%;background:var(--oro);border-radius:2px"></div>
+      </div>
+      <div style="font-size:.62rem;color:rgba(245,221,160,.65);margin-top:4px">Esperienza capitano ${Math.floor(cap.esperienza||0)}/${xpNext}</div>
+    </div>`:''}
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
       <div style="background:rgba(255,255,255,.05);border-radius:6px;padding:8px;text-align:center">

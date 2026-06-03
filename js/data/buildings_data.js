@@ -1,34 +1,41 @@
 // Isla del Diablo — data/buildings_data.js
-// Riferimento edifici Tropico 2 tradotto in italiano.
-// Il gioco usa ancora gli ID interni in core/state.js per compatibilità con rendering,
-// salvataggi e sistemi esistenti.
-const TROPICO2_BUILDING_REFERENCE_IT = {
-  infrastrutture:[
-    'Mercato Nero','Dormitorio dei Prigionieri','Tenda Mensa','Campo Costruzione',
-    'Grotta dei Pirati','Casa del Pirata','Palazzo del Pirata','Sentiero','Covo dei Contrabbandieri'
+// Tropico 2 canonical building reference in English.
+// Internal IDs remain defined in core/state.js for compatibility with saves, rendering and systems.
+
+const TROPICO2_BUILDING_REFERENCE_EN = {
+  infrastructure:[
+    'Black Market','Captive Dormitory','Mess Tent','Construction Tent',
+    'Pirate Cave','Pirate House','Pirate Palace','Path','Smuggler\'s Cove'
   ],
-  risorse:[
-    'Piantagione di Banane','Campo di Mais','Miniera di Ferro','Piantagione di Papaia',
-    'Piantagione di Canna da Zucchero','Campo Legname','Piantagione di Tabacco'
+  resources:[
+    'Banana Plantation','Corn Farm','Iron Mine','Papaya Plantation',
+    'Sugarcane Plantation','Lumber Camp','Tobacco Plantation'
   ],
-  produzione:[
-    'Forno','Fabbro','Fonderia','Birrificio','Fonderia Cannoni',
-    'Fabbrica Sigari','Armeria','Distilleria di Rum','Segheria'
+  production:[
+    'Bakery','Blacksmith','Foundry','Brewery','Cannon Foundry',
+    'Cigar Factory','Armory','Rum Distillery','Sawmill'
   ],
-  divertimento:[
-    'Fossa degli Animali','Bordello e Salone','Casinò','Tavola Economica',
-    'Cortigiane e Bagni','Sala da Gioco','Locanda','Bettola dei Contrabbandieri',
-    'Taverna','Massaggiatrici e Cameriere'
+  entertainment:[
+    'Animal Pit','Brothel & Saloon','Casino','Cheap Eats',
+    'Courtesans & Baths','Gambling Hall','Inn','Smuggler\'s Dive',
+    'Tavern','Masseuses & Maids'
   ],
-  nautica:['Cantiere Barche','Molo','Fabbrica Razioni di Mare','Cantiere Navale'],
-  controlloPrigionieri:[
-    'Speziale','Chiesa','Forca','Hotel dei Prigionieri Illustri',
-    'Camera degli Interrogatori','Gabbia dei Prigionieri'
+  nautical:['Boat Yard','Dock','Sea Rations Factory','Shipyard'],
+  captiveControl:[
+    'Apothecary','Church','Gallows','Special Captives Hotel',
+    'Interrogation Chamber','Prisoner Cage'
   ],
-  addestramento:[
-    'Scuola Cannonieri','Scuola di Tiro','Scuola di Navigazione',
-    'Scuola di Marineria','Scuola di Scherma'
+  training:[
+    'Gunnery School','Shooting School','Navigation School',
+    'Seamanship School','Fencing School'
   ],
-  difesa:['Forte','Osservatorio','Cannone Costiero','Torre di Guardia'],
-  accessori:['Carpentiere','Cimitero','Bottega dei Cappelli','Voliera dei Pappagalli']
+  defense:['Fort','Lookout','Coastal Cannon','Guard Tower'],
+  accessories:['Carpenter','Cemetery','Hat Shop','Parrot Aviary']
 };
+
+// Build menu policy:
+// - show only Tropico 2-canonical buildings or Isla del Diablo essentials;
+// - keep legacy IDs in ED but hide non-canonical/unsupported entries with buildable:false.
+const TROPICO2_CANONICAL_BUILDING_NAMES = new Set(
+  Object.values(TROPICO2_BUILDING_REFERENCE_EN).flat()
+);

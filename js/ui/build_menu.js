@@ -1,15 +1,14 @@
 // Isla del Diablo — ui/build_menu.js
-// Gruppi menu costruzione in italiano, coerenti con Tropico 2.
-// Il menu reale è renderizzato in js/ui/panel.js; questo file resta senza export/import
-// per compatibilità con gli script classici del progetto.
+// Tropico 2-style construction menu groups in English.
+// The actual menu is rendered in js/ui/panel.js; this file stays global for classic script loading.
 const BUILD_MENU_GROUPS = [
-  'Infrastrutture',
-  'Nautica',
-  'Risorse',
-  'Produzione',
-  'Divertimento',
-  'Controllo prigionieri',
-  'Addestramento',
-  'Difesa',
-  'Accessori'
+  'Infrastructure',
+  'Nautical',
+  'Resources',
+  'Production',
+  'Entertainment',
+  'Captive Control',
+  'Training',
+  'Defense',
+  'Accessories'
 ];

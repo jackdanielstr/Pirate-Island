@@ -219,15 +219,26 @@ function riparaNave(id){
 // PATCH 8D — viste plancia più compatte e leggibili
 // ═══════════════════════════════════════
 function renderFlotta(){
-  let h=`<div class="titolo-sez">⛵ Flotta (${G.navi.length})</div><div class="panel-grid">`;
+  if(typeof assicuraCapitaniFlotta==='function') assicuraCapitaniFlotta();
+  let h=`<div class="titolo-sez">⛵ Flotta (${G.navi.length})</div><div class="panel-grid flotta-grid">`;
   const stelle=c=>'★'.repeat(c)+'☆'.repeat(3-c);
   for(const n of G.navi){
-    const pct=Math.max(0,n.hp/n.hpMax*100);
+    const cap=(typeof assicuraCapitanoNave==='function') ? assicuraCapitanoNave(n) : n.capitano;
+    const pct=Math.max(0,n.hp/Math.max(1,n.hpMax)*100);
     const col=pct>60?'var(--verde-ch)':pct>30?'var(--oro)':'var(--rum-chiaro)';
     const usura=Math.round(n.usura||0);
-    h+=`<div class="panel-card clickable" onclick="apriGestioneNave(${n.id})">
-      <div class="panel-card-row"><div style="min-width:0"><div class="panel-card-title">⛵ ${n.nome}</div><div class="panel-card-sub">${n.inMare?`In mare — ${n.timerRaid}g`:'In porto'}${usura>60?' · usura alta':''}</div></div><div style="font-size:.62rem;color:${col};flex-shrink:0">${Math.floor(pct)}%</div></div>
-      <div class="panel-stat-row"><span class="panel-chip">🛡 ${n.hp}/${n.hpMax}</span><span class="panel-chip">💣 ${stelle(n.livCannoni||0)}</span><span class="panel-chip">💨 ${stelle(n.livVelocita||0)}</span><span class="panel-chip">📦 ${stelle(n.livStiva||0)}</span></div>
+    const st=(typeof statoOperativoNave==='function') ? statoOperativoNave(n) : {label:n.inMare?`In mare — ${n.timerRaid}g`:'In porto', cls:'nave-stato-neutro', icona:'⚓', breve:'Stato'};
+    const xpNext=(typeof xpProssimoCapitano==='function') ? xpProssimoCapitano(cap) : ((cap?.livello||1)*90);
+    const xpPct=cap ? Math.max(0,Math.min(100,((cap.esperienza||0)/Math.max(1,xpNext))*100)) : 0;
+    h+=`<div class="panel-card flotta-card clickable ${st.cls}" onclick="apriGestioneNave(${n.id})">
+      <div class="panel-card-row">
+        <div style="min-width:0"><div class="panel-card-title">⛵ ${n.nome}</div><div class="panel-card-sub">${st.icona} ${st.label}${usura>60?' · usura alta':''}</div></div>
+        ${typeof badgeStatoNaveHtml==='function'?badgeStatoNaveHtml(n):`<span style="font-size:.62rem;color:${col}">${Math.floor(pct)}%</span>`}
+      </div>
+      <div class="panel-stat-row"><span class="panel-chip">🛡 ${Math.floor(pct)}%</span><span class="panel-chip">💣 ${stelle(n.livCannoni||0)}</span><span class="panel-chip">💨 ${stelle(n.livVelocita||0)}</span><span class="panel-chip">📦 ${stelle(n.livStiva||0)}</span></div>
+      ${cap?`<div class="panel-card-sub" style="margin-top:5px;color:var(--oro)">🎩 ${cap.titolo} ${cap.nome} · Lv ${cap.livello}</div>
+      <div class="panel-stat-row"><span class="panel-chip">🧭 ${cap.navigazione}</span><span class="panel-chip">⚔ ${cap.combattimento}</span><span class="panel-chip">🍻 ${cap.carisma}</span><span class="panel-chip">Raid ${cap.raid||0}</span></div>
+      <div class="barra-umore" style="margin-top:4px;height:3px"><div class="riempi-umore" style="width:${xpPct}%;background:var(--oro)"></div></div>`:''}
       <div class="barra-umore" style="margin-top:5px"><div class="riempi-umore" style="width:${pct}%;background:${col}"></div></div>
     </div>`;
   }
@@ -279,22 +290,28 @@ function renderMissioni(){
 }
 
 function renderBisogni(){
-  const B=G.bisogni;
+  const B=G.bisogni||{};
   const defs=[
-    {k:'divertimento',nome:'Divertimento',icona:'💋',edifici:['bordello','arena','cantastorie'],nota:'Brothel, arena, gioco'},
-    {k:'spirito',nome:'Spirito',icona:'⛪',edifici:['cappella'],nota:'Cappella e ordine'},
-    {k:'salute',nome:'Salute',icona:'🏥',edifici:['infermeria','bagni'],nota:'Infermeria e bagni'},
-    {k:'sicurezza',nome:'Sicurezza',icona:'🗼',edifici:['guardia','fortezza'],nota:'Guardie e forti'},
-    {k:'lusso',nome:'Lusso',icona:'🧵',edifici:['sarto','mercatonero'],nota:'Sarto e mercato nero'},
+    {k:'cibo',nome:'Grub / cibo',icona:'🍖',edifici:['fattoria','banane','papaia','forno','mensa_economica','locanda'],nota:'Campi, forno, tavola economica'},
+    {k:'grog',nome:'Grog / rum',icona:'🍺',edifici:['distilleria','birrificio','taverna','bettola_contrabbandieri'],nota:'Distilleria, taverna, bettola'},
+    {k:'gioco',nome:'Scommesse',icona:'🎲',edifici:['cantastorie','casino','arena'],nota:'Sala da gioco, casinò, arena'},
+    {k:'compagnia',nome:'Compagnia',icona:'💋',edifici:['bordello','massaggiatrici','bagni'],nota:'Bordello, massaggiatrici, bagni'},
+    {k:'riposo',nome:'Riposo',icona:'🛌',edifici:['casapirata','grotta_pirati','locanda'],nota:'Casa pirata, grotta, locanda'},
+    {k:'bottino',nome:'Nascondiglio',icona:'🏴',edifici:['casapirata','grotta_pirati','mercatonero'],nota:'Casa pirata, grotta, mercato nero'},
+    {k:'difesa',nome:'Difesa',icona:'🛡️',edifici:['guardia','fortezza'],nota:'Guardie, torri, fortezza'},
+    {k:'anarchia',nome:'Anarchia',icona:'🔥',edifici:['taverna','bettola_contrabbandieri','arena','bordello'],nota:'Taverna, bettola, arena'},
   ];
-  const soddMedia=Math.floor((B.divertimento+B.spirito+B.salute+B.sicurezza+B.lusso)/5);
+  const val=k=>Math.max(0,Math.min(100,Math.floor(B[k]??B.fame??50)));
+  const soddMedia=Math.floor(defs.reduce((a,d)=>a+val(d.k),0)/defs.length);
   const soddColor=soddMedia>65?'var(--verde-ch)':soddMedia>35?'var(--oro)':'var(--rum-chiaro)';
-  let h=`<div class="titolo-sez">❤ Bisogni ciurma — <span style="color:${soddColor}">${soddMedia}</span></div><div class="panel-grid">`;
+  let h=`<div class="titolo-sez">❤ Bisogni pirati — <span style="color:${soddColor}">${soddMedia}</span></div>`;
+  h+=`<div class="panel-card compact needs-note"><div class="panel-card-sub">Modello Tropico 2: grub, grog, scommesse, compagnia, riposo, nascondigli per il bottino, difesa e anarchia. La cappella non è usata per la ciurma pirata.</div></div>`;
+  h+=`<div class="panel-grid needs-grid-mobile">`;
   for(const d of defs){
-    const val=Math.floor(B[d.k]);
-    const col=val>65?'var(--verde-ch)':val>35?'var(--oro)':'var(--rum-chiaro)';
+    const v=val(d.k);
+    const col=v>65?'var(--verde-ch)':v>35?'var(--oro)':'var(--rum-chiaro)';
     const haEdificio=d.edifici.some(e=>G.edifici.find(b=>b.tipo===e));
-    h+=`<div class="panel-card compact"><div class="panel-card-row"><div class="panel-card-title">${d.icona} ${d.nome}</div><div style="color:${col}">${val}</div></div><div class="bisogno-barra"><div class="bisogno-riempi" style="width:${val}%;background:${col}"></div></div><div class="panel-card-sub">${haEdificio?'✓':'⚠'} ${d.nota}</div></div>`;
+    h+=`<div class="panel-card compact bisogno-card"><div class="panel-card-row"><div class="panel-card-title">${d.icona} ${d.nome}</div><div style="color:${col};font-family:var(--font-label)">${v}</div></div><div class="bisogno-barra"><div class="bisogno-riempi" style="width:${v}%;background:${col}"></div></div><div class="panel-card-sub">${haEdificio?'✓':'⚠'} ${d.nota}</div></div>`;
   }
   h+=`</div>${renderRegistroGovernatore()}`;
   return h;

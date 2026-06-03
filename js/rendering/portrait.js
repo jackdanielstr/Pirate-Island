@@ -7,6 +7,34 @@
 let _portraitPirataId=null;
 const pCtx=()=>document.getElementById('portrait-canvas').getContext('2d');
 
+function descriviStatoPirata(p){
+  if(!p) return 'In attesa';
+  if(p.inRaid || p._stato==='in_raid') return 'In mare per un raid';
+  if(p._stato==='raduno_raid') return 'Si sta radunando al molo';
+  if(p._stato==='cammina'){
+    const ed=p._destEdificio || (p.dest?G.edifici.find(b=>b.r===p.dest.r&&b.c===p.dest.c):null);
+    if(ed && ED[ed.tipo]) return 'Sta andando a '+ED[ed.tipo].nome;
+    return 'Sta percorrendo i sentieri';
+  }
+  if(p._stato==='pausa'){
+    const ed=p._destEdificio || (p.dest?G.edifici.find(b=>b.r===p.dest.r&&b.c===p.dest.c):null);
+    if(ed && ED[ed.tipo]) return 'Si ferma presso '+ED[ed.tipo].nome;
+    return 'Sta riposando';
+  }
+  if(p.naveId!=null){
+    const nave=(G.navi||[]).find(n=>String(n.id)===String(p.naveId));
+    if(nave) return 'Assegnato alla nave '+nave.nome;
+  }
+  return 'In giro per la cala';
+}
+
+function riassuntoBisogniPirata(p){
+  const labels={cibo:'Grub',grog:'Grog',gioco:'Scommesse',compagnia:'Compagnia',riposo:'Riposo',bottino:'Bottino',difesa:'Difesa',anarchia:'Anarchia'};
+  const b=p&&p.bisogni?p.bisogni:{};
+  const arr=Object.keys(labels).map(k=>({k,v:Math.round(b[k]??50),label:labels[k]})).sort((a,b)=>a.v-b.v);
+  return arr.slice(0,3).map(x=>`${x.label} ${x.v}%`).join(' · ');
+}
+
 function apriPortrait(p){
   _portraitPirataId=p.id;
   const hud=document.getElementById('portrait-hud');
@@ -27,7 +55,7 @@ function aggiornaPortrait(){
   // Testo
   const nome=p.capitano?p.nome+' ★':p.nome;
   document.getElementById('ph-nome').textContent=nome;
-  document.getElementById('ph-ruolo').textContent=p.ruolo+(p.titolo?' · '+p.titolo:'');
+  document.getElementById('ph-ruolo').textContent=p.ruolo+(p.titolo?' · '+p.titolo:'')+(p.eta?' · '+p.eta+' anni':'');
 
   const cEff=statEffettiva(p,'combattimento');
   const nEff=statEffettiva(p,'navigazione');
@@ -48,13 +76,11 @@ function aggiornaPortrait(){
   };
   const cat=umore>65?'felice':umore>35?'neutro':'triste';
   const arr=frasi[cat];
-  document.getElementById('ph-umore-text').textContent='"'+arr[p.id%arr.length]+'"';
+  document.getElementById('ph-umore-text').textContent='"'+arr[p.id%arr.length]+'" · '+riassuntoBisogniPirata(p);
 
   // Destinazione
   const dest=p.dest?G.edifici.find(b=>b.r===p.dest.r&&b.c===p.dest.c):null;
-  document.getElementById('ph-dest').textContent=dest
-    ?(ED[dest.tipo].icona+' → '+ED[dest.tipo].nome)
-    :'· in giro per l\'isola';
+  document.getElementById('ph-dest').textContent='📍 '+descriviStatoPirata(p);
 
   // Disegna ritratto sul canvas
   disegnaPortraitCanvas(p, cEff, nEff, umore);

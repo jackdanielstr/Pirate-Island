@@ -47,7 +47,14 @@ function annullaCostruzione(){
   document.getElementById('mappa-wrap').classList.remove('modalita-costruzione');
 }
 function terrenoCostruibileEdificio(t){
-  return t===T.SABBIA||t===T.ERBA||t===T.COLLINA||t===T.SENTIERO;
+  // Gli edifici devono stare AI LATI dei sentieri, non sopra.
+  // In stile Tropico 2 la strada è una rete libera: il footprint dell'edificio
+  // non può occupare tile sentiero, ma deve averne almeno uno adiacente.
+  return t===T.SABBIA||t===T.ERBA||t===T.COLLINA;
+}
+
+function edificioSuSentiero(cell){
+  return G.mappa[cell.r] && G.mappa[cell.r][cell.c]===T.SENTIERO;
 }
 
 function edificioRichiedeSentiero(tipo){
@@ -71,6 +78,7 @@ function statoCostruzioneEdificio(r,c,tipo=G.modalitaCostruzione){
   for(const cell of celle){
     if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) return {ok:false,motivo:'fuori-mappa',origine,celle};
     const t=G.mappa[cell.r]&&G.mappa[cell.r][cell.c];
+    if(edificioSuSentiero(cell)) return {ok:false,motivo:'sopra-sentiero',origine,celle};
     if(!terrenoCostruibileEdificio(t)) return {ok:false,motivo:'terreno',origine,celle};
     const occupato=(typeof edificioInTile==='function')
       ? edificioInTile(cell.r,cell.c)
@@ -107,6 +115,7 @@ function piazzaEdificio(r,c){
   if(!stato.ok){
     const messaggi={
       'manca-sentiero':'Serve un sentiero adiacente al perimetro dell’edificio.',
+      'sopra-sentiero':'Gli edifici vanno costruiti ai lati dei sentieri, non sopra.',
       'costa':'Questo edificio deve stare vicino alla costa.',
       'occupato':'Uno o più tile sono già occupati.',
       'terreno':'Terreno non adatto alla costruzione.',

@@ -38,6 +38,47 @@ window.zoomMobile = function(delta){
   }
 };
 
+
+function naveDaClient(x,y){
+  if(!G || !Array.isArray(G.navi) || !canvas) return null;
+  const rect=canvas.getBoundingClientRect();
+  const cx=x-rect.left, cy=y-rect.top;
+  let best=null, bestD=Infinity;
+  for(const n of G.navi){
+    if(!isFinite(n._screenX)||!isFinite(n._screenY)) continue;
+    const r=n._screenR||28;
+    const d=Math.hypot(cx-n._screenX, cy-n._screenY);
+    if(d<r*1.35 && d<bestD){ best=n; bestD=d; }
+  }
+  return best;
+}
+
+function unitàDaClient(x,y){
+  if(!G || !canvas || typeof isoProj!=='function') return null;
+  const rect=canvas.getBoundingClientRect();
+  const cx=x-rect.left, cy=y-rect.top;
+  const sc=G.ISO_SCALE||1, IW=G.ISO_W*sc, IH=G.ISO_H*sc;
+  let best=null, bestD=Infinity;
+  // Priorità Tropico 2: pirati, poi schiavi/prigionieri, poi edifici.
+  for(const pirata of (G.pirati||[])){
+    if(pirata.inRaid || !isFinite(pirata.mc)||!isFinite(pirata.mr)) continue;
+    const p=isoProj(pirata.mc,pirata.mr);
+    const ux=p.x, uy=p.y+IH/2;
+    const d=Math.hypot(cx-ux,cy-uy);
+    const r=Math.max(18,IW*.34);
+    if(d<r && d<bestD){ best={tipo:'pirata',data:pirata}; bestD=d; }
+  }
+  for(const schiavo of (G.schiavi||[])){
+    if(!isFinite(schiavo.mc)||!isFinite(schiavo.mr)) continue;
+    const p=isoProj(schiavo.mc,schiavo.mr);
+    const ux=p.x, uy=p.y+IH/2;
+    const d=Math.hypot(cx-ux,cy-uy);
+    const r=Math.max(16,IW*.30);
+    if(d<r && d<bestD){ best={tipo:'schiavo',data:schiavo}; bestD=d; }
+  }
+  return best;
+}
+
 function impostaInput(){
   if(!canvas) return;
   if(canvas.__islaInputInizializzato) return;
@@ -137,6 +178,17 @@ function impostaInput(){
     }
     if(G.modalitaCostruzione){
       if(typeof piazzaEdificio==='function') piazzaEdificio(tc.r,tc.c);
+      return;
+    }
+    const unitClick=(typeof unitàDaClient==='function') ? unitàDaClient(x,y) : null;
+    if(unitClick){
+      if(unitClick.tipo==='pirata' && typeof apriProfiloPirata==='function') apriProfiloPirata(unitClick.data.id);
+      else if(unitClick.tipo==='schiavo' && typeof apriProfiloSchiavo==='function') apriProfiloSchiavo(unitClick.data.id);
+      return;
+    }
+    const naveClick=(typeof naveDaClient==='function') ? naveDaClient(x,y) : null;
+    if(naveClick && typeof apriSchedaNavePorto==='function'){
+      apriSchedaNavePorto(naveClick.id,'mappa');
       return;
     }
     const b=(typeof edificioInTile==='function') ? edificioInTile(tc.r,tc.c) : G.edifici.find(ed=>ed.r===tc.r&&ed.c===tc.c);
@@ -330,7 +382,14 @@ function cliccaMappa(e){
   if(G.modalitaCostruzione==='sentiero'){piazzaSentiero(r,c);return;}
   if(G.modalitaCostruzione){piazzaEdificio(r,c);return;}
 
-  // 1. Edificio sul tile cliccato — priorità massima
+  const unitClick=(typeof unitàDaClient==='function') ? unitàDaClient(e.clientX,e.clientY) : null;
+  if(unitClick){
+    if(unitClick.tipo==='pirata' && typeof apriProfiloPirata==='function') apriProfiloPirata(unitClick.data.id);
+    else if(unitClick.tipo==='schiavo' && typeof apriProfiloSchiavo==='function') apriProfiloSchiavo(unitClick.data.id);
+    return;
+  }
+
+  // 1. Edificio sul tile cliccato
   const b=(typeof edificioInTile==='function') ? edificioInTile(r,c) : G.edifici.find(x=>x.r===r&&x.c===c);
   if(b){
     if(typeof apriPopupEdificio==='function') apriPopupEdificio(b);

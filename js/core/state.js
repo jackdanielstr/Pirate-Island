@@ -17,7 +17,7 @@ const G={
   // Proiezione isometrica 2:1
   ISO_W:64, ISO_H:32, ISO_SCALE:1,
   velocita:1, tickMs:12000,  // Ritmo gestionale stile Tropico 2: 1 giorno = 12s a velocità normale
-  modalitaCostruzione:null, pirataSelezionato:null,
+  modalitaCostruzione:null, pirataSelezionato:null, schiavoSelezionato:null,
   cooldownRaid:0, tick:0,
   tabCorrente:'costruisci',
   hoverR:-1, hoverC:-1,
@@ -30,17 +30,17 @@ const G={
   battagliaAttiva:false,
   contatori:{raid:0, riscatti:0},
   bisogni:{
-    // Fase 9A — bisogni pirati ispirati a Tropico 2.
-    // Fame/Rum/Divertimento/Salute/Alloggio sono il nucleo;
-    // spirito/sicurezza/lusso restano come bisogni secondari della cala.
-    fame:65,          // cibo, fattorie, mensa, locanda
-    rum:60,           // distilleria, taverna, bettola
-    divertimento:50,  // taverna, bordello, arena, sala da gioco
-    salute:60,        // infermeria, bagni
-    alloggio:45,      // case pirata, navi in porto, locanda
-    spirito:40,       // cappella, controllo morale
-    sicurezza:50,     // guardia, fortezza
-    lusso:20,         // mercato nero, sarto
+    // Fase 9B — bisogni pirati riallineati a Tropico 2: Pirate Cove.
+    // I pirati vogliono grub/grog, gioco, compagnia, riposo/casa,
+    // posti dove nascondere il bottino, difesa e anarchia.
+    cibo:65,          // grub: cibo, tavola economica, locanda
+    grog:60,          // grog/rum: distilleria, taverna, bettola
+    gioco:50,         // betting: sala da gioco, casino
+    compagnia:45,     // wenching/comfort: bordello, massaggiatrici, bagni
+    riposo:50,        // sleep/rest: case pirata, locanda, grotte
+    bottino:40,       // stashing: casa pirata, grotta, mercato nero
+    difesa:50,        // defense: guardie, fortezza
+    anarchia:45,      // anarchy: taverna, arena, bettola
   },
   scorte:{
     canna:0, tabacco:0, ferro:0, metallo:0,
@@ -73,80 +73,80 @@ const T={OCEANO:0,SABBIA:1,ERBA:2,FORESTA:3,ROCCIA:4,BASSO:5,COLLINA:6,FIUME:7,S
 // per non rompere salvataggi, rendering o vecchie funzioni.
 const ED={
   // Infrastrutture — Tropico 2
-  governatore:{icona:'🏛',nome:'Palazzo del Pirata', costo:{oro:0,legno:0}, effetto:'Cuore politico della cala: editti, reputazione e controllo dell’isola.', inizialeOnly:true, categoria:'infrastrutture'},
-  mercatonero:{icona:'🛒',nome:'Mercato Nero', costo:{oro:200,legno:30}, effetto:'Contrabbando e merci illegali: +20% entrate commerciali.', categoria:'infrastrutture'},
-  dormitorio:{icona:'🛖',nome:'Dormitorio dei Prigionieri', costo:{oro:45,legno:35}, effetto:'Alloggio essenziale per schiavi/captive workers; riduce fughe.', categoria:'infrastrutture'},
-  mensa:{icona:'🍲',nome:'Tenda Mensa', costo:{oro:35,legno:25}, effetto:'Distribuisce razioni ai lavoratori prigionieri; migliora ordine e salute.', categoria:'infrastrutture'},
-  campo_costruzione:{icona:'⛺',nome:'Campo Costruzione', costo:{oro:55,legno:40}, effetto:'Base dei costruttori: riduce inefficienza degli edifici lontani.', categoria:'infrastrutture'},
-  grotta_pirati:{icona:'🕳',nome:'Grotta dei Pirati', costo:{oro:70,legno:35}, effetto:'Rifugio rozzo per bucanieri senza casa; aumenta presenza pirata.', categoria:'infrastrutture'},
-  casapirata:{icona:'🏚',nome:'Casa del Pirata', costo:{oro:40,legno:30}, effetto:'Alloggio personale dei pirati; riduce malcontento e richiesta di paga.', categoria:'infrastrutture'},
-  prigione:{icona:'⛓',nome:'Gabbia dei Prigionieri', costo:{oro:80,legno:40}, effetto:'Trattiene prigionieri e lavoratori catturati.', categoria:'infrastrutture'},
+  governatore:{icona:'🏛',nome:'Pirate Palace', costo:{oro:0,legno:0}, effetto:'Cuore politico della cala: editti, reputazione e controllo dell’isola.', inizialeOnly:true, categoria:'infrastrutture'},
+  mercatonero:{icona:'🛒',nome:'Black Market', costo:{oro:200,legno:30}, effetto:'Contrabbando e merci illegali: +20% entrate commerciali.', categoria:'infrastrutture'},
+  dormitorio:{icona:'🛖',nome:'Captive Dormitory', costo:{oro:45,legno:35}, effetto:'Alloggio essenziale per schiavi/captive workers; riduce fughe.', categoria:'infrastrutture'},
+  mensa:{icona:'🍲',nome:'Mess Tent', costo:{oro:35,legno:25}, effetto:'Distribuisce razioni ai lavoratori prigionieri; migliora ordine e salute.', categoria:'infrastrutture'},
+  campo_costruzione:{icona:'⛺',nome:'Construction Tent', costo:{oro:55,legno:40}, effetto:'Base dei costruttori: riduce inefficienza degli edifici lontani.', categoria:'infrastrutture'},
+  grotta_pirati:{icona:'🕳',nome:'Pirate Cave', costo:{oro:70,legno:35}, effetto:'Rifugio rozzo per bucanieri senza casa; aumenta presenza pirata.', categoria:'infrastrutture'},
+  casapirata:{icona:'🏚',nome:'Pirate House', costo:{oro:40,legno:30}, effetto:'Alloggio personale dei pirati; riduce malcontento e richiesta di paga.', categoria:'infrastrutture'},
+  prigione:{icona:'⛓',nome:'Prisoner Cage', costo:{oro:80,legno:40}, effetto:'Trattiene prigionieri e lavoratori catturati.', categoria:'infrastrutture'},
 
   // Nautica — Tropico 2
-  porto:{icona:'⚓',nome:'Molo', costo:{oro:90,legno:70}, effetto:'Attracco, partenza raid, carico/scarico bottino e merci.', categoria:'nautica'},
-  covo_contrabbandieri:{icona:'🏴',nome:'Covo dei Contrabbandieri', costo:{oro:140,legno:60}, effetto:'Punto commerciale clandestino: migliora scambi e bottino venduto.', categoria:'nautica'},
-  razioni_mare:{icona:'🥫',nome:'Fabbrica Razioni di Mare', costo:{oro:95,legno:45}, effetto:'Prepara razioni per le spedizioni: riduce rischi nei raid lunghi.', categoria:'nautica'},
-  cantiere:{icona:'🛶',nome:'Cantiere Barche', costo:{oro:120,legno:50}, effetto:'Costruisce e ripara piccole navi pirata.', categoria:'nautica'},
-  shipyard:{icona:'🚢',nome:'Cantiere Navale', costo:{oro:260,legno:120}, effetto:'Permette navi più grandi e raid più ambiziosi.', categoria:'nautica'},
+  porto:{icona:'⚓',nome:'Dock', costo:{oro:90,legno:70}, effetto:'Attracco, partenza raid, carico/scarico bottino e merci.', categoria:'nautica'},
+  covo_contrabbandieri:{icona:'🏴',nome:"Smuggler's Cove", costo:{oro:140,legno:60}, effetto:'Punto commerciale clandestino: migliora scambi e bottino venduto.', categoria:'nautica'},
+  razioni_mare:{icona:'🥫',nome:'Sea Rations Factory', costo:{oro:95,legno:45}, effetto:'Prepara razioni per le spedizioni: riduce rischi nei raid lunghi.', categoria:'nautica'},
+  cantiere:{icona:'🛶',nome:'Boat Yard', costo:{oro:120,legno:50}, effetto:'Costruisce e ripara piccole navi pirata.', categoria:'nautica'},
+  shipyard:{icona:'🚢',nome:'Shipyard', costo:{oro:260,legno:120}, effetto:'Permette navi più grandi e raid più ambiziosi.', categoria:'nautica'},
 
   // Risorse — Tropico 2
-  fattoria:{icona:'🌽',nome:'Campo di Mais', costo:{oro:60,legno:30}, effetto:'+9 cibo/giorno. Lavoro dei prigionieri, efficienza dai sentieri.', categoria:'risorse'},
-  banane:{icona:'🍌',nome:'Piantagione di Banane', costo:{oro:65,legno:30}, effetto:'Produce cibo tropicale; utile per mensa e razioni.', categoria:'risorse'},
-  papaia:{icona:'🥭',nome:'Piantagione di Papaia', costo:{oro:70,legno:30}, effetto:'Cibo e merci leggere per commercio locale.', categoria:'risorse'},
-  canna_zucchero:{icona:'🎋',nome:'Piantagione di Canna da Zucchero', costo:{oro:75,legno:35}, effetto:'Materia prima per rum e commercio.', categoria:'risorse'},
-  tabacco:{icona:'🚬',nome:'Piantagione di Tabacco', costo:{oro:80,legno:35}, effetto:'Materia prima per sigari e beni di lusso pirata.', categoria:'risorse'},
-  miniera_ferro:{icona:'⛏',nome:'Miniera di Ferro', costo:{oro:120,legno:60}, effetto:'Materia prima per armi, cannoni e ferramenta.', categoria:'risorse'},
-  segheria:{icona:'🪓',nome:'Campo Legname', costo:{oro:50,legno:20}, effetto:'+7 legno/giorno. Materia prima per moli, case e navi.', categoria:'risorse'},
+  fattoria:{icona:'🌽',nome:'Corn Farm', costo:{oro:60,legno:30}, effetto:'+9 cibo/giorno. Lavoro dei prigionieri, efficienza dai sentieri.', categoria:'risorse'},
+  banane:{icona:'🍌',nome:'Banana Plantation', costo:{oro:65,legno:30}, effetto:'Produce cibo tropicale; utile per mensa e razioni.', categoria:'risorse'},
+  papaia:{icona:'🥭',nome:'Papaya Plantation', costo:{oro:70,legno:30}, effetto:'Cibo e merci leggere per commercio locale.', categoria:'risorse'},
+  canna_zucchero:{icona:'🎋',nome:'Sugarcane Plantation', costo:{oro:75,legno:35}, effetto:'Materia prima per rum e commercio.', categoria:'risorse'},
+  tabacco:{icona:'🚬',nome:'Tobacco Plantation', costo:{oro:80,legno:35}, effetto:'Materia prima per sigari e beni di lusso pirata.', categoria:'risorse'},
+  miniera_ferro:{icona:'⛏',nome:'Iron Mine', costo:{oro:120,legno:60}, effetto:'Materia prima per armi, cannoni e ferramenta.', categoria:'risorse'},
+  segheria:{icona:'🪓',nome:'Lumber Camp', costo:{oro:50,legno:20}, effetto:'+7 legno/giorno. Materia prima per moli, case e navi.', categoria:'risorse'},
 
   // Produzione — Tropico 2
-  forno:{icona:'🍞',nome:'Forno', costo:{oro:80,legno:35}, effetto:'Trasforma mais in cibo migliore per ciurma e prigionieri.', categoria:'produzione'},
-  fabbro:{icona:'🔨',nome:'Fabbro', costo:{oro:110,legno:45}, effetto:'Produce utensili e supporto alla costruzione.', categoria:'produzione'},
-  fonderia:{icona:'🏭',nome:'Fonderia', costo:{oro:170,legno:70}, effetto:'Lavora ferro per industria bellica e cannoni.', categoria:'produzione'},
-  birrificio:{icona:'🍺',nome:'Birrificio', costo:{oro:90,legno:40}, effetto:'Produce bevande per divertimento e morale.', categoria:'produzione'},
-  distilleria:{icona:'🍹',nome:'Distilleria di Rum', costo:{oro:90,legno:40}, effetto:'+6 rum/giorno. Mantiene felici i pirati.', categoria:'produzione'},
-  fonderia_cannoni:{icona:'💣',nome:'Fonderia Cannoni', costo:{oro:220,legno:90}, effetto:'Produzione cannoni per fortezze e navi.', categoria:'produzione'},
-  fabbrica_armi:{icona:'🔫',nome:'Armeria', costo:{oro:190,legno:70}, effetto:'Produce armi leggere: migliora abbordaggi e difesa.', categoria:'produzione'},
-  fabbrica_sigari:{icona:'🚬',nome:'Fabbrica Sigari', costo:{oro:150,legno:50}, effetto:'Trasforma tabacco in bene di lusso e commercio.', categoria:'produzione'},
-  sawmill:{icona:'🪚',nome:'Segheria', costo:{oro:100,legno:45}, effetto:'Trasforma legname grezzo in tavole per navi ed edifici.', categoria:'produzione'},
+  forno:{icona:'🍞',nome:'Bakery', costo:{oro:80,legno:35}, effetto:'Trasforma mais in cibo migliore per ciurma e prigionieri.', categoria:'produzione'},
+  fabbro:{icona:'🔨',nome:'Blacksmith', costo:{oro:110,legno:45}, effetto:'Produce utensili e supporto alla costruzione.', categoria:'produzione'},
+  fonderia:{icona:'🏭',nome:'Foundry', costo:{oro:170,legno:70}, effetto:'Lavora ferro per industria bellica e cannoni.', categoria:'produzione'},
+  birrificio:{icona:'🍺',nome:'Brewery', costo:{oro:90,legno:40}, effetto:'Produce bevande per divertimento e morale.', categoria:'produzione'},
+  distilleria:{icona:'🍹',nome:'Rum Distillery', costo:{oro:90,legno:40}, effetto:'+6 rum/giorno. Mantiene felici i pirati.', categoria:'produzione'},
+  fonderia_cannoni:{icona:'💣',nome:'Cannon Foundry', costo:{oro:220,legno:90}, effetto:'Produzione cannoni per fortezze e navi.', categoria:'produzione'},
+  fabbrica_armi:{icona:'🔫',nome:'Armory', costo:{oro:190,legno:70}, effetto:'Produce armi leggere: migliora abbordaggi e difesa.', categoria:'produzione'},
+  fabbrica_sigari:{icona:'🚬',nome:'Cigar Factory', costo:{oro:150,legno:50}, effetto:'Trasforma tabacco in bene di lusso e commercio.', categoria:'produzione'},
+  sawmill:{icona:'🪚',nome:'Sawmill', costo:{oro:100,legno:45}, effetto:'Trasforma legname grezzo in tavole per navi ed edifici.', categoria:'produzione'},
 
   // Divertimento — Tropico 2
-  taverna:{icona:'🍺',nome:'Taverna', costo:{oro:80,legno:20}, effetto:'Bere: morale pirati +5/giorno, consuma rum.', categoria:'intrattenimento'},
-  locanda:{icona:'🏨',nome:'Locanda', costo:{oro:120,legno:45}, effetto:'Cibo, bevute e riposo per pirati di passaggio.', categoria:'intrattenimento'},
-  bettola_contrabbandieri:{icona:'🍻',nome:'Bettola dei Contrabbandieri', costo:{oro:130,legno:35}, effetto:'Ritrovo sporco per pirati e mercanti illegali.', categoria:'intrattenimento'},
-  mensa_economica:{icona:'🍗',nome:'Tavola Economica', costo:{oro:65,legno:25}, effetto:'Cibo economico per ciurma e lavoratori.', categoria:'intrattenimento'},
-  bordello:{icona:'💋',nome:'Bordello e Salone', costo:{oro:120,legno:40}, effetto:'Compagnia: divertimento +20/giorno, morale +8.', categoria:'intrattenimento'},
-  massaggiatrici:{icona:'💆',nome:'Massaggiatrici e Cameriere', costo:{oro:110,legno:35}, effetto:'Servizio ricreativo per pirati stanchi dai raid.', categoria:'intrattenimento'},
-  bagni:{icona:'🛁',nome:'Cortigiane e Bagni', costo:{oro:70,legno:30}, effetto:'Servizio di lusso per pirati e prigionieri ricchi.', categoria:'intrattenimento'},
-  cantastorie:{icona:'🎲',nome:'Sala da Gioco', costo:{oro:80,legno:30}, effetto:'Dadi, carte e scommesse per pirati.', categoria:'intrattenimento'},
-  casino:{icona:'🎰',nome:'Casinò', costo:{oro:220,legno:70}, effetto:'Grande intrattenimento e forte consumo d’oro pirata.', categoria:'intrattenimento'},
-  arena:{icona:'🐗',nome:'Fossa degli Animali', costo:{oro:100,legno:60}, effetto:'Anarchia e divertimento brutale per la ciurma.', categoria:'intrattenimento'},
+  taverna:{icona:'🍺',nome:'Tavern', costo:{oro:80,legno:20}, effetto:'Bere: morale pirati +5/giorno, consuma rum.', categoria:'intrattenimento'},
+  locanda:{icona:'🏨',nome:'Inn', costo:{oro:120,legno:45}, effetto:'Cibo, bevute e riposo per pirati di passaggio.', categoria:'intrattenimento'},
+  bettola_contrabbandieri:{icona:'🍻',nome:"Smuggler's Dive", costo:{oro:130,legno:35}, effetto:'Ritrovo sporco per pirati e mercanti illegali.', categoria:'intrattenimento'},
+  mensa_economica:{icona:'🍗',nome:'Cheap Eats', costo:{oro:65,legno:25}, effetto:'Cibo economico per ciurma e lavoratori.', categoria:'intrattenimento'},
+  bordello:{icona:'💋',nome:'Brothel & Saloon', costo:{oro:120,legno:40}, effetto:'Compagnia: divertimento +20/giorno, morale +8.', categoria:'intrattenimento'},
+  massaggiatrici:{icona:'💆',nome:'Masseuses & Maids', costo:{oro:110,legno:35}, effetto:'Servizio ricreativo per pirati stanchi dai raid.', categoria:'intrattenimento'},
+  bagni:{icona:'🛁',nome:'Courtesans & Baths', costo:{oro:70,legno:30}, effetto:'Servizio di lusso per pirati e prigionieri ricchi.', categoria:'intrattenimento'},
+  cantastorie:{icona:'🎲',nome:'Gambling Hall', costo:{oro:80,legno:30}, effetto:'Dadi, carte e scommesse per pirati.', categoria:'intrattenimento'},
+  casino:{icona:'🎰',nome:'Casino', costo:{oro:220,legno:70}, effetto:'Grande intrattenimento e forte consumo d’oro pirata.', categoria:'intrattenimento'},
+  arena:{icona:'🐗',nome:'Animal Pit', costo:{oro:100,legno:60}, effetto:'Anarchia e divertimento brutale per la ciurma.', categoria:'intrattenimento'},
 
   // Controllo prigionieri — Tropico 2
-  cappella:{icona:'⛪',nome:'Chiesa', costo:{oro:90,legno:40}, effetto:'Ordine/religione per lavoratori catturati; riduce fughe.', categoria:'controllo'},
-  speziale:{icona:'⚗',nome:'Speziale', costo:{oro:80,legno:30}, effetto:'Cure semplici per prigionieri e ciurma.', categoria:'controllo'},
-  infermeria:{icona:'🏥',nome:'Chirurgia', costo:{oro:110,legno:50}, effetto:'Cura ferite, malattie e pirati reduci dai raid.', categoria:'controllo'},
-  forca:{icona:'🪦',nome:'Forca', costo:{oro:70,legno:45}, effetto:'Paura e controllo: riduce rivolte ma peggiora umore dei prigionieri.', categoria:'controllo'},
-  hotel:{icona:'🏨',nome:'Hotel dei Prigionieri Illustri', costo:{oro:180,legno:70}, effetto:'Trattiene ostaggi importanti per riscatti più alti.', categoria:'controllo'},
-  camera_interrogatori:{icona:'🕯',nome:'Camera degli Interrogatori', costo:{oro:150,legno:60}, effetto:'Estrae mappe e informazioni dai prigionieri.', categoria:'controllo'},
-  guardia:{icona:'🗼',nome:'Torre di Guardia', costo:{oro:80,legno:50}, effetto:'Paura/difesa: controlla prigionieri e avvisa attacchi.', categoria:'controllo'},
+  cappella:{icona:'⛪',nome:'Church', costo:{oro:90,legno:40}, effetto:'Canonical Tropico 2 captive building, hidden until captive needs are fully implemented.', categoria:'controllo', buildable:false},
+  speziale:{icona:'⚗',nome:'Apothecary', costo:{oro:80,legno:30}, effetto:'Cure semplici per prigionieri e ciurma.', categoria:'controllo'},
+  infermeria:{icona:'🏥',nome:'Surgery', costo:{oro:110,legno:50}, effetto:'Legacy support: use Apothecary for Tropico 2-style healthcare.', categoria:'controllo', buildable:false},
+  forca:{icona:'🪦',nome:'Gallows', costo:{oro:70,legno:45}, effetto:'Paura e controllo: riduce rivolte ma peggiora umore dei prigionieri.', categoria:'controllo'},
+  hotel:{icona:'🏨',nome:'Special Captives Hotel', costo:{oro:180,legno:70}, effetto:'Trattiene ostaggi importanti per riscatti più alti.', categoria:'controllo'},
+  camera_interrogatori:{icona:'🕯',nome:'Interrogation Chamber', costo:{oro:150,legno:60}, effetto:'Estrae mappe e informazioni dai prigionieri.', categoria:'controllo'},
+  guardia:{icona:'🗼',nome:'Guard Tower', costo:{oro:80,legno:50}, effetto:'Defense and prisoner control: watches paths, captives and coastal threats.', categoria:'difesa'},
 
   // Addestramento — Tropico 2
-  caserma:{icona:'⚔',nome:'Scuola di Scherma', costo:{oro:100,legno:60}, effetto:'Addestra pirati al combattimento e all’abbordaggio.', categoria:'addestramento'},
-  scuola_tiro:{icona:'🎯',nome:'Scuola di Tiro', costo:{oro:120,legno:60}, effetto:'Migliora armi da fuoco e attacchi a distanza.', categoria:'addestramento'},
-  scuola_cannoni:{icona:'💣',nome:'Scuola Cannonieri', costo:{oro:140,legno:70}, effetto:'Migliora cannoni di nave e fortezza.', categoria:'addestramento'},
-  scuola_navigazione:{icona:'🧭',nome:'Scuola di Navigazione', costo:{oro:130,legno:60}, effetto:'Riduce durata e rischio dei raid.', categoria:'addestramento'},
-  scuola_marina:{icona:'⛵',nome:'Scuola di Marineria', costo:{oro:120,legno:55}, effetto:'Migliora equipaggio e manovra delle navi.', categoria:'addestramento'},
+  caserma:{icona:'⚔',nome:'Fencing School', costo:{oro:100,legno:60}, effetto:'Addestra pirati al combattimento e all’abbordaggio.', categoria:'addestramento'},
+  scuola_tiro:{icona:'🎯',nome:'Shooting School', costo:{oro:120,legno:60}, effetto:'Migliora armi da fuoco e attacchi a distanza.', categoria:'addestramento'},
+  scuola_cannoni:{icona:'💣',nome:'Gunnery School', costo:{oro:140,legno:70}, effetto:'Migliora cannoni di nave e fortezza.', categoria:'addestramento'},
+  scuola_navigazione:{icona:'🧭',nome:'Navigation School', costo:{oro:130,legno:60}, effetto:'Riduce durata e rischio dei raid.', categoria:'addestramento'},
+  scuola_marina:{icona:'⛵',nome:'Seamanship School', costo:{oro:120,legno:55}, effetto:'Migliora equipaggio e manovra delle navi.', categoria:'addestramento'},
 
   // Difesa — Tropico 2
-  fortezza:{icona:'🏰',nome:'Forte', costo:{oro:180,legno:80}, effetto:'Difesa costiera contro flotte e incursioni.', categoria:'difesa'},
-  osservatorio:{icona:'🔭',nome:'Osservatorio', costo:{oro:150,legno:50}, effetto:'Avvista rotte e flotte; +3 ricerca/giorno.', categoria:'difesa'},
-  cannone_costiero:{icona:'💥',nome:'Cannone Costiero', costo:{oro:130,legno:40}, effetto:'Difesa leggera del porto e deterrente contro pattuglie.', categoria:'difesa'},
+  fortezza:{icona:'🏰',nome:'Fort', costo:{oro:180,legno:80}, effetto:'Difesa costiera contro flotte e incursioni.', categoria:'difesa'},
+  osservatorio:{icona:'🔭',nome:'Lookout', costo:{oro:150,legno:50}, effetto:'Avvista rotte e flotte; +3 ricerca/giorno.', categoria:'difesa'},
+  cannone_costiero:{icona:'💥',nome:'Coastal Cannon', costo:{oro:130,legno:40}, effetto:'Difesa leggera del porto e deterrente contro pattuglie.', categoria:'difesa'},
 
   // Accessori — Tropico 2
-  carpentiere:{icona:'🪚',nome:'Carpentiere', costo:{oro:100,legno:45}, effetto:'Riparazioni e arredi: supporta case e navi.', categoria:'accessori'},
-  cimitero:{icona:'⚰',nome:'Cimitero', costo:{oro:60,legno:30}, effetto:'Gestisce morti e superstizione della ciurma.', categoria:'accessori'},
-  sarto:{icona:'🎩',nome:'Bottega dei Cappelli', costo:{oro:130,legno:20}, effetto:'Accessori pirata: lusso e oro +10/giorno.', categoria:'accessori'},
-  voliera_pappagalli:{icona:'🦜',nome:'Voliera dei Pappagalli', costo:{oro:90,legno:35}, effetto:'Accessori esotici e prestigio pirata.', categoria:'accessori'},
+  carpentiere:{icona:'🪚',nome:'Carpenter', costo:{oro:100,legno:45}, effetto:'Riparazioni e arredi: supporta case e navi.', categoria:'accessori'},
+  cimitero:{icona:'⚰',nome:'Cemetery', costo:{oro:60,legno:30}, effetto:'Gestisce morti e superstizione della ciurma.', categoria:'accessori'},
+  sarto:{icona:'🎩',nome:'Hat Shop', costo:{oro:130,legno:20}, effetto:'Accessori pirata: lusso e oro +10/giorno.', categoria:'accessori'},
+  voliera_pappagalli:{icona:'🦜',nome:'Parrot Aviary', costo:{oro:90,legno:35}, effetto:'Accessori esotici e prestigio pirata.', categoria:'accessori'},
 };
 // ── TECNOLOGIE ──
 const EDIFICI_INGOMBRI={

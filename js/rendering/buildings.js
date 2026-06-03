@@ -292,6 +292,135 @@ function edificioGenericoTropico(bx,by,S,tipo){
   barileMolo(bx+S*.28,by+S*.04,S,.042);
 }
 
+
+function cassaTropico2(x,y,S,scale=.08){
+  const w=S*scale, d=S*scale*.72, h=S*scale*.62;
+  isoBox(x,y,w,d,h,'#6a431f','#a87434','#523116');
+  ctx.save();
+  ctx.strokeStyle='rgba(50,28,10,.72)';
+  ctx.lineWidth=Math.max(.6,S*.006);
+  ctx.beginPath();ctx.moveTo(x-w*.45,y-h*.55);ctx.lineTo(x+w*.45,y-h*.15);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x-w*.22,y-h*.72);ctx.lineTo(x-w*.22,y+h*.02);ctx.stroke();
+  ctx.restore();
+}
+
+function saccoTropico2(x,y,S,scale=.06,col='#b99a62'){
+  ctx.save();
+  ctx.fillStyle=col;
+  ctx.strokeStyle='rgba(75,46,20,.65)';
+  ctx.lineWidth=Math.max(.6,S*.006);
+  ctx.beginPath();
+  ctx.ellipse(x,y-S*scale*.35,S*scale*.72,S*scale*.48,-.2,0,Math.PI*2);
+  ctx.fill();ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x-S*scale*.25,y-S*scale*.72);
+  ctx.quadraticCurveTo(x,y-S*scale*1.0,x+S*scale*.25,y-S*scale*.72);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function insegnaLegnoTropico2(x,y,S,label='RUM'){
+  ctx.save();
+  const w=S*.24,h=S*.075;
+  ctx.strokeStyle='#4b2b12';
+  ctx.lineWidth=Math.max(1,S*.01);
+  ctx.beginPath();ctx.moveTo(x,y-S*.03);ctx.lineTo(x,y+h*.72);ctx.stroke();
+  ctx.fillStyle='#b7792e';
+  ctx.fillRect(x-w*.5,y,w,h);
+  ctx.strokeStyle='#5a3212';ctx.strokeRect(x-w*.5,y,w,h);
+  ctx.fillStyle='#f3d47a';
+  ctx.font=`bold ${Math.max(8,S*.075)}px serif`;
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText(label,x,y+h*.52);
+  ctx.restore();
+}
+
+function tavoloTavernaTropico2(x,y,S){
+  ctx.save();
+  isoBox(x,y,S*.16,S*.10,S*.035,'#5b3518','#8d5727','#3f2410');
+  ctx.strokeStyle='#4b2a10';
+  ctx.lineWidth=Math.max(1,S*.01);
+  for(const dx of [-.065,.065]){
+    ctx.beginPath();ctx.moveTo(x+S*dx,y-S*.005);ctx.lineTo(x+S*(dx*.75),y+S*.07);ctx.stroke();
+  }
+  ctx.fillStyle='rgba(230,190,95,.85)';
+  ctx.beginPath();ctx.arc(x-S*.035,y-S*.045,S*.015,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+S*.042,y-S*.028,S*.012,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function reteMoloTropico2(x,y,S){
+  ctx.save();
+  ctx.strokeStyle='rgba(214,196,140,.65)';
+  ctx.lineWidth=Math.max(.7,S*.007);
+  for(let i=0;i<4;i++){
+    ctx.beginPath();ctx.moveTo(x-S*.1+i*S*.055,y-S*.055);ctx.lineTo(x-S*.05+i*S*.035,y+S*.06);ctx.stroke();
+  }
+  for(let j=0;j<3;j++){
+    ctx.beginPath();ctx.moveTo(x-S*.12,y-S*.04+j*S*.045);ctx.lineTo(x+S*.13,y-S*.055+j*S*.04);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function basamentoTropico2(bx,by,S,tipo){
+  ctx.save();
+  const pietra=['governatore','fortezza','prigione','cappella','infermeria','guardia','caserma','osservatorio'].includes(tipo);
+  const nautica=['porto','cantiere','shipyard'].includes(tipo);
+  // Basamento più netto: in Tropico 2 ogni edificio si legge bene dal terreno,
+  // ma senza sembrare una griglia tecnica.
+  ctx.globalAlpha=.34;
+  ctx.fillStyle=nautica?'#5a3218':pietra?'#b79c68':'#6b421c';
+  ctx.beginPath();
+  ctx.ellipse(bx,by+S*.066,S*.50,S*.18,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.globalAlpha=.86;
+  ctx.strokeStyle=nautica?'rgba(43,25,10,.72)':pietra?'rgba(66,54,36,.70)':'rgba(48,28,10,.70)';
+  ctx.lineWidth=Math.max(1.4,S*.014);
+  ctx.beginPath();
+  ctx.ellipse(bx,by+S*.055,S*.47,S*.165,0,0,Math.PI*2);
+  ctx.stroke();
+  ctx.globalAlpha=.18;
+  ctx.strokeStyle='rgba(230,185,120,.22)';
+  ctx.lineWidth=Math.max(.6,S*.005);
+  ctx.beginPath();
+  ctx.ellipse(bx-S*.02,by+S*.038,S*.38,S*.105,0,0,Math.PI*2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function insegnaTavernaLargaTropico2(x,y,S,label='TAVERN'){
+  ctx.save();
+  const w=S*.36,h=S*.085;
+  ctx.strokeStyle='#3d210d';
+  ctx.lineWidth=Math.max(1,S*.011);
+  ctx.beginPath();ctx.moveTo(x-S*.18,y-S*.05);ctx.lineTo(x-S*.18,y+S*.08);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+S*.18,y-S*.05);ctx.lineTo(x+S*.18,y+S*.08);ctx.stroke();
+  ctx.fillStyle='#9b6428';ctx.fillRect(x-w*.5,y,w,h);
+  ctx.strokeStyle='#4f2d12';ctx.strokeRect(x-w*.5,y,w,h);
+  ctx.fillStyle='#f2d37b';ctx.font=`bold ${Math.max(8,S*.06)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(label,x,y+h*.55);
+  ctx.restore();
+}
+
+function pilaMerciTropico2(x,y,S){
+  cassaTropico2(x-S*.08,y,S,.075);
+  cassaTropico2(x+S*.025,y-S*.015,S,.07);
+  saccoTropico2(x+S*.13,y+S*.012,S,.055,'#b99762');
+  barileMolo(x+S*.21,y+S*.02,S,.046);
+}
+
+function lanternaCaldaTropico2(x,y,S){
+  ctx.save();
+  ctx.globalAlpha=.45;
+  ctx.fillStyle='rgba(255,166,62,.55)';
+  ctx.beginPath();ctx.ellipse(x,y,S*.09,S*.055,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.fillStyle='#f0a23e';
+  ctx.beginPath();ctx.arc(x,y,S*.018,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
 function disegnaEdificio(tipo,cx,cy,s,footprint){
   s = s || G.ISO_SCALE;
   const fp=footprint || (typeof ingombroEdificio==='function' ? ingombroEdificio(tipo) : {w:1,h:1});
@@ -353,33 +482,32 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'dormitorio':{
-      {
-        ponteLegnoIso(bx-S*.02,by+S*.045,S,S*.62,S*.16,8);
-        isoBox(bx-S*.04,by-S*.03,S*.55,S*.26,S*.21,'#6b4a24','#927044','#5a3920');
-        disegnaAssiParete(bx-S*.04,by-S*.03,S,.52,.21);
-        isoRoof(bx-S*.04,by-S*.24,S*.6,S*.3,0,S*.13,'#4f3720','#2f2115','#6a4a28');
-        for(let i=0;i<3;i++){
-          isoWindow(bx-S*(.18-i*.16),by-S*.18,i!==1,S*.055);
-        }
-        ctx.fillStyle='#1d120a';
-        ctx.fillRect(bx+S*.16,by-S*.12,S*.1,S*.12);
-        ctx.strokeStyle='rgba(232,210,150,.72)';
-        ctx.lineWidth=Math.max(.8,S*.01);
-        ctx.beginPath();ctx.moveTo(bx-S*.35,by-S*.22);ctx.lineTo(bx+S*.32,by-S*.28);ctx.stroke();
-        for(let i=0;i<4;i++) teloTropico(bx-S*.26+i*S*.16,by-S*.22-i%2*S*.01,S*.42,i%2?'#d8b35a':'#88402a');
-        barileMolo(bx-S*.35,by+S*.04,S,.05);
-        break;
+      basamentoTropico2(bx,by,S,tipo);
+      ponteLegnoIso(bx-S*.02,by+S*.045,S,S*.64,S*.17,8);
+      isoBox(bx-S*.04,by-S*.03,S*.56,S*.27,S*.22,'#66451f','#8f6b3e','#55351b');
+      disegnaAssiParete(bx-S*.04,by-S*.03,S,.54,.22);
+      isoRoof(bx-S*.04,by-S*.255,S*.62,S*.32,0,S*.13,'#4d351d','#2d1e12','#684726');
+      for(let i=0;i<3;i++) isoWindow(bx-S*(.18-i*.16),by-S*.185,i!==1,S*.055);
+      ctx.fillStyle='#1d120a';
+      ctx.fillRect(bx+S*.16,by-S*.12,S*.1,S*.12);
+      // Panni e staccionata: chiaro edificio abitativo, non produttivo.
+      ctx.strokeStyle='rgba(232,210,150,.72)';
+      ctx.lineWidth=Math.max(.8,S*.01);
+      ctx.beginPath();ctx.moveTo(bx-S*.35,by-S*.235);ctx.lineTo(bx+S*.32,by-S*.29);ctx.stroke();
+      for(let i=0;i<5;i++) teloTropico(bx-S*.28+i*S*.14,by-S*.225-(i%2)*S*.012,S*.38,i%2?'#d8b35a':'#88402a');
+      ctx.strokeStyle='rgba(95,58,24,.75)';
+      ctx.lineWidth=Math.max(1,S*.01);
+      for(let i=0;i<5;i++){
+        const px=bx-S*.34+i*S*.17;
+        ctx.beginPath();ctx.moveTo(px,by+S*.025);ctx.lineTo(px,by+S*.125);ctx.stroke();
       }
-      disegnaBaraccone(bx-S*.08,by,S,'#8a6a3a','#5a341a');
-      isoBox(bx+S*.24,by-S*.03,S*.18,S*.12,S*.16,'#6b4a22','#8a6428','#553817');
-      ctx.strokeStyle='#d8c090';ctx.lineWidth=1*s;
-      for(let i=0;i<3;i++){
-        ctx.beginPath();ctx.moveTo(bx-S*.22+i*S*.1,by-S*.22);ctx.lineTo(bx-S*.18+i*S*.1,by-S*.16);ctx.stroke();
-      }
+      ctx.beginPath();ctx.moveTo(bx-S*.37,by+S*.075);ctx.lineTo(bx+S*.36,by+S*.06);ctx.stroke();
+      barileMolo(bx-S*.35,by+S*.04,S,.045);
+      saccoTropico2(bx+S*.33,by+S*.065,S,.052);
       break;
     }
 
-    case 'mensa':
+        case 'mensa':
     case 'mensa_economica':{
       disegnaTendaPirata(bx,by,S,'#b87424','#e8c56a');
       isoBox(bx-S*.25,by+S*.02,S*.18,S*.11,S*.08,'#7a4a1a','#a06b28','#5a3210');
@@ -419,56 +547,42 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     case 'locanda':
     case 'bettola_contrabbandieri':
     case 'taverna':{
-      {
-        const contr=tipo==='bettola_contrabbandieri';
-        const w=S*.58,d=S*.33,h=S*.26;
-        ponteLegnoIso(bx,by+S*.045,S,S*.62,S*.14,7);
-        const wall=contr?'#76543a':tipo==='locanda'?'#c28958':'#b8743a';
-        isoBox(bx,by-S*.02,w,d,h,'#7a4a20',wall,contr?'#553727':'#7b421f');
-        disegnaAssiParete(bx,by-S*.02,S,.5,.24);
-        isoRoof(bx,by-h-S*.02,w*1.08,d*1.08,0,S*.2,contr?'#2d261d':'#824020',contr?'#1f1a16':'#5b2816',contr?'#58412b':'#a34e24');
-        isoBox(bx-S*.28,by-S*.04,S*.18,S*.14,S*.17,'#6b4820',contr?'#60472f':'#9b693a','#51311b');
-        isoRoof(bx-S*.28,by-S*.21,S*.2,S*.15,0,S*.09,contr?'#2c241b':'#6b3218','#241911',contr?'#4d3926':'#8a3e1d');
-        isoWindow(bx-S*.14,by-h-S*.02,true,S*.075);
-        isoWindow(bx+S*.16,by-h-S*.015,true,S*.07);
-        ctx.fillStyle='#241008';
-        ctx.fillRect(bx-S*.055,by-h+S*.015,S*.12,S*.15);
-        ctx.beginPath();ctx.arc(bx+S*.005,by-h+S*.015,S*.06,Math.PI,0,false);ctx.fill();
-        teloTropico(bx+S*.18,by-S*.16,S,contr?'#16120f':'#a92318');
-        lanternaRossa(bx-S*.23,by-S*.17,S);
-        lanternaRossa(bx+S*.29,by-S*.12,S*.86);
-        ctx.fillStyle='#c88a32';
-        ctx.fillRect(bx-S*.12,by-h-S*.16,S*.24,S*.07);
-        ctx.strokeStyle='#5a2d0a';ctx.lineWidth=Math.max(.8,S*.01);ctx.strokeRect(bx-S*.12,by-h-S*.16,S*.24,S*.07);
-        ctx.fillStyle='#f2d37a';ctx.font=`bold ${Math.max(8,S*.08)}px serif`;
-        ctx.textAlign='center';ctx.fillText(contr?'X':'RUM',bx,by-h-S*.105);
-        barileMolo(bx+S*.33,by+S*.03,S,.052);
-        barileMolo(bx+S*.41,by+S*.045,S,.047);
-        break;
-      }
-      const w=S*.56,d=S*.32,h=S*.28;
-      // corpo
-      const wall=tipo==='locanda'?'#bf8650':tipo==='bettola_contrabbandieri'?'#8b5a2b':'#b87030';
-      isoBox(bx,by,w,d,h,'#7a4a1a',wall,'#7a4218');
-      // tetto spiovente rosso mattone
-      isoRoof(bx,by-h,w,d,0,S*.22,'#8a3010','#6a2008','#9a3818');
-      // finestre sulla facciata
-      isoWindow(bx-S*.1,by-h-S*.02,true);
-      isoWindow(bx+S*.1,by-h-S*.02,true);
-      // porta
-      ctx.fillStyle='#2a1008';
-      ctx.fillRect(bx-S*.07,by-h+1,S*.14,S*.12);
-      ctx.beginPath();ctx.arc(bx,by-h+1,S*.07,Math.PI,0,false);ctx.fill();
-      // insegna
-      ctx.fillStyle='#c87820';
-      ctx.fillRect(bx-S*.12,by-h-S*.18,S*.24,S*.08);
-      ctx.strokeStyle='#8a4a00';ctx.lineWidth=1;ctx.strokeRect(bx-S*.12,by-h-S*.18,S*.24,S*.08);
-      ctx.fillStyle='var(--oro)';ctx.font=`bold ${S*.1}px serif`;
-      ctx.textAlign='center';ctx.fillText('🍺',bx,by-h-S*.12);
+      const contr=tipo==='bettola_contrabbandieri';
+      const loc=tipo==='locanda';
+      ponteLegnoIso(bx,by+S*.055,S,S*.70,S*.18,8);
+      basamentoTropico2(bx,by,S,tipo);
+      const wall=contr?'#6e4b31':loc?'#c48b58':'#b66d31';
+      const trim=contr?'#4b3020':'#6f3b18';
+      isoBox(bx,by-S*.02,S*.60,S*.34,S*.29,'#6d431d',wall,trim);
+      disegnaAssiParete(bx,by-S*.02,S,.56,.26);
+      // Tetto grande, basso e caraibico: più simile alla taverna di Tropico 2 che a una locanda fantasy.
+      isoRoof(bx,by-S*.31,S*.78,S*.44,0,S*.24,contr?'#2e251c':'#7a3a1a',contr?'#1d1712':'#552512',contr?'#5a3f26':'#a04a22');
+      // Veranda laterale e tettoia: silhouette subito leggibile come edificio sociale.
+      isoBox(bx-S*.35,by-S*.045,S*.24,S*.16,S*.18,'#61411e',contr?'#5a402b':'#986132','#4a2a14');
+      isoRoof(bx-S*.35,by-S*.23,S*.28,S*.18,0,S*.09,contr?'#2a2018':'#6b3117','#24160e',contr?'#50361f':'#8c3c1b');
+      isoBox(bx+S*.35,by-S*.035,S*.18,S*.13,S*.13,'#5b381b',contr?'#4a3528':'#8f5728','#402411');
+      // Facciata sociale: porta scura, finestre calde, insegna semplice.
+      isoWindow(bx-S*.15,by-S*.22,true,S*.075);
+      isoWindow(bx+S*.16,by-S*.215,true,S*.07);
+      ctx.fillStyle='#241008';
+      ctx.fillRect(bx-S*.058,by-S*.15,S*.125,S*.16);
+      ctx.beginPath();ctx.arc(bx+S*.004,by-S*.15,S*.063,Math.PI,0,false);ctx.fill();
+      insegnaTavernaLargaTropico2(bx,by-S*.56,S,contr?'SMUGGLER':loc?'INN':'TAVERN');
+      teloTropico(bx+S*.21,by-S*.18,S,contr?'#17120e':'#a92318');
+      lanternaRossa(bx-S*.24,by-S*.18,S*.95);
+      lanternaRossa(bx+S*.32,by-S*.12,S*.82);
+      // Zona esterna da taverna: botti, tavolo e piccoli carichi.
+      barileMolo(bx+S*.33,by+S*.035,S,.055);
+      barileMolo(bx+S*.42,by+S*.055,S,.048);
+      barileMolo(bx-S*.39,by+S*.06,S,.044);
+      tavoloTavernaTropico2(bx-S*.19,by+S*.075,S);
+      tavoloTavernaTropico2(bx+S*.03,by+S*.105,S*.85);
+      saccoTropico2(bx+S*.18,by+S*.105,S,.052);
+      lanternaCaldaTropico2(bx-S*.03,by-S*.13,S);
       break;
     }
 
-    case 'porto':
+        case 'porto':
     case 'cantiere':
     case 'shipyard':{
       const grande=tipo==='shipyard'||tipo==='cantiere';
@@ -568,6 +682,25 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
         ctx.lineWidth=Math.max(1,S*.012);
         ctx.beginPath();ctx.moveTo(bx+S*.68,by-S*.52);ctx.lineTo(bx+S*.43,by-S*.26);ctx.stroke();
       }
+
+      // Dettagli portuali extra in stile Tropico 2: merci pratiche, reti e carico sul molo.
+      reteMoloTropico2(bx-S*.34,by-S*.03,S);
+      reteMoloTropico2(bx+S*.50,by-S*.03,S*.85);
+      pilaMerciTropico2(bx+S*.02,by+S*.12,S);
+      pilaMerciTropico2(bx+S*.36,by+S*.08,S*.86);
+      saccoTropico2(bx+S*.18,by+S*.135,S,.055,'#b69b62');
+      saccoTropico2(bx+S*.26,by+S*.12,S,.048,'#a7824a');
+      ctx.fillStyle='rgba(242,210,120,.84)';
+      ctx.font=`bold ${Math.max(8,S*.065)}px serif`;
+      ctx.textAlign='center';
+      ctx.fillText(grande?'SHIPYARD':'DOCK',bx+S*.06,by-S*.66);
+      ctx.save();
+      ctx.strokeStyle='rgba(48,28,12,.65)';
+      ctx.lineWidth=Math.max(1.2,S*.012);
+      ctx.beginPath();ctx.arc(bx-S*.04,by+S*.14,S*.06,0,Math.PI*1.65);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bx-S*.12,by+S*.14);ctx.lineTo(bx-S*.20,by+S*.10);ctx.stroke();
+      ctx.restore();
+
       break;
     }
 
@@ -682,27 +815,42 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
     }
 
     case 'distilleria':{
-      isoBox(bx,by,S*.44,S*.28,S*.32,'#6a5838','#8a7248','#5a4828');
-      // ciminiera fumante
-      isoBox(bx+S*.12,by-S*.32,S*.1,S*.08,S*.28,'#3a3028','#4a4038','#2a2820');
-      for(let i=0;i<3;i++){
-        const fy=by-S*.62-i*S*.08-Math.sin(frame*.05+i*1.2)*S*.03;
-        ctx.globalAlpha=.3-i*.08;
-        ctx.fillStyle='#c8c0b0';
-        ctx.beginPath();ctx.arc(bx+S*.12,fy,S*(.04+i*.025),0,Math.PI*2);ctx.fill();
+      // Distilleria più leggibile: edificio di lavorazione, camino alto e botti di rum esterne.
+      basamentoTropico2(bx,by,S,tipo);
+      ponteLegnoIso(bx+S*.02,by+S*.055,S,S*.58,S*.16,7);
+      isoBox(bx-S*.04,by-S*.02,S*.48,S*.30,S*.33,'#5f4b2e','#8f7447','#564122');
+      disegnaAssiParete(bx-S*.04,by-S*.02,S,.46,.28);
+      isoRoof(bx-S*.04,by-S*.35,S*.54,S*.34,0,S*.16,'#4d3820','#322111','#654829');
+
+      // Ciminiera alta e fumante, fondamentale per distinguerla dagli alloggi.
+      isoBox(bx+S*.22,by-S*.35,S*.12,S*.09,S*.38,'#3b3128','#5a4a38','#2a241e');
+      ctx.fillStyle='rgba(35,25,18,.65)';
+      ctx.fillRect(bx+S*.17,by-S*.74,S*.10,S*.035);
+      for(let i=0;i<5;i++){
+        const fy=by-S*.78-i*S*.07-Math.sin(frame*.045+i*1.1)*S*.025;
+        ctx.globalAlpha=.34-i*.045;
+        ctx.fillStyle='#d6cec0';
+        ctx.beginPath();ctx.arc(bx+S*(.22+i*.022),fy,S*(.035+i*.018),0,Math.PI*2);ctx.fill();
       }
       ctx.globalAlpha=1;
-      isoRoof(bx,by-S*.32,S*.44,S*.28,0,S*.16,'#4a3820','#3a2810','#5a4828');
-      // botti ISO
-      for(let i=0;i<3;i++){
-        isoBox(bx-S*.28+i*S*.18,by+S*.02,S*.14,S*.1,S*.14,'#7a4a18','#9a6228','#5a3210');
-        ctx.strokeStyle='#4a2808';ctx.lineWidth=1;
-        ctx.strokeRect(bx-S*.28+i*S*.18-S*.07,by-S*.14+S*.02,S*.14,S*.04);
-      }
+
+      // Botti e zona carico rum: deve essere riconoscibile subito come Rum Distillery.
+      for(let i=0;i<5;i++) barileMolo(bx-S*(.36-i*.115),by+S*(.055+(i%2)*.018),S,.048);
+      cassaTropico2(bx+S*.34,by+S*.065,S,.085);
+      saccoTropico2(bx+S*.21,by+S*.09,S,.052,'#b48750');
+      insegnaLegnoTropico2(bx-S*.08,by-S*.53,S*.86,'RUM');
+
+      // Tubo/condensatore semplice.
+      ctx.strokeStyle='rgba(210,170,80,.78)';
+      ctx.lineWidth=Math.max(1.2,S*.012);
+      ctx.beginPath();
+      ctx.moveTo(bx+S*.08,by-S*.31);
+      ctx.bezierCurveTo(bx+S*.17,by-S*.25,bx+S*.24,by-S*.17,bx+S*.2,by-S*.05);
+      ctx.stroke();
       break;
     }
 
-    case 'sawmill':
+        case 'sawmill':
     case 'segheria':{
       {
         ponteLegnoIso(bx+S*.04,by+S*.045,S,S*.66,S*.18,8);
@@ -854,43 +1002,40 @@ function disegnaEdificio(tipo,cx,cy,s,footprint){
 
 
     case 'casapirata':{
-      {
-        ponteLegnoIso(bx+S*.02,by+S*.04,S,S*.5,S*.16,6);
-        isoBox(bx-S*.04,by-S*.04,S*.42,S*.25,S*.22,'#755027','#a06a34','#68401f');
-        disegnaAssiParete(bx-S*.04,by-S*.04,S,.4,.22);
-        isoRoof(bx-S*.04,by-S*.26,S*.48,S*.29,0,S*.16,'#5c4325','#3b2a1a','#76552e');
-        isoBox(bx+S*.24,by-S*.02,S*.16,S*.13,S*.14,'#5b3e21','#82572b','#4b3019');
-        isoRoof(bx+S*.24,by-S*.16,S*.18,S*.15,0,S*.07,'#3d2d1c','#2a2016','#5a3f24');
-        ctx.fillStyle='#241008';
-        ctx.fillRect(bx-S*.09,by-S*.13,S*.1,S*.13);
-        ctx.beginPath();ctx.arc(bx-S*.04,by-S*.13,S*.05,Math.PI,0,false);ctx.fill();
-        isoWindow(bx+S*.08,by-S*.17,true,S*.055);
-        ctx.strokeStyle='#6a3a14';ctx.lineWidth=Math.max(1.2,S*.018);
-        ctx.beginPath();ctx.moveTo(bx-S*.27,by-S*.06);ctx.lineTo(bx-S*.34,by-S*.28);ctx.stroke();
-        ctx.fillStyle='#0b0b0b';
-        ctx.beginPath();ctx.moveTo(bx-S*.34,by-S*.28);ctx.lineTo(bx-S*.21,by-S*.25+Math.sin(frame*.08)*S*.01);ctx.lineTo(bx-S*.34,by-S*.2);ctx.fill();
-        barileMolo(bx+S*.28,by+S*.035,S,.048);
-        isoBox(bx-S*.26,by+S*.035,S*.12,S*.08,S*.07,'#7c5527','#a47335','#56351a');
-        break;
-      }
-      isoBox(bx,by,S*.38,S*.24,S*.22,'#9a7040','#c09050','#7a5020');
-      isoRoof(bx,by-S*.22,S*.38,S*.24,0,S*.18,'#8a2020','#6a1010','#9a2828');
-      isoWindow(bx-S*.1,by-S*.18,true);
-      // porta
-      ctx.fillStyle='#3a1e08';
-      ctx.fillRect(bx-S*.06,by-S*.12,S*.12,S*.13);
-      ctx.beginPath();ctx.arc(bx,by-S*.12,S*.06,Math.PI,0,false);ctx.fill();
-      // amaca fuori
-      ctx.strokeStyle='#c8a060';ctx.lineWidth=1.5;
+      // Alloggio pirata spartano: meno "servizio", più baracca abitata.
+      basamentoTropico2(bx,by,S,tipo);
+      ponteLegnoIso(bx+S*.02,by+S*.045,S,S*.52,S*.16,6);
+      isoBox(bx-S*.04,by-S*.04,S*.42,S*.25,S*.22,'#755027','#a06a34','#68401f');
+      disegnaAssiParete(bx-S*.04,by-S*.04,S,.4,.22);
+      isoRoof(bx-S*.04,by-S*.26,S*.50,S*.31,0,S*.16,'#5c4325','#3b2a1a','#76552e');
+      isoBox(bx+S*.24,by-S*.02,S*.16,S*.13,S*.14,'#5b3e21','#82572b','#4b3019');
+      isoRoof(bx+S*.24,by-S*.16,S*.18,S*.15,0,S*.07,'#3d2d1c','#2a2016','#5a3f24');
+      ctx.fillStyle='#241008';
+      ctx.fillRect(bx-S*.09,by-S*.13,S*.1,S*.13);
+      ctx.beginPath();ctx.arc(bx-S*.04,by-S*.13,S*.05,Math.PI,0,false);ctx.fill();
+      isoWindow(bx+S*.08,by-S*.17,true,S*.055);
+      // Piccola bandiera nera e roba personale per distinguerla dagli edifici produttivi.
+      ctx.strokeStyle='#6a3a14';ctx.lineWidth=Math.max(1.2,S*.018);
+      ctx.beginPath();ctx.moveTo(bx-S*.29,by-S*.06);ctx.lineTo(bx-S*.36,by-S*.29);ctx.stroke();
+      ctx.fillStyle='#0b0b0b';
+      ctx.beginPath();ctx.moveTo(bx-S*.36,by-S*.29);ctx.lineTo(bx-S*.22,by-S*.255+Math.sin(frame*.08)*S*.01);ctx.lineTo(bx-S*.36,by-S*.205);ctx.fill();
+      ctx.strokeStyle='rgba(218,185,120,.7)';
+      ctx.lineWidth=Math.max(.8,S*.008);
       ctx.beginPath();
-      ctx.moveTo(bx+S*.18,by-S*.12);
-      ctx.quadraticCurveTo(bx+S*.28,by-S*.04,bx+S*.36,by-S*.12);
+      ctx.moveTo(bx+S*.08,by-S*.09);
+      ctx.quadraticCurveTo(bx+S*.19,by-S*.015,bx+S*.31,by-S*.09);
       ctx.stroke();
-      ctx.fillStyle='rgba(200,160,80,.6)';ctx.fill();
+      barileMolo(bx+S*.30,by+S*.04,S,.045);
+      cassaTropico2(bx-S*.26,by+S*.045,S,.07);
+      // Dettagli abitativi spartani: amaca/corde e panni, per differenziarlo da magazzini e produzione.
+      ctx.strokeStyle='rgba(218,190,132,.75)';
+      ctx.lineWidth=Math.max(.8,S*.009);
+      ctx.beginPath();ctx.moveTo(bx-S*.18,by-S*.22);ctx.quadraticCurveTo(bx+S*.02,by-S*.16,bx+S*.22,by-S*.22);ctx.stroke();
+      teloTropico(bx+S*.02,by-S*.18,S*.38,'#9f5b32');
       break;
     }
 
-    case 'bordello':{
+        case 'bordello':{
       {
         ponteLegnoIso(bx+S*.03,by+S*.045,S,S*.54,S*.14,7);
         isoBox(bx,by-S*.03,S*.48,S*.3,S*.31,'#b67758','#d78f74','#a65f4a');

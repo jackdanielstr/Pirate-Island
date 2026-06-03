@@ -11,37 +11,66 @@ function disegnaPerimetriEdificiOccupati(s){
   for(const ed of G.edifici){
     const celle=celleEdificio(ed.tipo,ed.r,ed.c);
     const selected = G.edificioSelezionato===ed || G.edificioSelezionato===ed.id || G.hoverEdificio===ed;
+
+    // Tropico 2 style: niente cornici tecniche attorno agli edifici.
+    // L'ingombro deve leggersi tramite prato consumato, terra battuta e ombra naturale.
+    // Prima stesura morbida sull'intero footprint.
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     for(const cell of celle){
       if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) continue;
       const p=isoProj(cell.c,cell.r);
-      ctx.beginPath();
-      ctx.moveTo(p.x,p.y);
-      ctx.lineTo(p.x+hw,p.y+hh);
-      ctx.lineTo(p.x,p.y+IH);
-      ctx.lineTo(p.x-hw,p.y+hh);
-      ctx.closePath();
-      ctx.fillStyle = selected ? 'rgba(245,190,62,.22)' : 'rgba(48,28,12,.16)';
-      ctx.strokeStyle = selected ? 'rgba(255,220,95,.95)' : 'rgba(42,24,10,.58)';
-      ctx.lineWidth = selected ? Math.max(2,1.8*s) : Math.max(1,1.15*s);
-      ctx.fill();
-      ctx.stroke();
+      minX=Math.min(minX,p.x-hw); maxX=Math.max(maxX,p.x+hw);
+      minY=Math.min(minY,p.y);    maxY=Math.max(maxY,p.y+IH);
     }
-    // Bordo esterno più marcato: fa capire subito dove finisce l'ingombro dell'edificio.
-    ctx.strokeStyle = selected ? 'rgba(255,235,130,.98)' : 'rgba(250,190,70,.48)';
-    ctx.lineWidth = selected ? Math.max(2.4,2.1*s) : Math.max(1.2,1.35*s);
+    if(!isFinite(minX)) continue;
+    const cx=(minX+maxX)/2;
+    const cy=(minY+maxY)/2;
+    const rx=(maxX-minX)*.52;
+    const ry=(maxY-minY)*.36;
+
+    // Ombra/terra battuta sotto l'edificio, molto trasparente.
+    const base=ctx.createRadialGradient(cx,cy,Math.max(2,ry*.12),cx,cy,Math.max(rx,ry));
+    base.addColorStop(0, selected ? 'rgba(112,92,48,.26)' : 'rgba(90,72,38,.18)');
+    base.addColorStop(.62, selected ? 'rgba(82,92,46,.18)' : 'rgba(54,84,42,.12)');
+    base.addColorStop(1,'rgba(36,70,36,0)');
+    ctx.fillStyle=base;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy+IH*.08,rx,ry,0,0,Math.PI*2);
+    ctx.fill();
+
+    // Ogni tile occupato riceve una velatura naturale, ma senza linee nere/gialle.
     for(const cell of celle){
-      const edges=[
-        {dr:-1,dc:0,a:0,b:1}, {dr:0,dc:1,a:1,b:2},
-        {dr:1,dc:0,a:2,b:3}, {dr:0,dc:-1,a:3,b:0}
-      ];
+      if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) continue;
       const p=isoProj(cell.c,cell.r);
-      const pts=[{x:p.x,y:p.y},{x:p.x+hw,y:p.y+hh},{x:p.x,y:p.y+IH},{x:p.x-hw,y:p.y+hh}];
-      for(const e of edges){
-        const nr=cell.r+e.dr,nc=cell.c+e.dc;
-        const inside=celle.some(q=>q.r===nr&&q.c===nc);
-        if(inside) continue;
-        ctx.beginPath(); ctx.moveTo(pts[e.a].x,pts[e.a].y); ctx.lineTo(pts[e.b].x,pts[e.b].y); ctx.stroke();
+      const seed=((cell.r*928371+cell.c*689287+(ed.tipo||'').length*97)>>>0);
+      const worn=(seed%100)/100;
+      ctx.beginPath();
+      ctx.moveTo(p.x,p.y+IH*.04);
+      ctx.lineTo(p.x+hw*.94,p.y+hh);
+      ctx.lineTo(p.x,p.y+IH*.96);
+      ctx.lineTo(p.x-hw*.94,p.y+hh);
+      ctx.closePath();
+      ctx.fillStyle = worn>.55 ? 'rgba(103,83,43,.105)' : 'rgba(58,96,45,.085)';
+      ctx.fill();
+
+      // Piccole macchie d'erba ai bordi: più prato, meno griglia.
+      for(let i=0;i<3;i++){
+        const a=((seed+i*137)%360)*Math.PI/180;
+        const ox=Math.cos(a)*hw*(.42+((seed>>i)&3)*.05);
+        const oy=Math.sin(a)*hh*(.40+((seed>>(i+3))&3)*.04)+hh;
+        ctx.fillStyle=i%2?'rgba(42,96,38,.28)':'rgba(86,96,42,.18)';
+        ctx.beginPath();
+        ctx.ellipse(p.x+ox,p.y+oy,Math.max(1.5,hw*.055),Math.max(1,hh*.045),a*.4,0,Math.PI*2);
+        ctx.fill();
       }
+    }
+
+    // Selezione: nessun contorno nero. Solo una lieve schiarita del prato sotto l'edificio.
+    if(selected){
+      ctx.fillStyle='rgba(238,214,140,.10)';
+      ctx.beginPath();
+      ctx.ellipse(cx,cy+IH*.08,rx*.96,ry*.88,0,0,Math.PI*2);
+      ctx.fill();
     }
   }
   ctx.restore();
@@ -188,7 +217,7 @@ function disegnaScena(dt=0.016){
         if(!G.battagliaAttiva) muoviPirata(data,dtMovimento);
         break;
       case 'schiavo':
-        if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s,data);
+        if(typeof disegnaSchiavoIso==='function') disegnaSchiavoIso(cx,cy,data.felicita,s,data,G.schiavoSelezionato===data.id);
         break;
       case 'poi':
         disegnaPOI(data, cx, cy, s); break;
@@ -223,8 +252,9 @@ function disegnaScena(dt=0.016){
       G.previewCostruzioneMotivo = statoPreview.motivo || 'ok';
     }
     const mancaSentiero=!isRoad && G.previewCostruzioneMotivo==='manca-sentiero';
-    ctx.fillStyle   = ok ? 'rgba(80,220,80,.28)' : (mancaSentiero ? 'rgba(255,170,40,.30)' : 'rgba(220,60,60,.28)');
-    ctx.strokeStyle = ok ? '#4f4' : (mancaSentiero ? '#ffaa28' : '#f44');
+    const sopraSentiero=!isRoad && G.previewCostruzioneMotivo==='sopra-sentiero';
+    ctx.fillStyle   = ok ? 'rgba(80,220,80,.28)' : (mancaSentiero ? 'rgba(255,170,40,.30)' : (sopraSentiero ? 'rgba(220,60,60,.34)' : 'rgba(220,60,60,.28)'));
+    ctx.strokeStyle = ok ? '#4f4' : (mancaSentiero ? '#ffaa28' : (sopraSentiero ? '#ff3030' : '#f44'));
     ctx.lineWidth   = 1.5;
     for(const cell of cellePreview){
       if(cell.r<0||cell.c<0||cell.r>=G.RIGHE||cell.c>=G.COLS) continue;
@@ -235,16 +265,17 @@ function disegnaScena(dt=0.016){
       ctx.lineTo(pcx, pcy+IH); ctx.lineTo(pcx-hw, pcy+hh);
       ctx.closePath(); ctx.fill(); ctx.stroke();
     }
-    if (mancaSentiero){
+    if (mancaSentiero || sopraSentiero){
       const pp=isoProj(G.hoverC,G.hoverR);
+      const label=mancaSentiero ? 'Serve sentiero' : 'Non sopra sentiero';
       ctx.save();
       ctx.font=Math.max(10,12*s)+'px Georgia, serif';
       ctx.textAlign='center';
       ctx.lineWidth=3;
       ctx.strokeStyle='rgba(55,32,12,.85)';
-      ctx.fillStyle='#ffd37a';
-      ctx.strokeText('Serve sentiero',pp.x,pp.y-IH*s*.35);
-      ctx.fillText('Serve sentiero',pp.x,pp.y-IH*s*.35);
+      ctx.fillStyle=mancaSentiero ? '#ffd37a' : '#ffb0a0';
+      ctx.strokeText(label,pp.x,pp.y-IH*s*.35);
+      ctx.fillText(label,pp.x,pp.y-IH*s*.35);
       ctx.restore();
     }
     if (ok && !isRoad){
@@ -305,11 +336,18 @@ function disegnaScena(dt=0.016){
   }
   ctx.restore();
 
-  // ── 9. Vignetta caraibica ──
+  // ── 9. Vignetta caraibica + lieve calore tropicale ──
+  const sunWash = ctx.createLinearGradient(0,0,0,canvas.height);
+  sunWash.addColorStop(0,'rgba(255,224,156,.06)');
+  sunWash.addColorStop(.38,'rgba(255,208,128,.018)');
+  sunWash.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = sunWash;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
   const vign = ctx.createRadialGradient(canvas.width*.5,canvas.height*.35,canvas.width*.22,canvas.width*.5,canvas.height*.5,canvas.width*.75);
   vign.addColorStop(0,'rgba(255,220,120,0)');
-  vign.addColorStop(.6,'rgba(255,180,60,.025)');
-  vign.addColorStop(1,'rgba(20,5,0,.28)');
+  vign.addColorStop(.6,'rgba(255,180,60,.03)');
+  vign.addColorStop(1,'rgba(20,5,0,.24)');
   ctx.fillStyle = vign;
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }

@@ -32,67 +32,152 @@ function selezionaCategoriaCostruzione(cat){
   renderPannello();
 }
 
+
 function categoriaCostruzioneAttiva(){
-  const cats=['infrastrutture','nautica','risorse','produzione','intrattenimento','controllo','addestramento','difesa','accessori'];
-  if(!window.UI_BUILD_CAT || !cats.includes(window.UI_BUILD_CAT)) window.UI_BUILD_CAT='infrastrutture';
+  // Beta 3.2 — categorie più leggibili in stile Tropico 2.
+  // Non cambia gli ID edifici: raggruppa solo le categorie UI.
+  const cats=['roads','navy','production','pirates','captives','defense'];
+  if(!window.UI_BUILD_CAT || !cats.includes(window.UI_BUILD_CAT)) window.UI_BUILD_CAT='roads';
   return window.UI_BUILD_CAT;
+}
+
+function categorieEdificiPerGruppo(cat){
+  const map={
+    roads:['infrastrutture'],
+    navy:['nautica'],
+    production:['risorse','produzione'],
+    pirates:['intrattenimento','addestramento','accessori'],
+    captives:['controllo'],
+    defense:['difesa']
+  };
+  return map[cat] || ['infrastrutture'];
+}
+
+function testoFunzioneEdificio(def){
+  const raw=(def.effetto||'Supports the pirate colony.').replace(/<[^>]+>/g,'').trim();
+  if(!raw) return 'Supports the pirate colony.';
+  return raw.length>72 ? raw.slice(0,69)+'…' : raw;
+}
+
+
+function buildSelectedInfo(catAttiva, entries){
+  const current = G.modalitaCostruzione;
+  if(current==='sentiero'){
+    return {
+      icon:'🪨',
+      name:'Path',
+      desc:'Pirates move along paths. Buildings must be placed beside them.',
+      cost:'2 gold / tile',
+      count:'Road network'
+    };
+  }
+  const found = current && ED[current] ? current : (entries && entries.length ? entries[0][0] : null);
+  if(found && ED[found]){
+    const def=ED[found];
+    const costo=def.costo||{oro:0,legno:0};
+    const count=G.edifici.filter(b=>b.tipo===found).length;
+    return {
+      icon:def.icona||'🏚',
+      name:def.nome||found,
+      desc:testoFunzioneEdificio(def),
+      cost:`${costo.oro||0} gold · ${costo.legno||0} lumber`,
+      count:count>0?`${count} built`:'Not built yet'
+    };
+  }
+  return {
+    icon:'🏗',
+    name:'Build',
+    desc:'Choose a category, then choose a building to place beside a path.',
+    cost:'',
+    count:''
+  };
 }
 
 function renderCostruisci(){
   const sentieroCosto=2;
   const puoiSentiero=G.oro>=sentieroCosto;
   const gruppi=[
-    ['infrastrutture','🪨','Sentieri'],
-    ['nautica','⚓','Porto'],
-    ['risorse','🌿','Risorse'],
-    ['produzione','⚒','Produzione'],
-    ['intrattenimento','🍺','Svago'],
-    ['controllo','⛓','Prigionieri'],
-    ['addestramento','⚔','Addestra'],
-    ['difesa','💣','Difesa'],
-    ['accessori','🎩','Accessori'],
+    ['roads','🪨','Roads','Paths and basic access'],
+    ['navy','⚓','Navy','Dock, ships and sea work'],
+    ['production','⚒','Production','Food, lumber, rum and goods'],
+    ['pirates','☠','Pirates','Housing, grog and entertainment'],
+    ['captives','⛓','Captives','Prisoners and forced labor'],
+    ['defense','💣','Defense','Towers, guns and forts'],
   ];
   const catAttiva=categoriaCostruzioneAttiva();
-  let h=`<div class="build-dock">`;
+  const catsAttive=categorieEdificiPerGruppo(catAttiva);
+
+  let h=`<div class="build-dock tropico2-build">`;
   h+=`<div class="build-dock-head">
-    <div class="build-title">🏗 Costruzioni</div>
-    <div class="build-hint">Scegli categoria, poi edificio. Serve un sentiero sul perimetro.</div>
+    <div class="build-title">Build</div>
+    <div class="build-hint">Tropico 2 style: choose a group, then place beside a path.</div>
   </div>`;
-  h+=`<div class="build-cat-row">`;
-  for(const [cat,ico,label] of gruppi){
-    const count=Object.entries(ED).filter(([tipo,def])=>!def.inizialeOnly && def.buildable!==false && (def.categoria||'produzione')===cat).length;
+
+  h+=`<div class="build-cat-row tropico2-cat-row">`;
+  for(const [cat,ico,label,desc] of gruppi){
+    const count=Object.entries(ED).filter(([tipo,def])=>{
+      const categoria=def.categoria||'produzione';
+      return !def.inizialeOnly && def.buildable!==false && categorieEdificiPerGruppo(cat).includes(categoria);
+    }).length + (cat==='roads'?1:0);
     const active=cat===catAttiva?' attiva':'';
-    h+=`<button class="build-cat${active}" onclick="selezionaCategoriaCostruzione('${cat}')" ${count===0?'disabled':''}>
-      <span class="build-cat-ico">${ico}</span><span>${label}</span>
+    h+=`<button class="build-cat${active}" onclick="selezionaCategoriaCostruzione('${cat}')" ${count===0?'disabled':''} title="${desc}">
+      <span class="build-cat-ico">${ico}</span><span class="build-cat-label">${label}</span>
     </button>`;
   }
   h+=`</div>`;
 
-  h+=`<div class="build-shelf">`;
-  if(catAttiva==='infrastrutture'){
+  const entries=Object.entries(ED).filter(([tipo,def])=>{
+    const categoria=def.categoria||'produzione';
+    return !def.inizialeOnly && def.buildable!==false && catsAttive.includes(categoria);
+  });
+
+  const info=buildSelectedInfo(catAttiva, entries);
+  h+=`<div class="build-main-row">
+    <div class="build-info-card">
+      <div class="build-info-icon">${info.icon}</div>
+      <div class="build-info-text">
+        <b>${info.name}</b>
+        <small>${info.desc}</small>
+      </div>
+      <div class="build-info-cost">
+        <span>${info.cost}</span>
+        <em>${info.count}</em>
+      </div>
+    </div>
+    <div class="build-shelf tropico2-build-shelf">`;
+
+  if(catAttiva==='roads'){
     h+=`<button class="build-card build-road${G.modalitaCostruzione==='sentiero'?' attivo-strumento':''}"
-      id="b-sentiero" onclick="selezionaSentiero()" ${!puoiSentiero?'disabled':''} title="Trascina sulla mappa per disegnare sentieri" data-tip="Sentiero — collega edifici, porto e palazzo. I pirati camminano solo qui.">
+      id="b-sentiero" onclick="selezionaSentiero()" ${!puoiSentiero?'disabled':''}
+      title="Path — Pirates move along paths. Buildings must be placed beside them."
+      data-tip="Path — connects buildings, dock and palace. Pirates walk only here.">
       <span class="build-card-icon">🪨</span>
-      <span class="build-card-main"><b>Sentiero</b><small>Trascina sulla mappa</small></span>
-      <span class="build-card-cost">2o/tile</span>
+      <span class="build-card-main"><b>Path</b><small>Roads</small></span>
+      <span class="build-card-cost">2g/tile</span>
+      <span class="build-card-built">Draw</span>
     </button>`;
   }
-  const entries=Object.entries(ED).filter(([tipo,def])=>!def.inizialeOnly && def.buildable!==false && (def.categoria||'produzione')===catAttiva);
-  for(const[tipo,def] of entries){
+
+  for(const [tipo,def] of entries){
     const costo=def.costo||{oro:0,legno:0};
     const puoi=G.oro>=costo.oro&&G.legno>=costo.legno;
     const n=G.edifici.filter(b=>b.tipo===tipo).length;
+    const funzione=testoFunzioneEdificio(def);
     h+=`<button class="build-card btn-costruisci${G.modalitaCostruzione===tipo?' attivo-strumento':''}" id="b-${tipo}"
-      onclick="selezionaCostruzione('${tipo}')" ${!puoi?'disabled':''} title="${def.nome}: ${costo.oro} oro, ${costo.legno} legno" data-tip="${def.nome} — ${def.effetto||'Edificio della colonia'} · Costo: ${costo.oro} oro, ${costo.legno} legno">
+      onclick="selezionaCostruzione('${tipo}')" ${!puoi?'disabled':''}
+      title="${def.nome}: ${costo.oro} oro, ${costo.legno} legno"
+      data-tip="${def.nome} — ${funzione} · Cost: ${costo.oro} gold, ${costo.legno} lumber">
       <span class="build-card-icon">${def.icona}</span>
-      <span class="build-card-main"><b>${def.nome}</b><small>${n>0?`Costruiti: ${n}`:'Pronto da piazzare'}</small></span>
-      <span class="build-card-cost">${costo.oro}o ${costo.legno}l</span>
+      <span class="build-card-main"><b>${def.nome}</b><small>${(def.categoria||'Building').replace(/_/g,' ')}</small></span>
+      <span class="build-card-cost">${costo.oro}g ${costo.legno}l</span>
+      <span class="build-card-built">${n>0?`x${n}`:'Ready'}</span>
     </button>`;
   }
-  if(!entries.length && catAttiva!=='infrastrutture'){
-    h+=`<div class="build-empty">Nessun edificio disponibile in questa categoria.</div>`;
+
+  if(!entries.length && catAttiva!=='roads'){
+    h+=`<div class="build-empty">No buildings available in this group.</div>`;
   }
-  h+=`</div></div>`;
+  h+=`</div></div></div>`;
   return h;
 }
 

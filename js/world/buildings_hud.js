@@ -814,17 +814,21 @@ function disegnaNaviMare(s){
     disegnaNav(0,ondaH,nave.livCannoni>0?'#5c3e2a':'#5c3a1a',s);
     ctx.restore();
 
+    // Coordinate schermo per picking click/tap nave.
+    nave._screenX=nm.x; nave._screenY=nm.y+onda; nave._screenR=Math.max(18,28*s);
+
     if(s>0.5){
       ctx.save();
+      const stato=(typeof statoOperativoNave==='function') ? statoOperativoNave(nave) : null;
       ctx.fillStyle='rgba(0,0,0,0.65)';
-      const lw=94*s,lx=nm.x-lw/2,ly=nm.y+onda+28*s;
+      const lw=104*s,lx=nm.x-lw/2,ly=nm.y+onda+28*s;
       ctx.beginPath();
-      if(ctx.roundRect) ctx.roundRect(lx,ly,lw,16*s,3*s); else ctx.rect(lx,ly,lw,16*s);
+      if(ctx.roundRect) ctx.roundRect(lx,ly,lw,19*s,3*s); else ctx.rect(lx,ly,lw,19*s);
       ctx.fill();
       ctx.fillStyle='#f0c040'; ctx.font='bold '+(7*s)+'px Cinzel,serif'; ctx.textAlign='center';
-      ctx.fillText(nave.nome.substring(0,12),nm.x,ly+7*s);
+      ctx.fillText(nave.nome.substring(0,13),nm.x,ly+7*s);
       ctx.fillStyle=nave.inMare?'#aaddff':'#c8a96e'; ctx.font=(6*s)+'px sans-serif';
-      ctx.fillText(label,nm.x,ly+13*s);
+      ctx.fillText(stato?`${stato.icona} ${stato.breve}`:label,nm.x,ly+14*s);
       ctx.restore();
     }
     disegnaStatoRaidPorto(nave,nm,s);

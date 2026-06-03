@@ -11,6 +11,7 @@ function avviaGioco(){
   document.body.classList.add('tab-costruisci');
   if(window.G) G.tabCorrente='costruisci';
   document.getElementById('schermata-titolo').style.display='none';
+  if(window.startHarborLedger) window.startHarborLedger();
   document.getElementById('barra-sup').style.display='flex';
   document.getElementById('principale').style.display='flex';
   document.getElementById('barra-inf').style.display='flex';
@@ -43,6 +44,7 @@ function avviaGioco(){
     }
   }
   G.navi.push(creaNave(0,'La Marea Maledetta'));
+  if(typeof assicuraCapitaniFlotta==='function') assicuraCapitaniFlotta();
   if(typeof rigeneraPortoVivo==='function') rigeneraPortoVivo();
   assegnaMissioni();
   impostaInput();
@@ -67,6 +69,7 @@ function creaaPirata(override={}){
   const p={
     id:override.id||Date.now()+Math.random(),
     nome:n, ruolo:r,
+    eta: override.eta || (24+Math.floor(Math.random()*23)),
     combattimento:override.combattimento||(20+Math.floor(Math.random()*60)),
     navigazione:override.navigazione||(20+Math.floor(Math.random()*60)),
     umore:override.umore||(40+Math.floor(Math.random()*40)),
@@ -76,11 +79,14 @@ function creaaPirata(override={}){
     tratto:override.tratto||tratto,
     oggetto:override.oggetto||null,  // {id, nome, icona, bonus}
     bisogni:override.bisogni||{
-      fame:60+Math.random()*25,
-      rum:55+Math.random()*25,
-      divertimento:45+Math.random()*30,
-      salute:60+Math.random()*25,
-      alloggio:40+Math.random()*25,
+      cibo:60+Math.random()*25,
+      grog:55+Math.random()*25,
+      gioco:45+Math.random()*25,
+      compagnia:40+Math.random()*25,
+      riposo:50+Math.random()*25,
+      bottino:35+Math.random()*25,
+      difesa:45+Math.random()*25,
+      anarchia:45+Math.random()*25,
     },
     xp:override.xp||0,
     livello:override.livello||1,

@@ -44,8 +44,8 @@ function _disegnaFumoAtmosferico(x,y,s,b){
     const r = base*(.055 + t*.08 + i*.006);
     ctx.globalAlpha = Math.max(0, .22*(1-t));
     const gr = ctx.createRadialGradient(px,py,0,px,py,r);
-    gr.addColorStop(0,'rgba(230,225,205,.72)');
-    gr.addColorStop(.65,'rgba(160,150,130,.28)');
+    gr.addColorStop(0,'rgba(239,229,202,.75)');
+    gr.addColorStop(.65,'rgba(169,150,116,.30)');
     gr.addColorStop(1,'rgba(160,150,130,0)');
     ctx.fillStyle = gr;
     ctx.beginPath(); ctx.ellipse(px,py,r*1.15,r*.75,-.25,0,Math.PI*2); ctx.fill();
@@ -78,13 +78,13 @@ function _disegnaBaglioreEdificio(x,y,s,b){
   const pulse=.74+Math.sin(frame*.035 + b.r*2+b.c)*.10;
   ctx.save();
   ctx.globalCompositeOperation='lighter';
-  ctx.globalAlpha=.10*pulse;
-  const gr=ctx.createRadialGradient(x,y-base*.18,0,x,y-base*.18,base*.75);
-  gr.addColorStop(0,'rgba(255,170,70,.65)');
-  gr.addColorStop(.52,'rgba(255,120,35,.18)');
-  gr.addColorStop(1,'rgba(255,120,35,0)');
+  ctx.globalAlpha=.14*pulse;
+  const gr=ctx.createRadialGradient(x,y-base*.18,0,x,y-base*.18,base*.84);
+  gr.addColorStop(0,'rgba(255,193,108,.82)');
+  gr.addColorStop(.45,'rgba(255,149,62,.26)');
+  gr.addColorStop(1,'rgba(255,149,62,0)');
   ctx.fillStyle=gr;
-  ctx.beginPath(); ctx.ellipse(x,y-base*.18,base*.58,base*.30,-.1,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x,y-base*.18,base*.66,base*.34,-.1,0,Math.PI*2); ctx.fill();
   ctx.restore();
 }
 
@@ -92,7 +92,7 @@ function _disegnaSchiumaPortuale(x,y,s,b){
   const base=G.ISO_H*s;
   const seed=b.r*31+b.c*37;
   ctx.save();
-  ctx.strokeStyle='rgba(220,250,245,.45)';
+  ctx.strokeStyle='rgba(232,247,240,.38)';
   ctx.lineWidth=Math.max(1,1.2*s);
   ctx.lineCap='round';
   for(let i=0;i<4;i++){
@@ -157,16 +157,57 @@ function _disegnaPulviscoloCaldo(s){
   ctx.restore();
 }
 
+
+function _disegnaLanternesCalde(x,y,s,b){
+  const base=G.ISO_H*s;
+  const spots=[];
+  if(['taverna','locanda','bordello','bettola_contrabbandieri'].includes(b.tipo)){
+    spots.push({x:x-base*.18,y:y-base*.12,r:base*.045});
+    spots.push({x:x+base*.12,y:y-base*.08,r:base*.04});
+  }else if(['porto','dock','shipyard','cantiere'].includes(b.tipo)){
+    spots.push({x:x-base*.24,y:y-base*.03,r:base*.034});
+  }
+  if(!spots.length) return;
+  ctx.save();
+  ctx.globalCompositeOperation='lighter';
+  for(const sp of spots){
+    const gr=ctx.createRadialGradient(sp.x,sp.y,0,sp.x,sp.y,sp.r*3.4);
+    gr.addColorStop(0,'rgba(255,222,150,.95)');
+    gr.addColorStop(.35,'rgba(255,178,76,.45)');
+    gr.addColorStop(1,'rgba(255,178,76,0)');
+    ctx.fillStyle=gr;
+    ctx.globalAlpha=.22 + Math.sin(frame*.05 + sp.x*.01)*.05;
+    ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.r*3.2,0,Math.PI*2); ctx.fill();
+    ctx.globalAlpha=.72;
+    ctx.fillStyle='rgba(255,236,180,.9)';
+    ctx.beginPath(); ctx.arc(sp.x,sp.y,Math.max(1,sp.r*.7),0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function _disegnaBaglioreSoleCaraibico(s){
+  if(!ctx || !canvas) return;
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  const g=ctx.createRadialGradient(canvas.width*.48,canvas.height*.02,0,canvas.width*.5,canvas.height*.16,canvas.width*.72);
+  g.addColorStop(0,'rgba(255,231,170,.12)');
+  g.addColorStop(.34,'rgba(255,210,122,.06)');
+  g.addColorStop(1,'rgba(255,210,122,0)');
+  ctx.fillStyle=g;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.restore();
+}
 function disegnaAtmosferaTropico(s){
   if(!ctx || !G || !G.edifici || typeof isoProj!=='function') return;
 
   for(const b of G.edifici){
     const p=_atmoSchermoEdificio(b,s);
-    if(_atmoTipoLuce(b.tipo)) _disegnaBaglioreEdificio(p.x,p.y,s,b);
+    if(_atmoTipoLuce(b.tipo)) { _disegnaBaglioreEdificio(p.x,p.y,s,b); _disegnaLanternesCalde(p.x,p.y,s,b); }
     if(_atmoTipoFumo(b.tipo)) _disegnaFumoAtmosferico(p.x,p.y,s,b);
     if(_atmoTipoScintille(b.tipo)) _disegnaScintilleAtmosferiche(p.x,p.y,s,b);
     if(['porto','cantiere','shipyard'].includes(b.tipo)) _disegnaSchiumaPortuale(p.x,p.y,s,b);
   }
   _disegnaGabbianiPorto(s);
   _disegnaPulviscoloCaldo(s);
+  _disegnaBaglioreSoleCaraibico(s);
 }

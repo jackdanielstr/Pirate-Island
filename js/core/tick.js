@@ -41,18 +41,38 @@ function registraTurno(nome,val,icona){
 
 function clamp100(v){ return Math.max(0,Math.min(100,Number.isFinite(v)?v:50)); }
 
+function bisogniPiratiDefault(){
+  return {cibo:60,grog:55,gioco:50,compagnia:45,riposo:50,bottino:40,difesa:50,anarchia:45};
+}
+
+function normalizzaBisogniPirata(p){
+  if(!p.bisogni) p.bisogni={};
+  // Migrazione salvataggi Fase 9A -> 9B.
+  if(Number.isFinite(p.bisogni.fame) && !Number.isFinite(p.bisogni.cibo)) p.bisogni.cibo=p.bisogni.fame;
+  if(Number.isFinite(p.bisogni.rum) && !Number.isFinite(p.bisogni.grog)) p.bisogni.grog=p.bisogni.rum;
+  if(Number.isFinite(p.bisogni.divertimento)){
+    if(!Number.isFinite(p.bisogni.gioco)) p.bisogni.gioco=p.bisogni.divertimento;
+    if(!Number.isFinite(p.bisogni.anarchia)) p.bisogni.anarchia=Math.max(35,p.bisogni.divertimento-5);
+  }
+  if(Number.isFinite(p.bisogni.alloggio) && !Number.isFinite(p.bisogni.riposo)) p.bisogni.riposo=p.bisogni.alloggio;
+  const d=bisogniPiratiDefault();
+  for(const [k,v] of Object.entries(d)) if(!Number.isFinite(p.bisogni[k])) p.bisogni[k]=v;
+  return p.bisogni;
+}
+
 function mediaBisognoPirati(k, fallback=50){
   if(!G.pirati||!G.pirati.length) return fallback;
   let somma=0;
   for(const p of G.pirati){
-    if(!p.bisogni) p.bisogni={fame:60,rum:55,divertimento:50,salute:65,alloggio:45};
-    if(!Number.isFinite(p.bisogni[k])) p.bisogni[k]=fallback;
-    somma+=p.bisogni[k];
+    const b=normalizzaBisogniPirata(p);
+    if(!Number.isFinite(b[k])) b[k]=fallback;
+    somma+=b[k];
   }
   return Math.round(somma/G.pirati.length);
 }
 
 function aggiornaBisogniPirati9A(ctx){
+  // Nome funzione conservato per compatibilità, ma il modello ora è 9B.
   const B=G.bisogni||(G.bisogni={});
   const pirati=G.pirati||[];
   const n=pirati.length||1;
@@ -63,56 +83,61 @@ function aggiornaBisogniPirati9A(ctx){
   G.cibo=Math.max(0,G.cibo-costoCibo);
 
   const costoRum=Math.ceil(n*(bil.rumPerPirata??.45));
-  const rumOk=G.rum>=costoRum;
-  if(rumOk) G.rum-=costoRum;
+  const grogOk=G.rum>=costoRum;
+  if(grogOk) G.rum-=costoRum;
 
-  const capAlloggio=Math.floor(ctx.nCasa*(bil.coperturaCasa??3) + G.navi.length*(bil.coperturaNave??1) + ctx.nLocanda*2);
-  const alloggioRatio=Math.min(1, capAlloggio/n);
+  const capRiposo=Math.floor(
+    ctx.nCasa*(bil.coperturaCasa??3) +
+    ctx.nGrotta*2 +
+    ctx.nLocanda*2 +
+    G.navi.length*(bil.coperturaNave??1)
+  );
+  const riposoRatio=Math.min(1,capRiposo/n);
 
-  const divertimentoEdifici=ctx.nBordello*16 + ctx.nArena*10 + ctx.nCanta*9 + (ctx.haTaverna?12:0) + ctx.nLocanda*8 + ctx.nBettola*8 + ctx.nBagni*5;
-  const saluteEdifici=ctx.nInferm*18 + ctx.nBagni*10;
-  const rumEdifici=(ctx.haTaverna?12:0) + ctx.nBettola*10 + ctx.nLocanda*6;
-  const fameEdifici=ctx.nMensaEco*10 + ctx.nLocanda*8 + ctx.nForno*5 + ctx.nFattor*2;
+  const ciboServizi=ctx.nMensaEco*11 + ctx.nLocanda*8 + ctx.nForno*5 + ctx.nFattor*2;
+  const grogServizi=(ctx.haTaverna?14:0) + ctx.nBettola*11 + ctx.nLocanda*6;
+  const giocoServizi=ctx.nCanta*15 + ctx.nCasino*20 + ctx.nArena*7 + (ctx.haTaverna?4:0);
+  const compagniaServizi=ctx.nBordello*18 + ctx.nMassaggiatrici*14 + ctx.nBagni*10;
+  const bottinoServizi=ctx.nCasa*9 + ctx.nGrotta*8 + ctx.nMercatoNero*10;
+  const difesaServizi=ctx.nGuardia*14 + ctx.nFortezza*18;
+  const anarchiaServizi=(ctx.haTaverna?9:0) + ctx.nBettola*13 + ctx.nArena*16 + ctx.nBordello*4;
 
   for(const p of pirati){
-    if(!p.bisogni) p.bisogni={fame:60,rum:55,divertimento:50,salute:65,alloggio:45};
-    p.bisogni.fame=clamp100((p.bisogni.fame??60) + (ciboOk?3:-12) + fameEdifici/n - 2);
-    p.bisogni.rum=clamp100((p.bisogni.rum??55) + (rumOk?3:-10) + rumEdifici/n - 3);
-    p.bisogni.divertimento=clamp100((p.bisogni.divertimento??50) + divertimentoEdifici/n - 7);
-    p.bisogni.salute=clamp100((p.bisogni.salute??65) + saluteEdifici/n - (p.bisogni.fame<25?7:3));
-    p.bisogni.alloggio=clamp100((p.bisogni.alloggio??45) + (alloggioRatio>=1?5:alloggioRatio>.5?0:-8));
+    const b=normalizzaBisogniPirata(p);
+    b.cibo=clamp100((b.cibo??60) + (ciboOk?3:-12) + ciboServizi/n - 2);
+    b.grog=clamp100((b.grog??55) + (grogOk?3:-10) + grogServizi/n - 3);
+    b.gioco=clamp100((b.gioco??50) + giocoServizi/n - 6);
+    b.compagnia=clamp100((b.compagnia??45) + compagniaServizi/n - 6);
+    b.riposo=clamp100((b.riposo??50) + (riposoRatio>=1?5:riposoRatio>.5?0:-8));
+    b.bottino=clamp100((b.bottino??40) + bottinoServizi/n - 5);
+    b.difesa=clamp100((b.difesa??50) + difesaServizi/n - 4);
+    b.anarchia=clamp100((b.anarchia??45) + anarchiaServizi/n - 5);
 
-    const media=(p.bisogni.fame+p.bisogni.rum+p.bisogni.divertimento+p.bisogni.salute+p.bisogni.alloggio)/5;
-    p.umore=clamp100((p.umore??50) + Math.floor((media-50)/12));
-    if(p.bisogni.fame<15 || p.bisogni.rum<12) p.umore=clamp100(p.umore-5);
+    const media=(b.cibo+b.grog+b.gioco+b.compagnia+b.riposo+b.bottino+b.difesa+b.anarchia)/8;
+    p.umore=clamp100((p.umore??50) + Math.floor((media-50)/13));
+    if(b.cibo<15 || b.grog<12) p.umore=clamp100(p.umore-5);
   }
 
-  B.fame=mediaBisognoPirati('fame',B.fame??60);
-  B.rum=mediaBisognoPirati('rum',B.rum??55);
-  B.divertimento=mediaBisognoPirati('divertimento',B.divertimento??50);
-  B.salute=mediaBisognoPirati('salute',B.salute??60);
-  B.alloggio=mediaBisognoPirati('alloggio',B.alloggio??45);
+  for(const k of ['cibo','grog','gioco','compagnia','riposo','bottino','difesa','anarchia']){
+    B[k]=mediaBisognoPirati(k,B[k]??50);
+  }
+  // Alias non distruttivi per vecchie viste/salvataggi.
+  B.fame=B.cibo; B.rum=B.grog; B.divertimento=Math.round((B.gioco+B.compagnia+B.anarchia)/3); B.alloggio=B.riposo; B.sicurezza=B.difesa;
 
-  B.spirito=clamp100((B.spirito??40) + ctx.nCappella*16 - 5);
-  B.sicurezza=clamp100((B.sicurezza??50) + ctx.nGuardia*14 + (G.edifici.find(b=>b.tipo==='fortezza')?10:0) - 4);
-  B.lusso=clamp100((B.lusso??20) + ctx.nSarto*14 + (G.edifici.find(b=>b.tipo==='mercatonero')?10:0) - 6);
-
-  const mediaCore=(B.fame+B.rum+B.divertimento+B.salute+B.alloggio)/5;
-  const bonusSecondari=Math.floor(((B.spirito+B.sicurezza+B.lusso)/3-50)/18);
-  for(const p of pirati) p.umore=clamp100((p.umore??50)+bonusSecondari);
+  const mediaCore=Math.round((B.cibo+B.grog+B.gioco+B.compagnia+B.riposo+B.bottino+B.difesa+B.anarchia)/8);
 
   if(G.tick%5===0){
-    if(!ciboOk) aggMsg('🍖 La ciurma ha fame: servono più cibo, fattorie o una tavola economica.','male');
-    if(!rumOk) aggMsg('🍺 La ciurma reclama rum: costruisci distillerie e una taverna.','male');
-    if(B.divertimento<25) aggMsg('🎲 I pirati si annoiano: servono taverna, sala da gioco o arena.','male');
-    if(B.salute<25) aggMsg('🤒 I pirati si ammalano: serve una chirurgia o bagni.','male');
-    if(B.alloggio<25) aggMsg("🛖 Troppi pirati dormono all'aperto: costruisci case del pirata.",'male');
-    if(B.spirito<20) aggMsg('😔 Gli uomini perdono fede. Costruisci una Cappella.','male');
-    if(B.sicurezza<20) aggMsg('😱 La ciurma si sente in pericolo! Costruisci una Torre.','male');
-    if(B.lusso<15&&pirati.length>6) aggMsg('😒 La ciurma vuole lussi. Assumi un Sarto.','male');
+    if(!ciboOk) aggMsg('🍖 La ciurma vuole grub: servono cibo, fattorie o tavola economica.','male');
+    if(!grogOk) aggMsg('🍺 La ciurma reclama grog: servono canna, distilleria e taverna.','male');
+    if(B.gioco<25) aggMsg('🎲 I pirati vogliono scommesse: costruisci sala da gioco o casinò.','male');
+    if(B.compagnia<25) aggMsg('💋 I pirati chiedono compagnia: servono bordello, massaggiatrici o bagni.','male');
+    if(B.riposo<25) aggMsg('🛌 La ciurma non riposa: costruisci case pirata, grotte o locande.','male');
+    if(B.bottino<20) aggMsg('🏴 La ciurma vuole nascondere il bottino: servono case pirata, grotte o mercato nero.','male');
+    if(B.difesa<20) aggMsg('🛡️ La ciurma si sente indifesa: costruisci torre, guardie o fortezza.','male');
+    if(B.anarchia<20) aggMsg('🔥 Troppo ordine: i pirati vogliono più anarchia, taverne e arena.','male');
   }
 
-  G.economia.bisogniCore=Math.round(mediaCore);
+  G.economia.bisogniCore=mediaCore;
 }
 
 function aggiornaIndicatoriEconomia(avvisi){
@@ -160,11 +185,15 @@ function tick(){
   const nLocanda = effTipoEdifici('locanda');
   const nBettola = effTipoEdifici('bettola_contrabbandieri');
   const nMensaEco= effTipoEdifici('mensa_economica');
-  const nCappella= effTipoEdifici('cappella');
   const nInferm  = effTipoEdifici('infermeria');
   const nBagni   = effTipoEdifici('bagni');
   const nGuardia = effTipoEdifici('guardia');
   const nSarto   = effTipoEdifici('sarto');
+  const nGrotta  = effTipoEdifici('grotta_pirati');
+  const nCasino  = effTipoEdifici('casino');
+  const nMassaggiatrici = effTipoEdifici('massaggiatrici');
+  const nMercatoNero = effTipoEdifici('mercatonero');
+  const nFortezza = effTipoEdifici('fortezza');
   const haTaverna= G.edifici.find(b=>b.tipo==='taverna');
   const haCaserma= G.edifici.find(b=>b.tipo==='caserma');
 
@@ -224,7 +253,7 @@ function tick(){
 
   aggiornaBisogniPirati9A({
     nFattor,nForno,nCasa,nBordello,nArena,nCanta,nLocanda,nBettola,nMensaEco,
-    nCappella,nInferm,nBagni,nGuardia,nSarto,haTaverna
+    nInferm,nBagni,nGuardia,nSarto,nGrotta,nCasino,nMassaggiatrici,nMercatoNero,nFortezza,haTaverna
   });
 
   if(nArena>0&&G.tick%4===0){
@@ -234,7 +263,7 @@ function tick(){
   if(nInferm>0){
     for(const p of G.pirati) if(p.umore<40) p.umore=Math.min(100,p.umore+8);
   }
-  const sogliaDiserzione=nCappella>0?8:12;
+  const sogliaDiserzione=(G.bisogni?.difesa||50)>55?8:12;
 
   const bil=G.bilanciamento?.consumo||{};
   const coperturaPaga=Math.floor(nCasa*(bil.coperturaCasa??3) + G.navi.length*(bil.coperturaNave??1) + nLocanda*2);

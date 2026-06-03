@@ -69,11 +69,13 @@ function forzaEquipaggioRaid(nave, crew){
   const nav=c.reduce((a,p)=>a+(p.navigazione||0),0)/n;
   const morale=c.reduce((a,p)=>a+(p.umore||50),0)/n;
   const capitano=c.find(p=>p.capitano)||null;
+  const bonusNave=(typeof bonusCapitanoRaid==='function') ? bonusCapitanoRaid(nave) : {comb:0,nav:0,morale:0};
   return {
-    comb:Math.max(0,Math.min(100,comb+(capitano?6:-4))),
-    nav:Math.max(0,Math.min(100,nav+(capitano?8:-5))),
-    morale:Math.max(0,Math.min(100,morale+(capitano?4:-3))),
+    comb:Math.max(0,Math.min(100,comb+(capitano?6:-4)+(bonusNave.comb||0))),
+    nav:Math.max(0,Math.min(100,nav+(capitano?8:-5)+(bonusNave.nav||0))),
+    morale:Math.max(0,Math.min(100,morale+(capitano?4:-3)+(bonusNave.morale||0))),
     capitano,
+    capitanoNave:(typeof assicuraCapitanoNave==='function') ? assicuraCapitanoNave(nave) : null,
     count:c.length
   };
 }
@@ -117,7 +119,8 @@ function avviaSequenzaRaid(nave, bersaglio, tattica){
   if(typeof creaEffettoPortoRaid==='function') creaEffettoPortoRaid('campana',nave,{crew:equipaggioRaid.length});
   aggMsg('🔔 La campana suona: '+nave.nome+' prepara il raid.','info');
 
-  const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0));
+  const bonusCap=(typeof bonusCapitanoRaid==='function') ? bonusCapitanoRaid(nave) : {durata:0};
+  const durata=Math.max(1, bersaglio.durataBase - (nave.livVelocita||0) - (bonusCap.durata||0));
   const startTs=performance.now();
   const maxDur=8500;
   let completato=false;
@@ -367,7 +370,8 @@ function rientroNave(nave){
     + (G.ricerca.completate.has('bordata')&&tattica.id==='bordata'?12:0)
   );
   const nemDif=bersaglio.nemico.difesa + bersaglio.nemico.atk*.3;
-  const chVitt=Math.min(92, Math.max(12, 55+(forzaAtk-nemDif)*3));
+  const bonusSuccesso=(typeof bonusCapitanoRaid==='function') ? (bonusCapitanoRaid(nave).successo||0) : 0;
+  const chVitt=Math.min(94, Math.max(12, 55+(forzaAtk-nemDif)*3+bonusSuccesso));
   const vinto=Math.random()*100<chVitt;
 
   // Danno alla nave
@@ -502,6 +506,8 @@ function rientroNave(nave){
       ricFinale && `+${ricFinale}🔭`,
     ].filter(Boolean).join(' ');
 
+    if(typeof registraEsperienzaCapitanoFlotta==='function') registraEsperienzaCapitanoFlotta(nave,true,bersaglio);
+    nave.raidCompletati=(nave.raidCompletati||0)+1;
     registraStoriaRaid(nave,bersaglio,true,{oro:oroFinale,cibo:cibFinale,legno:legFinale,rum:rumFinale,ricerca:ricFinale},rottaScoperta?.nome||null);
     notifica('⚔ Raid Riuscito!', bersaglio.icona+' '+bersaglio.nome+' saccheggiata! '+bottinoStr);
     aggMsg('💰 '+nave.nome+' rientra: '+bottinoStr+' (danno -'+dannoNave+'hp)','bene');
@@ -516,6 +522,8 @@ function rientroNave(nave){
       const nuovaAllerta=modificaAllertaRaid(potId,3+Math.floor((bersaglio.pattuglia||0)/2));
       aggMsg((bersaglio.potenza?.icona||'⚓')+' Le difese di '+(bersaglio.potenza?.nome||'quella potenza')+' restano in allerta: '+nuovaAllerta+'.','info');
     }
+    if(typeof registraEsperienzaCapitanoFlotta==='function') registraEsperienzaCapitanoFlotta(nave,false,bersaglio);
+    nave.raidCompletati=(nave.raidCompletati||0)+1;
     registraStoriaRaid(nave,bersaglio,false,{danno:dannoNave},null);
     notifica('💀 Raid Fallito',
       bersaglio.icona+' '+bersaglio.nome+' ha respinto l\'attacco. '+nave.nome+' rientra danneggiata.','male');

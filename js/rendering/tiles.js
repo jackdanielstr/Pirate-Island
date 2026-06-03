@@ -164,26 +164,67 @@ function disegnaTileIso(t, cx, cy, r, c) {
 
   switch(t){
     case T.OCEANO:{
+      // Beta 3.1 — mare tropicale più uniforme: la griglia resta isometrica,
+      // ma il colore non deve più sembrare una scacchiera.
+      const oceanPatch=hash(Math.floor(r/4),Math.floor(c/4),7600);
+      const slow=hash(Math.floor((r+c)/5),Math.floor((c-r)/5),7601);
       const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
-      g.addColorStop(0,`hsl(${190+v*1.5},62%,${28+v*1.5}%)`);
-      g.addColorStop(.55,`hsl(${196+v*1.5},70%,${23+v*1.5}%)`);
-      g.addColorStop(1,`hsl(${204+v*1.5},68%,${16+v}%)`);
+      g.addColorStop(0,`hsl(${195+oceanPatch*1.4},56%,${31+slow*1.2}%)`);
+      g.addColorStop(.62,`hsl(${200+oceanPatch},58%,${25+slow*.9}%)`);
+      g.addColorStop(1,`hsl(${206+oceanPatch},60%,${19+slow*.7}%)`);
       riempiRomboIso(cx,cy,W,H,g);
-      ctx.strokeStyle=`rgba(170,230,235,${.08+Math.sin(frame*.017+r*.4+c*.3)*.03})`;
-      ctx.lineWidth=Math.max(.6,1*s);
-      ctx.beginPath();
-      ctx.moveTo(cx-hw*.62,cy+hh*.55);
-      ctx.bezierCurveTo(cx-hw*.25,cy+hh*.44,cx+hw*.22,cy+hh*.64,cx+hw*.62,cy+hh*.52);
-      ctx.stroke();
+
+      // Onde larghe e morbide, spezzate su più tile: meno pattern per-cella.
+      const swell=Math.sin(frame*.006 + r*.13 + c*.09);
+      if(hash(Math.floor(r/2),Math.floor(c/2),7610)>.18){
+        ctx.fillStyle=`rgba(100,198,210,${.028+swell*.008})`;
+        ctx.beginPath();
+        ctx.ellipse(
+          cx+(hash(r,c,7611)-.5)*W*.42,
+          cy+hh+(hash(r,c,7612)-.5)*H*.24,
+          W*(.46+hash(r,c,7613)*.20),
+          H*(.13+hash(r,c,7614)*.04),
+          (hash(r,c,7615)-.5)*.55,
+          0,Math.PI*2
+        );
+        ctx.fill();
+      }
+
+      // Riflessi sottili, non contorni di tile.
+      if(hash(r,c,7620)>.72){
+        ctx.strokeStyle=`rgba(188,232,225,${.030+Math.max(0,swell)*.018})`;
+        ctx.lineWidth=Math.max(.35,.55*s);
+        ctx.beginPath();
+        ctx.moveTo(cx-hw*.40,cy+hh*.62);
+        ctx.bezierCurveTo(cx-hw*.12,cy+hh*.54,cx+hw*.12,cy+hh*.66,cx+hw*.40,cy+hh*.58);
+        ctx.stroke();
+      }
       break;
     }
     case T.BASSO:{
+      // Acqua bassa caraibica: più chiara vicino alla riva e più sabbiosa.
+      const lag=hash(Math.floor(r/3),Math.floor(c/3),7700);
       const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
-      g.addColorStop(0,`hsl(${174+v*2},70%,${48+v*2}%)`);
-      g.addColorStop(.65,`hsl(${184+v*2},67%,${40+v*2}%)`);
-      g.addColorStop(1,`hsl(${192+v*2},62%,${32+v*1.5}%)`);
+      g.addColorStop(0,`hsl(${178+lag*1.4},64%,${53+lag*1.0}%)`);
+      g.addColorStop(.56,`hsl(${185+lag},62%,${45+lag*.9}%)`);
+      g.addColorStop(1,`hsl(${194+lag},57%,${36+lag*.8}%)`);
       riempiRomboIso(cx,cy,W,H,g);
-      granelliIso(cx,cy,W,H,r,c,s,3100,a=>`rgba(230,215,145,${a})`,5,.11);
+
+      // Sabbia vista attraverso l'acqua bassa.
+      ctx.fillStyle=`rgba(238,218,145,${.070+hash(r,c,7710)*.045})`;
+      ctx.beginPath();
+      ctx.ellipse(cx+(hash(r,c,7711)-.5)*W*.44,cy+hh*1.03,W*.30,H*.10,(hash(r,c,7712)-.5)*.7,0,Math.PI*2);
+      ctx.fill();
+
+      // Piccole increspature chiare.
+      if(hash(r,c,7720)>.48){
+        ctx.strokeStyle=`rgba(229,251,239,${.055+Math.sin(frame*.012+r*.2+c*.11)*.018})`;
+        ctx.lineWidth=Math.max(.45,.70*s);
+        ctx.beginPath();
+        ctx.moveTo(cx-hw*.36,cy+hh*.72);
+        ctx.quadraticCurveTo(cx,cy+hh*.63,cx+hw*.36,cy+hh*.72);
+        ctx.stroke();
+      }
       break;
     }
     case T.SABBIA:{
@@ -195,12 +236,22 @@ function disegnaTileIso(t, cx, cy, r, c) {
       break;
     }
     case T.ERBA:{
+      // Prato tropicale con variazioni morbide, non quadrato uniforme.
+      const patch=hash(Math.floor(r/2),Math.floor(c/2),1800);
       const g=ctx.createLinearGradient(cx-hw,cy,cx+hw,cy+H);
-      g.addColorStop(0,`hsl(${102+v*2.5},46%,${36+v*1.6}%)`);
-      g.addColorStop(.7,`hsl(${112+v*2},50%,${29+v*1.5}%)`);
+      g.addColorStop(0,`hsl(${101+patch*4},45%,${35+patch*3}%)`);
+      g.addColorStop(.55,`hsl(${110+patch*4},48%,${30+patch*3}%)`);
+      g.addColorStop(1,`hsl(${116+patch*3},45%,${25+patch*2}%)`);
       riempiRomboIso(cx,cy,W,H,g);
-      granelliIso(cx,cy,W,H,r,c,s,3300,a=>`rgba(180,210,95,${a})`,6,.11);
-      granelliIso(cx,cy,W,H,r,c,s,3350,a=>`rgba(18,65,22,${a})`,5,.13);
+      // Macchie di giungla bassa/felci per dare la sensazione di isola caraibica.
+      if(hash(r,c,1810)>.34){
+        ctx.fillStyle=`rgba(24,84,28,${.10+hash(r,c,1811)*.09})`;
+        ctx.beginPath();
+        ctx.ellipse(cx+(hash(r,c,1812)-.5)*W*.52,cy+hh+(hash(r,c,1813)-.5)*H*.52,W*(.16+hash(r,c,1814)*.18),H*(.07+hash(r,c,1815)*.08),(hash(r,c,1816)-.5)*1.2,0,Math.PI*2);
+        ctx.fill();
+      }
+      granelliIso(cx,cy,W,H,r,c,s,3300,a=>`rgba(190,220,105,${a})`,7,.10);
+      granelliIso(cx,cy,W,H,r,c,s,3350,a=>`rgba(12,58,20,${a})`,7,.12);
       break;
     }
     case T.FORESTA:{
@@ -259,15 +310,29 @@ function disegnaTransizioni(){
     for(const [dr,dc] of [[-1,0],[1,0],[0,-1],[0,1]]){
       const nt=G.mappa[r+dr]&&G.mappa[r+dr][c+dc];
       if(nt!==T.OCEANO&&nt!==T.BASSO) continue;
-      const t=frame*.022+r*.44+c*.29+dr*.8+dc*.55;
+      const t=frame*.018+r*.37+c*.23+dr*.8+dc*.55;
       ctx.save();
-      ctx.strokeStyle=`rgba(248,244,220,${.20+Math.sin(t)*.05})`;
-      ctx.lineWidth=Math.max(1.2,2.2*s);
+
+      // Fascia chiara di acqua bassa/sabbia bagnata prima della schiuma.
+      ctx.strokeStyle=`rgba(132,226,210,${nt===T.BASSO?.10:.075})`;
+      ctx.lineWidth=Math.max(3.0,5.0*s);
+      ctx.lineCap='round';
       ctx.beginPath();
-      if(dr===-1){ ctx.moveTo(cx-hw*.48,cy+hh*.47); ctx.quadraticCurveTo(cx,cy+hh*.1,cx+hw*.48,cy+hh*.47); }
-      else if(dr===1){ ctx.moveTo(cx-hw*.48,cy+hh*1.53); ctx.quadraticCurveTo(cx,cy+hh*1.9,cx+hw*.48,cy+hh*1.53); }
-      else if(dc===-1){ ctx.moveTo(cx-hw*.9,cy+hh); ctx.quadraticCurveTo(cx-hw*.46,cy+hh*.36,cx,cy+hh*.08); }
-      else { ctx.moveTo(cx+hw*.9,cy+hh); ctx.quadraticCurveTo(cx+hw*.46,cy+hh*.36,cx,cy+hh*.08); }
+      if(dr===-1){ ctx.moveTo(cx-hw*.54,cy+hh*.45); ctx.quadraticCurveTo(cx,cy+hh*.04,cx+hw*.54,cy+hh*.45); }
+      else if(dr===1){ ctx.moveTo(cx-hw*.54,cy+hh*1.55); ctx.quadraticCurveTo(cx,cy+hh*1.96,cx+hw*.54,cy+hh*1.55); }
+      else if(dc===-1){ ctx.moveTo(cx-hw*.92,cy+hh); ctx.quadraticCurveTo(cx-hw*.46,cy+hh*.34,cx,cy+hh*.06); }
+      else { ctx.moveTo(cx+hw*.92,cy+hh); ctx.quadraticCurveTo(cx+hw*.46,cy+hh*.34,cx,cy+hh*.06); }
+      ctx.stroke();
+
+      // Schiuma irregolare e meno geometrica.
+      ctx.strokeStyle=`rgba(250,246,220,${.18+Math.sin(t)*.045})`;
+      ctx.lineWidth=Math.max(1.15,2.25*s);
+      ctx.beginPath();
+      const wob=Math.sin(t*1.7)*hh*.08;
+      if(dr===-1){ ctx.moveTo(cx-hw*.46,cy+hh*.47+wob*.2); ctx.bezierCurveTo(cx-hw*.18,cy+hh*.22-wob,cx+hw*.14,cy+hh*.34+wob,cx+hw*.46,cy+hh*.47-wob*.15); }
+      else if(dr===1){ ctx.moveTo(cx-hw*.46,cy+hh*1.53-wob*.2); ctx.bezierCurveTo(cx-hw*.16,cy+hh*1.78+wob,cx+hw*.16,cy+hh*1.66-wob,cx+hw*.46,cy+hh*1.53+wob*.15); }
+      else if(dc===-1){ ctx.moveTo(cx-hw*.88,cy+hh+wob*.1); ctx.bezierCurveTo(cx-hw*.58,cy+hh*.55,cx-hw*.28,cy+hh*.30+wob,cx-hw*.02,cy+hh*.10); }
+      else { ctx.moveTo(cx+hw*.88,cy+hh-wob*.1); ctx.bezierCurveTo(cx+hw*.58,cy+hh*.55,cx+hw*.28,cy+hh*.30-wob,cx+hw*.02,cy+hh*.10); }
       ctx.stroke();
       ctx.restore();
     }
@@ -287,13 +352,13 @@ function disegnaVelatureTerreno(){
     let fill=null;
     let rx=W*(.42+hash(r,c,5103)*.28);
     let ry=H*(.18+hash(r,c,5104)*.12);
-    if(tile===T.ERBA) fill=v>.7?'rgba(112,150,55,.11)':'rgba(32,92,32,.10)';
-    else if(tile===T.FORESTA) fill='rgba(18,70,28,.14)';
-    else if(tile===T.SABBIA) fill=v>.68?'rgba(238,220,158,.10)':'rgba(172,130,70,.09)';
+    if(tile===T.ERBA) fill=v>.68?'rgba(132,168,58,.13)':'rgba(22,86,28,.13)';
+    else if(tile===T.FORESTA) fill='rgba(10,62,24,.18)';
+    else if(tile===T.SABBIA) fill=v>.68?'rgba(238,220,158,.12)':'rgba(164,126,66,.11)';
     else if(tile===T.COLLINA||tile===T.ROCCIA) fill='rgba(96,82,60,.10)';
     else if(tile===T.OCEANO||tile===T.BASSO){
-      fill=tile===T.BASSO?'rgba(120,230,210,.08)':'rgba(14,90,130,.10)';
-      rx*=1.25; ry*=.9;
+      fill=tile===T.BASSO?'rgba(146,232,210,.09)':'rgba(30,116,145,.055)';
+      rx*=1.95; ry*=1.18;
     }
     if(!fill) continue;
     ctx.fillStyle=fill;

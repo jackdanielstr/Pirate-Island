@@ -402,7 +402,7 @@ function _drawSlaveTool(cx, cy, sc, schiavo, swing){
 }
 
 // ── SCHIAVO ISO — Fase 5B: più piccolo, con ruolo, carico e camminata leggera ──
-function disegnaSchiavoIso(cx, cy, felicita, s, schiavo){
+function disegnaSchiavoIso(cx, cy, felicita, s, schiavo, selected){
   s = s || G.ISO_SCALE;
   const sc = G.ISO_H * s * .022;  // scala ridotta: più minuto del pirata e più coerente con edifici Tropico 2
   const felCol = felicita>60?'#4fc04f':felicita>30?'#f0c040':'#c0392b';
@@ -414,8 +414,13 @@ function disegnaSchiavoIso(cx, cy, felicita, s, schiavo){
   const skinTones=['#c8a060','#a06030','#7a4020','#d4a870'];
   const skin=skinTones[h%skinTones.length];
 
-  // Ombra
-  ctx.save(); ctx.globalAlpha=.17; ctx.fillStyle='#000';
+  // Ombra / selezione
+  ctx.save();
+  if(selected){
+    ctx.globalAlpha=.78; ctx.strokeStyle='rgba(255,220,90,.95)'; ctx.lineWidth=Math.max(1.3,sc*.45);
+    ctx.beginPath(); ctx.ellipse(cx+sc*2,cy+sc*3.2,sc*6.2,sc*2.0,.12,0,Math.PI*2); ctx.stroke();
+  }
+  ctx.globalAlpha=.17; ctx.fillStyle='#000';
   ctx.beginPath(); ctx.ellipse(cx+sc*2,cy+sc*3.2,sc*4.4,sc*1.25,.12,0,Math.PI*2); ctx.fill(); ctx.restore();
 
   // Oggetto trasportato dietro/al fianco: rende chiaro il lavoro senza cambiare gameplay.

@@ -4,6 +4,84 @@
 // ═══════════════════════════════════════
 // MODULO: NAVI_RAID
 // ═══════════════════════════════════════
+
+
+// FASE 11A — Capitani e Flotta (beta safe)
+// Ogni nave ha un capitano "di bordo" leggero: influenza raid e cresce con l'esperienza.
+const NOMI_CAPITANI_FLOTTA=[
+  'Morgan Blackwood','Elena Vento Nero','Rafael del Tuono','Isabella Corvo','Tommaso Tagliamare',
+  'Nora Scogliera','Diego Malaborda','Anselmo Tre Vele','Caterina Lancia','Bastian Occhioferro',
+  'Lucia del Maestrale','Orso Rosso','Mateo la Bussola','Serena dei Relitti'
+];
+const TITOLI_CAPITANI_FLOTTA=['Capitano','Comandante','Nostromo veterano','Vecchia volpe','Corsaro'];
+
+function valoreSeedCapitano(seed, salt){
+  const x=Math.sin((seed+1)*97.31 + salt*41.77)*10000;
+  return x-Math.floor(x);
+}
+function creaCapitanoFlotta(seed=0){
+  const nome=NOMI_CAPITANI_FLOTTA[Math.floor(valoreSeedCapitano(seed,1)*NOMI_CAPITANI_FLOTTA.length)] || 'Capitano Senza Nome';
+  const titolo=TITOLI_CAPITANI_FLOTTA[Math.floor(valoreSeedCapitano(seed,2)*TITOLI_CAPITANI_FLOTTA.length)] || 'Capitano';
+  return {
+    id:'cap_flotta_'+seed+'_'+Math.floor(valoreSeedCapitano(seed,9)*99999),
+    nome, titolo,
+    livello:1, esperienza:0, raid:0,
+    navigazione:45+Math.floor(valoreSeedCapitano(seed,3)*26),
+    combattimento:45+Math.floor(valoreSeedCapitano(seed,4)*26),
+    carisma:45+Math.floor(valoreSeedCapitano(seed,5)*26),
+  };
+}
+function xpProssimoCapitano(cap){ return Math.max(80,(cap?.livello||1)*90); }
+function assicuraCapitanoNave(nave){
+  if(!nave) return null;
+  if(!nave.capitano) nave.capitano=creaCapitanoFlotta(nave.id||0);
+  if(!isFinite(nave.capitano.livello)) nave.capitano.livello=1;
+  if(!isFinite(nave.capitano.esperienza)) nave.capitano.esperienza=0;
+  if(!isFinite(nave.capitano.raid)) nave.capitano.raid=0;
+  for(const k of ['navigazione','combattimento','carisma']){
+    if(!isFinite(nave.capitano[k])) nave.capitano[k]=50;
+  }
+  return nave.capitano;
+}
+function assicuraCapitaniFlotta(){
+  if(!G || !Array.isArray(G.navi)) return;
+  for(const n of G.navi) assicuraCapitanoNave(n);
+}
+function bonusCapitanoRaid(nave){
+  const cap=assicuraCapitanoNave(nave);
+  if(!cap) return {nav:0,comb:0,morale:0,durata:0,successo:0};
+  const lv=Math.max(1,cap.livello||1);
+  return {
+    nav:Math.floor((cap.navigazione-50)/7)+lv,
+    comb:Math.floor((cap.combattimento-50)/8)+lv,
+    morale:Math.floor((cap.carisma-50)/9)+Math.floor(lv/2),
+    durata: cap.navigazione>=72 ? 1 : 0,
+    successo: Math.max(-4,Math.min(8,Math.floor((cap.combattimento+cap.navigazione+cap.carisma-150)/16)+Math.floor(lv/2))),
+  };
+}
+function registraEsperienzaCapitanoFlotta(nave, vinto, bersaglio){
+  const cap=assicuraCapitanoNave(nave);
+  if(!cap) return;
+  const diff=bersaglio?.difficolta||1;
+  cap.raid=(cap.raid||0)+1;
+  cap.esperienza=(cap.esperienza||0)+(vinto?28:12)+diff*8;
+  let salito=false;
+  while(cap.esperienza>=xpProssimoCapitano(cap)){
+    cap.esperienza-=xpProssimoCapitano(cap);
+    cap.livello=(cap.livello||1)+1;
+    cap.navigazione=Math.min(100,(cap.navigazione||50)+2+Math.floor(Math.random()*3));
+    cap.combattimento=Math.min(100,(cap.combattimento||50)+2+Math.floor(Math.random()*3));
+    cap.carisma=Math.min(100,(cap.carisma||50)+1+Math.floor(Math.random()*3));
+    salito=true;
+  }
+  if(salito) notifica('⭐ Capitano promosso!', cap.nome+' sale al livello '+cap.livello+'.');
+}
+function testoCapitanoNave(nave){
+  const cap=assicuraCapitanoNave(nave);
+  if(!cap) return 'Nessun capitano';
+  return `${cap.titolo} ${cap.nome} · Lv ${cap.livello}`;
+}
+
 // ── NAVI & PIANIFICAZIONE RAID ──
 function creaNave(id, nome){
   const nomi=['Serpente di Ferro','Burrasca Nera','Scia del Diavolo','Orizzonte Insanguinato','Mietitore dei Mari','Crimson Dawn'];
@@ -19,6 +97,8 @@ function creaNave(id, nome){
     inMare:false, timerRaid:0,
     capienza:6,       // Tropico 2 style: ogni nave porta una ciurma limitata
     usura:0,        // 0-100, aumenta in mare, riduce hpMax
+    capitano:creaCapitanoFlotta(id),
+    raidCompletati:0,
   };
 }
 
@@ -26,8 +106,9 @@ function costruisciNave(){
   if(G.oro<150||G.legno<80){aggMsg('Servono 150 oro e 80 legno.','male');return;}
   if(!G.edifici.find(b=>b.tipo==='cantiere')){aggMsg('Costruisci prima un Cantiere Navale!','male');return;}
   G.oro-=150; G.legno-=80;
-  G.navi.push(creaNave(G.navi.length));
-  notifica('⛵ Nave Costruita!','La flotta cresce.');
+  const nuova=creaNave(G.navi.length);
+  G.navi.push(nuova);
+  notifica('⛵ Nave Costruita!', 'La flotta cresce. '+testoCapitanoNave(nuova)+' prende il comando.');
   aggiornaUI();
 }
 
@@ -39,6 +120,7 @@ function inviaRaid(){
   if(G.cooldownRaid>0){aggMsg('Attendi ancora '+G.cooldownRaid+' giorni prima del prossimo raid.','male');return;}
   if(G.pirati.length<2){aggMsg('Servono almeno 2 pirati!','male');return;}
   if(G.battagliaAttiva){aggMsg('Una battaglia è già in corso!','male');return;}
+  assicuraCapitaniFlotta();
   apriPortoPirata();
 }
 
@@ -282,7 +364,8 @@ function capitanoNaveRaid(nave){
 }
 function durataStimataRaid(nave, missione, territorio){
   const base=baseBersaglioDaTerritorio(territorio);
-  return Math.max(1,(base.durataBase||2)+(territorio?.durata||0)+(missione?.id==='esplorazione'?1:0)-(nave?.livVelocita||0));
+  const bonus=bonusCapitanoRaid(nave);
+  return Math.max(1,(base.durataBase||2)+(territorio?.durata||0)+(missione?.id==='esplorazione'?1:0)-(nave?.livVelocita||0)-(bonus.durata||0));
 }
 function costoPreparazioneRaid(nave, missione, territorio, crew){
   const m=missione||MISSIONI_RAID[0], t=territorio||TERRITORI_RAID[0];
@@ -511,6 +594,36 @@ function mappaStrategicaNaveHtml(){
     </div>
   </div>`;
 }
+
+// FASE 11B — stato operativo leggibile nave/flotta
+function statoOperativoNave(n){
+  if(!n) return {label:'Sconosciuta', icona:'?', cls:'nave-stato-neutro', breve:'?'};
+  if(n._faseRaid==='raduno') return {label:'Ciurma al molo', icona:'🔔', cls:'nave-stato-preparazione', breve:'Raduno'};
+  if(n._faseRaid==='salpando') return {label:'Sta salpando', icona:'🌊', cls:'nave-stato-preparazione', breve:'Salpa'};
+  if(n.inMare) return {label:'In raid — ritorno fra '+(n.timerRaid||1)+'g', icona:'⚓', cls:'nave-stato-mare', breve:(n.timerRaid||1)+'g'};
+  const hpPct=Math.round((n.hp||0)/Math.max(1,n.hpMax||1)*100);
+  if(hpPct<35) return {label:'Da riparare', icona:'🔧', cls:'nave-stato-danno', breve:'Danni'};
+  if((n.usura||0)>65) return {label:'Usura alta', icona:'🛠', cls:'nave-stato-danno', breve:'Usura'};
+  return {label:'Pronta in porto', icona:'✅', cls:'nave-stato-pronta', breve:'Pronta'};
+}
+function badgeStatoNaveHtml(n){
+  const st=statoOperativoNave(n);
+  return `<span class="nave-status-badge ${st.cls}">${st.icona} ${st.breve}</span>`;
+}
+function riepilogoNaveCompattoHtml(n){
+  const cap=(typeof assicuraCapitanoNave==='function') ? assicuraCapitanoNave(n) : n.capitano;
+  const pct=Math.round((n.hp||0)/Math.max(1,n.hpMax||1)*100);
+  const crew=(typeof testoEquipaggioRaid==='function') ? testoEquipaggioRaid(n) : ((n.equipaggio||0)+'/'+(n.capienza||6));
+  const st=statoOperativoNave(n);
+  return `<div class="nave-mini-card ${st.cls}" onclick="apriSchedaNavePorto(${n.id},'porto')">
+    <div class="nave-mini-top"><b>⛵ ${n.nome}</b>${badgeStatoNaveHtml(n)}</div>
+    <div class="nave-mini-sub">${st.label}</div>
+    <div class="nave-mini-grid">
+      <span>🛡 ${pct}%</span><span>👥 ${crew}</span><span>🎩 ${cap?cap.nome.split(' ')[0]:'assente'}</span>
+    </div>
+  </div>`;
+}
+
 function apriPortoPirata(edificio=null, forzaLista=false){
   assicuraRaidTropico2();
   const attraccate=naviAttraccateRaid();
@@ -532,19 +645,9 @@ function apriPortoPirata(edificio=null, forzaLista=false){
       ${atlanteRaidHtml()}
       ${storicoRaidHtml()}
       <div style="font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--sabbia);margin-bottom:7px">Navi attraccate</div>
-      ${attraccate.length?attraccate.map(n=>{
-        const pct=Math.round(n.hp/Math.max(1,n.hpMax)*100);
-        const capitano=capitanoNaveRaid(n);
-        return `<button type="button" onclick="apriSchedaNavePorto(${n.id},'porto')" style="width:100%;text-align:left;background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.24);border-radius:7px;padding:9px 10px;margin-bottom:6px;cursor:pointer;color:var(--pergamena);font-family:Georgia,'Times New Roman',serif">
-          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
-            <b style="font-family:'Cinzel',serif;color:var(--oro)">⛵ ${n.nome}</b>
-            <span style="font-size:.66rem;color:${pct>60?'var(--verde-ch)':pct>30?'var(--oro)':'var(--rum-chiaro)'}">Scafo ${pct}%</span>
-          </div>
-          <div style="font-size:.66rem;color:var(--sabbia);margin-top:3px">Ciurma ${testoEquipaggioRaid(n)} · Capitano ${capitano?capitano.nome:'assente'}</div>
-        </button>`;
-      }).join(''):`<div style="font-size:.75rem;color:var(--rum-chiaro);margin-bottom:8px">Nessuna nave pronta in porto.</div>`}
+      ${attraccate.length?attraccate.map(n=>riepilogoNaveCompattoHtml(n)).join(''):`<div class="nave-mini-card nave-stato-danno" style="cursor:default">Nessuna nave pronta in porto.</div>`}
       ${inMare.length?`<div style="font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:1.6px;text-transform:uppercase;color:var(--sabbia);margin:11px 0 7px">In mare</div>
-        ${inMare.map(n=>`<div style="font-size:.68rem;color:var(--sabbia);display:flex;justify-content:space-between;margin-bottom:3px"><span>⚓ ${n.nome}</span><span>${n.timerRaid||1}g</span></div>`).join('')}`:''}
+        ${inMare.map(n=>riepilogoNaveCompattoHtml(n)).join('')}`:''}
     </div>`;
   apriModale('⚓ Porto dei Pirati',html);
 }

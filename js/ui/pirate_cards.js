@@ -4,6 +4,16 @@
 // ═══════════════════════════════════════
 // MODULO: UI_PIRATE
 // ═══════════════════════════════════════
+function renderBisogniPirataProfilo(p){
+  const defs=[['cibo','🍖','Grub'],['grog','🍺','Grog'],['gioco','🎲','Scommesse'],['compagnia','💃','Compagnia'],['riposo','🛌','Riposo'],['bottino','🏴','Bottino'],['difesa','🛡','Difesa'],['anarchia','🔥','Anarchia']];
+  const b=p.bisogni||{};
+  return `<div class="person-needs-grid">${defs.map(([k,ic,n])=>{
+    const v=Math.round(b[k]??50);
+    const cls=v<30?'critico':v<55?'medio':'ok';
+    return `<div class="person-need ${cls}"><span>${ic} ${n}</span><strong>${v}%</strong></div>`;
+  }).join('')}</div>`;
+}
+
 function apriProfiloPirata(id){
   const p=G.pirati.find(x=>String(x.id)===String(id));
   if(!p) return;
@@ -17,6 +27,7 @@ function apriProfiloPirata(id){
   const cEff=statEffettiva(p,'combattimento');
   const nEff=statEffettiva(p,'navigazione');
   const xpNext=(p.livello||1)*100;
+  const stato=(typeof descriviStatoPirata==='function')?descriviStatoPirata(p):(p._stato||'In attesa');
 
   let opzioniNave=`<option value="">• A terra</option>`;
   for(const n of naviDisp){
@@ -70,6 +81,14 @@ function apriProfiloPirata(id){
       <span>Paga: <strong style="color:var(--oro)">${p.paga}💰/g</strong></span>
       ${p.tratto?`<span>${p.tratto.icona||''} ${p.tratto.label||''}</span>`:''}
     </div>
+
+    <div class="person-status-box">
+      <div><strong>Età:</strong> ${p.eta||'—'} anni</div>
+      <div><strong>Stato:</strong> ${stato}</div>
+    </div>
+
+    <div style="font-size:.72rem;color:var(--sabbia);margin:8px 0 5px">Bisogni del pirata:</div>
+    ${renderBisogniPirataProfilo(p)}
 
     <div style="margin-bottom:12px">
       <div style="font-size:.72rem;color:var(--sabbia);margin-bottom:5px">Assegna a nave:</div>
@@ -133,6 +152,7 @@ function promuoviPirata(pirataId){
   G.oro-=30;
   p.xp=(p.xp||0)+10;
   const xpNext=(p.livello||1)*100;
+  const stato=(typeof descriviStatoPirata==='function')?descriviStatoPirata(p):(p._stato||'In attesa');
   if(p.xp>=xpNext){
     p.xp-=xpNext;
     p.livello=(p.livello||1)+1;

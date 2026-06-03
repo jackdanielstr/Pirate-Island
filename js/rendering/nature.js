@@ -174,7 +174,7 @@ function rigeneraAmbienteVivo(){
     if(t===T.SABBIA && vicinoATile(r,c,[T.BASSO,T.OCEANO])){
       const n=h(7100)>.66 ? 1+(h(7101)>.86?1:0) : 0;
       for(let i=0;i<n;i++){
-        const tipi=['conchiglia','alghe','ciottoli','legno_spiaggia','cassa_rotta'];
+        const tipi=['conchiglia','alghe','ciottoli','legno_spiaggia','cassa_rotta','foglie_palme','tronco_cocco'];
         const tipo=tipi[Math.floor(h(7110+i)*tipi.length)%tipi.length];
         G.ambienteProps.push(propAmbiente(id++,tipo,r+(h(7120+i)-.5)*.56,c+(h(7130+i)-.5)*.72,.72+h(7140+i)*.45,h(7150+i)*Math.PI,0.2));
       }
@@ -189,9 +189,11 @@ function rigeneraAmbienteVivo(){
 
     // Erba/foresta/palude: vegetazione bassa per togliere l'effetto griglia vuota.
     if((t===T.ERBA||t===T.FORESTA||t===T.PALUDE) && tileAmbienteLibero(r,c)){
-      const chance=t===T.FORESTA?.42:(t===T.PALUDE?.34:.18);
+      // Più giungla bassa: Tropico 2 dava l'idea di colonia ritagliata nella vegetazione.
+      const costaVerde=vicinoATile(r,c,[T.SABBIA,T.BASSO]);
+      const chance=t===T.FORESTA?.62:(t===T.PALUDE?.46:(costaVerde?.34:.26));
       if(h(7300)<chance){
-        const tipi=t===T.PALUDE?['canne','felce','erba_alta']:['cespuglio','felce','erba_alta','bananino'];
+        const tipi=t===T.PALUDE?['canne','felce','erba_alta']:['cespuglio','felce','erba_alta','bananino','foglie_palme','ibisco'];
         const tipo=tipi[Math.floor(h(7310)*tipi.length)%tipi.length];
         G.ambienteProps.push(propAmbiente(id++,tipo,r+(h(7320)-.5)*.62,c+(h(7330)-.5)*.62,.6+h(7340)*.55,h(7350)*Math.PI,0.1));
       }
@@ -243,6 +245,14 @@ function disegnaPropAmbiente(prop,cx,cy,s){
     case 'pietre_sentiero':
       for(let i=0;i<4;i++){ctx.fillStyle=i%2?'#75684f':'#9a8a6a';ctx.beginPath();ctx.ellipse((i-1.5)*sc*.055,(i%2)*sc*.035,sc*.045,sc*.028,.2,0,Math.PI*2);ctx.fill();}
       break;
+    case 'tronco_cocco':
+      ctx.fillStyle='#74491f';
+      ctx.fillRect(-sc*.22,-sc*.05,sc*.44,sc*.10);
+      ctx.fillStyle='#a06b30';
+      ctx.fillRect(-sc*.18,-sc*.10,sc*.34,sc*.06);
+      ctx.strokeStyle='rgba(45,25,8,.45)'; ctx.lineWidth=Math.max(.6,s);
+      for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(i*sc*.07,-sc*.09);ctx.lineTo(i*sc*.07+sc*.025,sc*.05);ctx.stroke();}
+      break;
     case 'legno_spiaggia':
     case 'legna':
       ctx.fillStyle='#6d451d'; ctx.fillRect(-sc*.18,-sc*.035,sc*.36,sc*.07);
@@ -265,13 +275,30 @@ function disegnaPropAmbiente(prop,cx,cy,s){
       ctx.beginPath();ctx.moveTo(-sc*.22,-sc*.04);ctx.lineTo(sc*.22,sc*.08);ctx.stroke();
       ctx.beginPath();ctx.moveTo(-sc*.19,sc*.05);ctx.lineTo(sc*.25,sc*.17);ctx.stroke();
       break;
+    case 'foglie_palme':{
+      ctx.fillStyle='rgba(35,105,32,.86)';
+      for(let i=0;i<4;i++){
+        ctx.beginPath();
+        ctx.ellipse((i-1.5)*sc*.06,-sc*.02,sc*.16,sc*.035,(i-1.5)*.55,0,Math.PI*2);
+        ctx.fill();
+      }
+      break;
+    }
+    case 'ibisco':{
+      ctx.fillStyle='rgba(34,112,36,.9)';
+      for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse((i-2)*sc*.045,-sc*(.02+i%2*.03),sc*.075,sc*.038,(i-2)*.35,0,Math.PI*2);ctx.fill();}
+      ctx.fillStyle='rgba(214,76,58,.82)';
+      ctx.beginPath();ctx.arc(sc*.04,-sc*.08,sc*.032,0,Math.PI*2);ctx.fill();
+      break;
+    }
     case 'cespuglio':
     case 'felce':
     case 'canne':
     case 'bananino':{
       const base=prop.tipo==='canne'?'#6f8a42':(prop.tipo==='bananino'?'#4d9a35':'#2f7c2c');
       ctx.fillStyle=base;
-      for(let i=0;i<5;i++){ctx.beginPath();ctx.ellipse((i-2)*sc*.045,-sc*(.02+i%2*.035),sc*.07,sc*.035,(i-2)*.35,0,Math.PI*2);ctx.fill();}
+      const leaves=prop.tipo==='felce'?7:5;
+      for(let i=0;i<leaves;i++){ctx.beginPath();ctx.ellipse((i-(leaves-1)/2)*sc*.042,-sc*(.02+i%2*.035),sc*.08,sc*.034,(i-(leaves-1)/2)*.42,0,Math.PI*2);ctx.fill();}
       if(prop.tipo==='bananino'){
         ctx.strokeStyle='#5c3c16';ctx.lineWidth=Math.max(1,1.2*s);ctx.beginPath();ctx.moveTo(0,sc*.08);ctx.lineTo(0,-sc*.25);ctx.stroke();
       }

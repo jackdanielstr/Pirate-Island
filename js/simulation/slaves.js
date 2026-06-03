@@ -42,6 +42,60 @@ const NOMI_SCHIAVI_F = ['Mary','Anne','Elizabeth','Catherine','Margaret',
 // ── Inizializza array schiavi se non esiste ──
 if(!G.schiavi) G.schiavi=[];
 
+function assicuraStatiSchiavo(s){
+  if(!s) return s;
+  if(!isFinite(s.salute)) s.salute=78+Math.floor(Math.random()*16);
+  if(!isFinite(s.morale)) s.morale=isFinite(s.felicita)?s.felicita:50;
+  if(!isFinite(s.fatica)) s.fatica=20+Math.floor(Math.random()*25);
+  if(!isFinite(s.disciplina)) s.disciplina=45+Math.floor(Math.random()*35);
+  if(!s.eta) s.eta=20+Math.floor(Math.random()*26);
+  return s;
+}
+
+function descriviStatoSchiavo(s){
+  if(!s) return 'In attesa';
+  if(s._stato==='trasporta'){
+    const ris=s._trasporto&&s._trasporto.risorsa ? ' '+s._trasporto.risorsa : '';
+    return 'Sta trasportando'+ris;
+  }
+  if(s._stato==='lavora') return 'Sta lavorando';
+  if(s._stato==='pausa') return 'Sta riposando';
+  if(s.edificioTipo && ED[s.edificioTipo]) return 'Assegnato a '+ED[s.edificioTipo].nome;
+  return 'In attesa di ordini';
+}
+
+function apriProfiloSchiavo(id){
+  const s=(G.schiavi||[]).find(x=>String(x.id)===String(id));
+  if(!s) return;
+  assicuraStatiSchiavo(s);
+  G.schiavoSelezionato=s.id;
+  G.pirataSelezionato=null;
+  const ed=G.edifici.find(b=>b.r===s.edificioR&&b.c===s.edificioC);
+  const lav=LAVORO_SCHIAVI[s.edificioTipo]||{};
+  const stato=descriviStatoSchiavo(s);
+  const bar=(label,val,cls='')=>`<div class="slave-stat-row ${cls}"><span>${label}</span><div><i style="width:${Math.max(0,Math.min(100,Math.round(val)))}%"></i></div><strong>${Math.round(val)}%</strong></div>`;
+  const html=`
+    <div class="person-profile person-profile-slave">
+      <div class="person-profile-head">
+        <div class="person-avatar">⛏</div>
+        <div><h3>${s.nome}</h3><p>${s.eta||'—'} anni · ${lav.risorsa?('Produce '+lav.risorsa):'Prigioniero al lavoro'}</p></div>
+      </div>
+      <div class="person-status-box"><div><strong>Stato:</strong> ${stato}</div><div><strong>Edificio:</strong> ${ed&&ED[ed.tipo]?ED[ed.tipo].nome:'—'}</div></div>
+      <div class="slave-stat-list">
+        ${bar('Salute',s.salute)}
+        ${bar('Morale',s.morale)}
+        ${bar('Fatica',s.fatica,'inversa')}
+        ${bar('Disciplina',s.disciplina)}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn-piccolo" onclick="event.stopPropagation();liberaSchiavo(${s.id})">🕊 Libera</button>
+        <button class="btn-piccolo" onclick="event.stopPropagation();riscattaSchiavo(${s.id})">💰 Riscatta</button>
+        <button class="btn-piccolo" onclick="event.stopPropagation();reclutaSchiavo(${s.id})">⚔ Recluta</button>
+      </div>
+    </div>`;
+  apriModale('⛓ Scheda Schiavo',html);
+}
+
 // ID prigionieri robusti: Date.now() da solo può duplicare più catture
 // nello stesso millisecondo, facendo sparire più prigionieri/schiavi insieme.
 let __seqPrigionieri = 1;
@@ -85,6 +139,11 @@ function mettiAlLavoro(prigionieroId, edificioR, edificioC){
     edificioTipo: edificio.tipo,
     produzione: lavoro,
     felicita: 50,  // parte neutro
+    salute: 82+Math.floor(Math.random()*12),
+    morale: 50,
+    fatica: 25+Math.floor(Math.random()*15),
+    disciplina: 45+Math.floor(Math.random()*30),
+    eta: 20+Math.floor(Math.random()*26),
     giorni: 0,
     // posizione visiva: parte dall'edificio
     mc: edificioC + 0.5,
@@ -113,7 +172,12 @@ function tickSchiavi(){
   const daRimuovere = [];
 
   for(const s of G.schiavi){
+    assicuraStatiSchiavo(s);
     s.giorni++;
+    s.fatica=Math.max(0,Math.min(100,(s.fatica||0)+1.2));
+    s.morale=Math.max(0,Math.min(100,(s.morale??s.felicita??50)-0.4));
+    s.salute=Math.max(5,Math.min(100,(s.salute||80)-(s.fatica>80?0.35:0)));
+    s.felicita=Math.max(0,Math.min(100,(s.felicita??50)+(s.morale-(s.felicita??50))*0.25));
 
     // Produzione in base a felicità (50% = piena, 0% = niente)
     const lav = LAVORO_SCHIAVI[s.edificioTipo];
@@ -262,15 +326,14 @@ function apriGestioneSchiavi(){
       const multFel = 0.2 + (s.felicita/100)*1.0;
       const prodEff = Math.floor((lav.base||0)*multFel);
 
-      html += `<div style="background:rgba(255,255,255,.05);border:1px solid var(--bordo);
-        border-radius:5px;padding:7px 10px;margin-bottom:6px">
+      html += `<div class="slave-list-card clickable${G.schiavoSelezionato===s.id?' sel':''}" onclick="apriProfiloSchiavo(${s.id})">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div style="font-size:.8rem;color:var(--pergamena)">⛏ ${s.nome}</div>
-            <div style="font-size:.65rem;color:var(--sabbia)">${ED[s.edificioTipo]?.icona} ${ED[s.edificioTipo]?.nome}</div>
+            <div style="font-size:.65rem;color:var(--sabbia)">${ED[s.edificioTipo]?.icona} ${ED[s.edificioTipo]?.nome} · ${descriviStatoSchiavo(s)}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:.7rem;color:${felCol}">😊 ${s.felicita}%</div>
+            <div style="font-size:.7rem;color:${felCol}">😊 ${Math.round(s.morale??s.felicita)}%</div>
             <div style="font-size:.65rem;color:${lav.icona?'#aaffaa':'#666'}">
               ${lav.icona||''} +${prodEff}/${lav.risorsa||''} /g</div>
           </div>
@@ -279,9 +342,9 @@ function apriGestioneSchiavi(){
           <div style="height:100%;width:${s.felicita}%;background:${felCol};border-radius:2px;transition:width .5s"></div>
         </div>
         <div style="display:flex;gap:4px;margin-top:4px">
-          <button class="btn-piccolo" onclick="liberaSchiavo(${s.id})">🕊 Libera</button>
-          <button class="btn-piccolo" onclick="riscattaSchiavo(${s.id})">💰 Riscatta</button>
-          <button class="btn-piccolo" onclick="reclutaSchiavo(${s.id})">⚔ Recluta</button>
+          <button class="btn-piccolo" onclick="event.stopPropagation();liberaSchiavo(${s.id})">🕊 Libera</button>
+          <button class="btn-piccolo" onclick="event.stopPropagation();riscattaSchiavo(${s.id})">💰 Riscatta</button>
+          <button class="btn-piccolo" onclick="event.stopPropagation();reclutaSchiavo(${s.id})">⚔ Recluta</button>
         </div>
       </div>`;
     }
