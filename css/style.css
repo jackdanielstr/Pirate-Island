@@ -1416,3 +1416,1124 @@ body.tab-costruisci .build-card-main small,body.tab-costruisci .build-card-cost{
   body.tab-costruisci .build-card{height:44px !important;width:106px !important;min-width:106px !important;}
   .panel-card{min-width:158px;}
 }
+
+/* ════════════════════════════════════════════════════════
+   PATCH 9B — bisogni Tropico 2 + mobile più leggibile
+   ════════════════════════════════════════════════════════ */
+.needs-note{margin-bottom:6px !important;min-height:0 !important;}
+.bisogno-card .panel-card-title{font-size:.78rem !important;}
+.bisogno-card .panel-card-sub{font-size:.58rem !important;}
+
+@media(max-width:900px){
+  :root{--hud-bottom-h:38px !important;--dock-h:128px !important;--dock-total-h:166px !important;}
+  #principale{top:32px !important;bottom:var(--dock-total-h) !important;}
+  #pannello-dx,body.tab-costruisci #pannello-dx{height:var(--dock-h) !important;max-height:25vh !important;}
+  #barra-inf{height:var(--hud-bottom-h) !important;min-height:var(--hud-bottom-h) !important;padding:3px 5px !important;}
+  #barra-inf .btn-azione,#btn-velocita,#btn-musica{height:27px !important;min-height:27px !important;font-size:.66rem !important;padding:2px 6px !important;}
+  #tab-pannello,body.tab-costruisci #tab-pannello{height:22px !important;min-height:22px !important;flex-basis:22px !important;}
+  .ptab,body.tab-costruisci .ptab{font-size:.72rem !important;min-height:22px !important;padding:1px 2px !important;}
+  #contenuto-pannello,body.tab-costruisci #contenuto-pannello{padding:3px 6px 4px !important;}
+  body.tab-costruisci .build-dock{grid-template-rows:0 26px 1fr !important;gap:3px !important;}
+  body.tab-costruisci .build-dock-head{display:none !important;}
+  body.tab-costruisci .build-cat{height:24px !important;min-width:62px !important;font-size:.5rem !important;padding:1px 4px !important;}
+  body.tab-costruisci .build-cat-ico{font-size:.82rem !important;}
+  body.tab-costruisci .build-card{height:42px !important;width:102px !important;min-width:102px !important;padding:3px 5px !important;grid-template-columns:20px 1fr !important;}
+  body.tab-costruisci .build-card-icon{width:20px !important;height:20px !important;font-size:.88rem !important;}
+  body.tab-costruisci .build-card-main b{font-size:.62rem !important;}
+  body.tab-costruisci .build-card-main small,body.tab-costruisci .build-card-cost{font-size:.48rem !important;}
+  .panel-grid{display:flex !important;overflow-x:auto !important;overflow-y:hidden !important;gap:5px !important;padding-bottom:2px !important;}
+  .panel-card{min-width:146px !important;padding:5px 7px !important;min-height:38px !important;}
+  .panel-card-title{font-size:.72rem !important;}
+  .panel-card-sub{font-size:.55rem !important;line-height:1.16 !important;}
+  .panel-chip{font-size:.54rem !important;padding:1px 5px !important;}
+  .titolo-sez{font-size:.72rem !important;padding:3px 5px !important;margin-bottom:3px !important;}
+  .bisogno-barra,.barra-umore,.barra-fazione{height:4px !important;}
+}
+
+@media(max-width:600px){
+  :root{--hud-bottom-h:36px !important;--dock-h:120px !important;--dock-total-h:156px !important;}
+  #barra-sup{height:30px !important;padding:2px 5px !important;}
+  .res{font-size:.62rem !important;padding:2px 5px !important;}
+  #pannello-dx,body.tab-costruisci #pannello-dx{border-radius:10px 10px 0 0 !important;}
+  .ptab,body.tab-costruisci .ptab{font-size:.68rem !important;}
+  body.tab-costruisci .build-cat{min-width:56px !important;}
+  body.tab-costruisci .build-card{height:39px !important;width:96px !important;min-width:96px !important;}
+  body.tab-costruisci .build-card-main small{display:none !important;}
+  .panel-card{min-width:136px !important;}
+  .needs-note{display:none !important;}
+  #log-msg,body.tab-costruisci #log-msg{max-height:58px !important;bottom:calc(var(--dock-total-h) + 5px) !important;}
+}
+
+
+/* Fase 11B — Porto / Flotta leggibili */
+.flotta-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.flotta-card{border-left:4px solid rgba(240,192,64,.35)!important;}
+.flotta-card.nave-stato-pronta{border-left-color:var(--verde-ch)!important;}
+.flotta-card.nave-stato-mare{border-left-color:#7ec8ff!important;}
+.flotta-card.nave-stato-preparazione{border-left-color:var(--oro)!important;}
+.flotta-card.nave-stato-danno{border-left-color:var(--rum-chiaro)!important;}
+.nave-status-badge{font-size:.58rem;line-height:1;border:1px solid rgba(240,192,64,.28);border-radius:999px;padding:4px 7px;white-space:nowrap;background:rgba(0,0,0,.18);color:var(--sabbia);font-family:'Cinzel',serif;}
+.nave-status-badge.nave-stato-pronta{color:var(--verde-ch);border-color:rgba(90,200,90,.45);}
+.nave-status-badge.nave-stato-mare{color:#9fd8ff;border-color:rgba(120,190,255,.45);}
+.nave-status-badge.nave-stato-preparazione{color:var(--oro);border-color:rgba(240,192,64,.55);}
+.nave-status-badge.nave-stato-danno{color:var(--rum-chiaro);border-color:rgba(200,70,55,.55);}
+.nave-mini-card{width:100%;box-sizing:border-box;text-align:left;background:rgba(255,255,255,.08);border:1px solid rgba(90,50,20,.28);border-left:4px solid rgba(240,192,64,.38);border-radius:8px;padding:8px 10px;margin-bottom:7px;cursor:pointer;color:var(--pergamena);font-family:Georgia,'Times New Roman',serif;transition:transform .12s ease,background .12s ease,border-color .12s ease;}
+.nave-mini-card:hover{transform:translateY(-1px);background:rgba(240,192,64,.10);border-color:rgba(240,192,64,.45);}
+.nave-mini-card.nave-stato-pronta{border-left-color:var(--verde-ch);}
+.nave-mini-card.nave-stato-mare{border-left-color:#7ec8ff;}
+.nave-mini-card.nave-stato-preparazione{border-left-color:var(--oro);}
+.nave-mini-card.nave-stato-danno{border-left-color:var(--rum-chiaro);}
+.nave-mini-top{display:flex;justify-content:space-between;gap:8px;align-items:center;font-family:'Cinzel',serif;color:var(--oro);font-size:.78rem;}
+.nave-mini-sub{font-size:.64rem;color:var(--sabbia);margin-top:3px;}
+.nave-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px;font-size:.63rem;color:var(--sabbia);}
+.nave-mini-grid span{background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.06);border-radius:4px;padding:3px 4px;text-align:center;}
+@media (max-width:700px){.flotta-grid{grid-template-columns:1fr}.nave-mini-grid{grid-template-columns:1fr 1fr}.nave-status-badge{padding:3px 5px;font-size:.54rem}}
+
+
+/* Beta 2.4.1 — Rifinitura personaggi stile Tropico 2 */
+.person-status-box{
+  background:rgba(63,38,15,.34);
+  border:1px solid rgba(214,166,72,.28);
+  border-radius:7px;
+  padding:8px 10px;
+  margin:8px 0 10px;
+  color:var(--pergamena);
+  font-size:.75rem;
+  line-height:1.45;
+}
+.person-status-box strong{color:var(--oro);font-family:'Cinzel',serif;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;}
+.person-needs-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-bottom:12px;}
+.person-need{display:flex;align-items:center;justify-content:space-between;gap:6px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 7px;font-size:.68rem;color:var(--sabbia);}
+.person-need strong{color:var(--pergamena);font-family:'Cinzel',serif;font-size:.68rem;}
+.person-need.ok{border-color:rgba(80,190,90,.24)}
+.person-need.medio{border-color:rgba(240,190,70,.28)}
+.person-need.critico{border-color:rgba(210,60,40,.42);background:rgba(100,20,16,.22)}
+.person-profile-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.person-avatar{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,#6b3d18,#1f1308);border:1px solid var(--bordo);font-size:1.6rem;box-shadow:0 2px 10px rgba(0,0,0,.35);}
+.person-profile h3{margin:0;color:var(--oro);font-family:'Pirata One',cursive;font-size:1.35rem;font-weight:400;}
+.person-profile p{margin:2px 0 0;color:var(--sabbia);font-size:.74rem;}
+.slave-stat-list{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+.slave-stat-row{display:grid;grid-template-columns:72px 1fr 38px;align-items:center;gap:7px;font-size:.72rem;color:var(--sabbia);}
+.slave-stat-row div{height:6px;background:rgba(0,0,0,.32);border-radius:99px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
+.slave-stat-row i{display:block;height:100%;background:linear-gradient(90deg,#8d2f22,#d7a846,#61a65a);border-radius:99px;}
+.slave-stat-row.inversa i{background:linear-gradient(90deg,#61a65a,#d7a846,#8d2f22);}
+.slave-stat-row strong{font-family:'Cinzel',serif;color:var(--oro);font-size:.68rem;text-align:right;}
+.slave-list-card{background:rgba(255,255,255,.05);border:1px solid var(--bordo);border-radius:5px;padding:7px 10px;margin-bottom:6px;cursor:pointer;transition:background .15s,border-color .15s,transform .15s;}
+.slave-list-card:hover,.slave-list-card.sel{background:rgba(240,192,64,.12);border-color:rgba(255,220,95,.55);transform:translateY(-1px);}
+#portrait-hud .ph-dest{font-size:.64rem;color:#9fd2ff;line-height:1.25;padding:0 4px;}
+#portrait-hud .ph-umore-text{line-height:1.25;}
+@media(max-width:700px){
+  .person-needs-grid{grid-template-columns:1fr;}
+  .person-status-box{font-size:.7rem;padding:7px 8px;}
+  .slave-stat-row{grid-template-columns:66px 1fr 34px;font-size:.68rem;}
+}
+
+
+/* ═══════════════════════════════════════
+   BETA 3.2 — Bottom menu Tropico 2 UX
+   Menu più ordinato, meno “card moderno”, più plancia gestionale.
+   ═══════════════════════════════════════ */
+
+#plancia-inf{
+  background:
+    linear-gradient(180deg,rgba(63,31,10,.96) 0%,rgba(37,17,6,.98) 34%,rgba(18,8,3,.99) 100%) !important;
+  border-top:2px solid rgba(179,122,40,.85) !important;
+  box-shadow:0 -4px 18px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,214,118,.13) !important;
+}
+
+.ptab{
+  border-radius:7px 7px 0 0 !important;
+  border:1px solid rgba(180,126,45,.55) !important;
+  background:linear-gradient(180deg,rgba(100,55,19,.92),rgba(44,19,6,.96)) !important;
+  color:#f0d59a !important;
+  min-height:32px !important;
+  padding:6px 11px !important;
+  font-family:var(--font-label) !important;
+  letter-spacing:.25px !important;
+}
+
+.ptab.attivo{
+  background:linear-gradient(180deg,#d7a846,#8a531a) !important;
+  color:#201004 !important;
+  border-color:#f2cf73 !important;
+  text-shadow:0 1px 0 rgba(255,243,190,.55) !important;
+}
+
+.tropico2-build{
+  height:100% !important;
+  display:grid !important;
+  grid-template-rows:18px 34px 1fr !important;
+  gap:5px !important;
+  padding:0 4px !important;
+}
+
+.tropico2-build .build-dock-head{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  min-height:18px !important;
+  padding:0 2px !important;
+}
+
+.tropico2-build .build-title{
+  font-family:var(--font-label) !important;
+  font-size:.78rem !important;
+  color:#ffd66a !important;
+  text-transform:uppercase !important;
+  letter-spacing:1px !important;
+  text-shadow:0 1px 0 #000 !important;
+}
+
+.tropico2-build .build-hint{
+  color:#caae73 !important;
+  font-size:.56rem !important;
+  opacity:.78 !important;
+  text-transform:none !important;
+  letter-spacing:.25px !important;
+}
+
+.tropico2-cat-row,
+body.tab-costruisci .tropico2-cat-row{
+  display:flex !important;
+  gap:7px !important;
+  height:34px !important;
+  min-height:34px !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  padding:2px 2px 3px !important;
+  align-items:center !important;
+}
+
+.tropico2-cat-row .build-cat,
+body.tab-costruisci .tropico2-cat-row .build-cat{
+  min-width:104px !important;
+  height:30px !important;
+  padding:4px 9px !important;
+  border-radius:7px !important;
+  justify-content:flex-start !important;
+  gap:6px !important;
+  font-size:.64rem !important;
+  background:linear-gradient(180deg,rgba(91,51,18,.94),rgba(38,18,6,.96)) !important;
+  border:1px solid rgba(190,139,53,.58) !important;
+  color:#edd59f !important;
+}
+
+.tropico2-cat-row .build-cat.attiva,
+body.tab-costruisci .tropico2-cat-row .build-cat.attiva{
+  background:linear-gradient(180deg,#e4b84e,#9a621f) !important;
+  color:#211105 !important;
+  border-color:#f4d477 !important;
+  box-shadow:inset 0 1px 0 rgba(255,242,179,.45),0 0 0 1px rgba(255,214,106,.16) !important;
+}
+
+.build-cat-label{
+  white-space:nowrap;
+}
+
+.tropico2-build-shelf,
+body.tab-costruisci .tropico2-build-shelf{
+  display:flex !important;
+  flex-direction:row !important;
+  gap:8px !important;
+  align-items:stretch !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  padding:2px 2px 8px !important;
+  min-height:76px !important;
+}
+
+.tropico2-build-shelf .build-card,
+body.tab-costruisci .tropico2-build-shelf .build-card{
+  width:168px !important;
+  min-width:168px !important;
+  height:68px !important;
+  min-height:68px !important;
+  max-height:68px !important;
+  display:grid !important;
+  grid-template-columns:34px 1fr auto !important;
+  grid-template-rows:1fr auto !important;
+  gap:3px 7px !important;
+  padding:7px 8px !important;
+  overflow:hidden !important;
+  border-radius:8px !important;
+  border:1px solid rgba(191,139,54,.62) !important;
+  background:
+    linear-gradient(180deg,rgba(255,222,142,.12),rgba(91,49,16,.20)),
+    linear-gradient(180deg,rgba(42,22,8,.96),rgba(20,10,4,.98)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,235,168,.13),0 2px 7px rgba(0,0,0,.35) !important;
+}
+
+.tropico2-build-shelf .build-card:hover:not(:disabled),
+body.tab-costruisci .tropico2-build-shelf .build-card:hover:not(:disabled){
+  border-color:#f1cd70 !important;
+  transform:translateY(-1px);
+  background:
+    linear-gradient(180deg,rgba(255,222,142,.18),rgba(111,61,21,.25)),
+    linear-gradient(180deg,rgba(50,27,10,.98),rgba(24,12,5,.98)) !important;
+}
+
+.tropico2-build-shelf .build-card.attivo-strumento,
+body.tab-costruisci .tropico2-build-shelf .build-card.attivo-strumento{
+  border-color:#ffd66a !important;
+  background:
+    linear-gradient(180deg,rgba(255,214,106,.26),rgba(95,51,15,.34)),
+    linear-gradient(180deg,rgba(58,31,9,.98),rgba(25,12,4,.98)) !important;
+  box-shadow:0 0 0 1px rgba(255,214,106,.22), inset 0 0 14px rgba(255,197,64,.14) !important;
+}
+
+.tropico2-build-shelf .build-card-icon,
+body.tab-costruisci .tropico2-build-shelf .build-card-icon{
+  grid-column:1 !important;
+  grid-row:1 / 3 !important;
+  width:30px !important;
+  height:30px !important;
+  font-size:1.05rem !important;
+  border-radius:6px !important;
+  background:radial-gradient(circle at 50% 42%,rgba(255,226,150,.18),rgba(0,0,0,.20)) !important;
+  border:1px solid rgba(202,151,61,.36) !important;
+  align-self:center !important;
+  justify-self:center !important;
+}
+
+.tropico2-build-shelf .build-card-main,
+body.tab-costruisci .tropico2-build-shelf .build-card-main{
+  grid-column:2 !important;
+  grid-row:1 !important;
+  min-width:0 !important;
+  align-self:end !important;
+  overflow:hidden !important;
+}
+
+.tropico2-build-shelf .build-card-main b,
+body.tab-costruisci .tropico2-build-shelf .build-card-main b{
+  font-size:.70rem !important;
+  line-height:1.05 !important;
+  color:#fff0c5 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+}
+
+.tropico2-build-shelf .build-card-main small,
+body.tab-costruisci .tropico2-build-shelf .build-card-main small{
+  display:block !important;
+  font-size:.51rem !important;
+  line-height:1.05 !important;
+  color:#d1b177 !important;
+  white-space:nowrap !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  min-height:0 !important;
+}
+
+.tropico2-build-shelf .build-card-cost,
+body.tab-costruisci .tropico2-build-shelf .build-card-cost{
+  grid-column:2 !important;
+  grid-row:2 !important;
+  justify-self:start !important;
+  align-self:start !important;
+  font-family:var(--font-label) !important;
+  font-size:.58rem !important;
+  color:#ffd66a !important;
+  white-space:nowrap !important;
+}
+
+.tropico2-build-shelf .build-card-built{
+  grid-column:3 !important;
+  grid-row:1 / 3 !important;
+  align-self:center !important;
+  justify-self:end !important;
+  font-size:.50rem !important;
+  color:#bfa36d !important;
+  max-width:44px !important;
+  overflow:hidden !important;
+  text-overflow:ellipsis !important;
+  white-space:nowrap !important;
+  opacity:.9 !important;
+}
+
+.tropico2-build-shelf .build-card::after,
+body.tab-costruisci .tropico2-build-shelf .build-card::after{
+  display:none !important;
+}
+
+@media (max-width:900px){
+  .tropico2-cat-row .build-cat,
+  body.tab-costruisci .tropico2-cat-row .build-cat{
+    min-width:92px !important;
+    font-size:.58rem !important;
+  }
+
+  .tropico2-build-shelf .build-card,
+  body.tab-costruisci .tropico2-build-shelf .build-card{
+    width:150px !important;
+    min-width:150px !important;
+  }
+}
+
+@media (max-width:720px), (max-height:760px){
+  .tropico2-build{
+    grid-template-rows:0 30px 1fr !important;
+  }
+  .tropico2-build .build-dock-head{
+    display:none !important;
+  }
+  .tropico2-cat-row .build-cat,
+  body.tab-costruisci .tropico2-cat-row .build-cat{
+    min-width:82px !important;
+    height:28px !important;
+    font-size:.54rem !important;
+    padding:3px 6px !important;
+  }
+  .tropico2-build-shelf .build-card,
+  body.tab-costruisci .tropico2-build-shelf .build-card{
+    width:138px !important;
+    min-width:138px !important;
+    height:60px !important;
+    min-height:60px !important;
+    max-height:60px !important;
+    grid-template-columns:28px 1fr !important;
+    padding:5px 6px !important;
+  }
+  .tropico2-build-shelf .build-card-icon,
+  body.tab-costruisci .tropico2-build-shelf .build-card-icon{
+    width:26px !important;
+    height:26px !important;
+    font-size:.92rem !important;
+  }
+  .tropico2-build-shelf .build-card-main b,
+  body.tab-costruisci .tropico2-build-shelf .build-card-main b{
+    font-size:.64rem !important;
+  }
+  .tropico2-build-shelf .build-card-main small,
+  body.tab-costruisci .tropico2-build-shelf .build-card-main small{
+    font-size:.46rem !important;
+  }
+  .tropico2-build-shelf .build-card-cost,
+  body.tab-costruisci .tropico2-build-shelf .build-card-cost{
+    font-size:.50rem !important;
+  }
+  .tropico2-build-shelf .build-card-built{
+    display:none !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════
+   BETA 3.3 — Bottom menu definitivo stile Tropico 2
+   Card più pulite + riquadro dettaglio edificio.
+   ═══════════════════════════════════════ */
+
+.tropico2-build{
+  grid-template-rows:18px 32px 58px 1fr !important;
+  gap:5px !important;
+}
+
+.build-info-card{
+  height:58px;
+  display:grid;
+  grid-template-columns:38px minmax(140px,1fr) auto;
+  align-items:center;
+  gap:9px;
+  padding:6px 10px;
+  border:1px solid rgba(198,145,55,.55);
+  border-radius:8px;
+  background:
+    linear-gradient(180deg,rgba(92,52,18,.72),rgba(31,15,5,.88)),
+    radial-gradient(circle at 12% 35%,rgba(255,216,125,.16),rgba(0,0,0,0) 38%);
+  box-shadow:inset 0 1px 0 rgba(255,235,165,.12),0 2px 6px rgba(0,0,0,.28);
+  overflow:hidden;
+}
+
+.build-info-icon{
+  width:34px;
+  height:34px;
+  border-radius:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.2rem;
+  background:radial-gradient(circle at 50% 35%,rgba(255,224,145,.22),rgba(0,0,0,.24));
+  border:1px solid rgba(211,159,64,.34);
+  flex-shrink:0;
+}
+
+.build-info-text{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+.build-info-text b{
+  font-family:var(--font-label);
+  color:#fff0c2;
+  font-size:.78rem;
+  line-height:1.05;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.build-info-text small{
+  color:#d4bb82;
+  font-size:.60rem;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.build-info-cost{
+  min-width:82px;
+  max-width:128px;
+  text-align:right;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  font-family:var(--font-label);
+  color:#ffd66a;
+  font-size:.62rem;
+  line-height:1.05;
+}
+
+.build-info-cost em{
+  font-style:normal;
+  color:#bfa16c;
+  font-size:.52rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.tropico2-build-shelf,
+body.tab-costruisci .tropico2-build-shelf{
+  min-height:62px !important;
+  padding:1px 2px 6px !important;
+}
+
+.tropico2-build-shelf .build-card,
+body.tab-costruisci .tropico2-build-shelf .build-card{
+  width:142px !important;
+  min-width:142px !important;
+  height:58px !important;
+  min-height:58px !important;
+  max-height:58px !important;
+  grid-template-columns:30px 1fr auto !important;
+  padding:5px 7px !important;
+  gap:2px 6px !important;
+  border-radius:7px !important;
+}
+
+.tropico2-build-shelf .build-card-icon,
+body.tab-costruisci .tropico2-build-shelf .build-card-icon{
+  width:28px !important;
+  height:28px !important;
+  font-size:.95rem !important;
+  border-radius:6px !important;
+}
+
+.tropico2-build-shelf .build-card-main b,
+body.tab-costruisci .tropico2-build-shelf .build-card-main b{
+  font-size:.66rem !important;
+}
+
+.tropico2-build-shelf .build-card-main small,
+body.tab-costruisci .tropico2-build-shelf .build-card-main small{
+  font-size:.47rem !important;
+  opacity:.82;
+}
+
+.tropico2-build-shelf .build-card-cost,
+body.tab-costruisci .tropico2-build-shelf .build-card-cost{
+  font-size:.52rem !important;
+}
+
+.tropico2-build-shelf .build-card-built{
+  font-size:.47rem !important;
+  max-width:34px !important;
+  color:#bfa16c !important;
+}
+
+.tropico2-cat-row .build-cat,
+body.tab-costruisci .tropico2-cat-row .build-cat{
+  min-width:96px !important;
+  height:29px !important;
+  font-size:.60rem !important;
+}
+
+@media (max-width:900px){
+  .tropico2-build{
+    grid-template-rows:0 30px 50px 1fr !important;
+  }
+  .tropico2-build .build-dock-head{
+    display:none !important;
+  }
+  .build-info-card{
+    height:50px;
+    grid-template-columns:30px 1fr auto;
+    padding:5px 8px;
+    gap:7px;
+  }
+  .build-info-icon{
+    width:28px;
+    height:28px;
+    font-size:1rem;
+  }
+  .build-info-text b{
+    font-size:.68rem;
+  }
+  .build-info-text small{
+    font-size:.52rem;
+  }
+  .build-info-cost{
+    min-width:70px;
+    font-size:.54rem;
+  }
+  .tropico2-build-shelf .build-card,
+  body.tab-costruisci .tropico2-build-shelf .build-card{
+    width:128px !important;
+    min-width:128px !important;
+    height:54px !important;
+    min-height:54px !important;
+    max-height:54px !important;
+  }
+}
+
+@media (max-width:720px), (max-height:760px){
+  .tropico2-build{
+    grid-template-rows:0 28px 46px 1fr !important;
+    gap:4px !important;
+  }
+  .build-info-card{
+    height:46px;
+    grid-template-columns:26px 1fr;
+    padding:4px 7px;
+  }
+  .build-info-icon{
+    width:24px;
+    height:24px;
+    font-size:.9rem;
+  }
+  .build-info-cost{
+    display:none;
+  }
+  .build-info-text b{
+    font-size:.64rem;
+  }
+  .build-info-text small{
+    font-size:.48rem;
+  }
+  .tropico2-cat-row .build-cat,
+  body.tab-costruisci .tropico2-cat-row .build-cat{
+    min-width:78px !important;
+    height:26px !important;
+    font-size:.52rem !important;
+  }
+  .tropico2-build-shelf .build-card,
+  body.tab-costruisci .tropico2-build-shelf .build-card{
+    width:118px !important;
+    min-width:118px !important;
+    height:50px !important;
+    min-height:50px !important;
+    max-height:50px !important;
+    grid-template-columns:26px 1fr !important;
+    padding:4px 6px !important;
+  }
+  .tropico2-build-shelf .build-card-icon,
+  body.tab-costruisci .tropico2-build-shelf .build-card-icon{
+    width:24px !important;
+    height:24px !important;
+    font-size:.84rem !important;
+  }
+  .tropico2-build-shelf .build-card-built{
+    display:none !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════
+   BETA 3.4 — Bottom Menu Refinement
+   Info edificio a sinistra, card compatte a destra, barra più pulita.
+   ═══════════════════════════════════════ */
+
+.tropico2-build{
+  grid-template-rows:18px 30px 1fr !important;
+  gap:5px !important;
+  padding:0 6px !important;
+}
+
+.build-main-row{
+  min-height:76px;
+  display:grid;
+  grid-template-columns:230px minmax(0,1fr);
+  gap:9px;
+  align-items:stretch;
+  overflow:hidden;
+}
+
+.build-main-row .build-info-card{
+  height:auto !important;
+  min-height:68px;
+  max-height:78px;
+  grid-template-columns:34px minmax(0,1fr);
+  grid-template-rows:1fr auto;
+  padding:7px 9px;
+  align-self:stretch;
+  background:
+    linear-gradient(180deg,rgba(82,45,15,.82),rgba(27,13,5,.92)),
+    radial-gradient(circle at 18% 35%,rgba(255,213,118,.16),rgba(0,0,0,0) 44%) !important;
+}
+
+.build-main-row .build-info-icon{
+  grid-column:1;
+  grid-row:1 / 3;
+  width:30px;
+  height:30px;
+  align-self:center;
+}
+
+.build-main-row .build-info-text{
+  grid-column:2;
+  grid-row:1;
+  align-self:end;
+}
+
+.build-main-row .build-info-text b{
+  font-size:.74rem;
+}
+
+.build-main-row .build-info-text small{
+  display:block;
+  white-space:normal;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  font-size:.55rem;
+  line-height:1.12;
+}
+
+.build-main-row .build-info-cost{
+  grid-column:2;
+  grid-row:2;
+  min-width:0;
+  max-width:none;
+  text-align:left;
+  flex-direction:row;
+  justify-content:space-between;
+  gap:8px;
+  font-size:.56rem;
+  border-top:1px solid rgba(216,164,65,.16);
+  padding-top:3px;
+  margin-top:2px;
+}
+
+.build-main-row .build-info-cost em{
+  font-size:.50rem;
+}
+
+.build-main-row .tropico2-build-shelf,
+body.tab-costruisci .build-main-row .tropico2-build-shelf{
+  min-height:68px !important;
+  height:auto !important;
+  padding:0 2px 5px 0 !important;
+  display:flex !important;
+  flex-direction:row !important;
+  align-items:stretch !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  gap:7px !important;
+}
+
+.build-main-row .tropico2-build-shelf .build-card,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card{
+  width:116px !important;
+  min-width:116px !important;
+  height:68px !important;
+  min-height:68px !important;
+  max-height:68px !important;
+  grid-template-columns:1fr !important;
+  grid-template-rows:24px 1fr auto !important;
+  text-align:center !important;
+  justify-items:center !important;
+  align-items:center !important;
+  padding:5px 6px !important;
+  gap:2px !important;
+}
+
+.build-main-row .tropico2-build-shelf .build-card-icon,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-icon{
+  grid-column:1 !important;
+  grid-row:1 !important;
+  width:24px !important;
+  height:24px !important;
+  font-size:.92rem !important;
+  align-self:center !important;
+  justify-self:center !important;
+}
+
+.build-main-row .tropico2-build-shelf .build-card-main,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-main{
+  grid-column:1 !important;
+  grid-row:2 !important;
+  align-self:center !important;
+  text-align:center !important;
+  width:100%;
+}
+
+.build-main-row .tropico2-build-shelf .build-card-main b,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-main b{
+  font-size:.61rem !important;
+  line-height:1.05 !important;
+  text-align:center !important;
+}
+
+.build-main-row .tropico2-build-shelf .build-card-main small,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-main small{
+  display:none !important;
+}
+
+.build-main-row .tropico2-build-shelf .build-card-cost,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-cost{
+  grid-column:1 !important;
+  grid-row:3 !important;
+  justify-self:center !important;
+  align-self:end !important;
+  font-size:.50rem !important;
+  line-height:1 !important;
+}
+
+.build-main-row .tropico2-build-shelf .build-card-built,
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-built{
+  display:none !important;
+}
+
+.tropico2-cat-row .build-cat,
+body.tab-costruisci .tropico2-cat-row .build-cat{
+  min-width:92px !important;
+  height:28px !important;
+  padding:3px 8px !important;
+  border-radius:8px 8px 3px 3px !important;
+  justify-content:center !important;
+}
+
+.tropico2-cat-row .build-cat.attiva,
+body.tab-costruisci .tropico2-cat-row .build-cat.attiva{
+  transform:translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,242,179,.45),
+    0 -1px 0 rgba(255,214,106,.24),
+    0 3px 8px rgba(0,0,0,.32) !important;
+}
+
+/* Barra gestione sotto: più secondaria, non deve competere col Build panel */
+#barra-azioni,
+.barra-azioni,
+#azioni-rapide{
+  min-height:34px !important;
+  max-height:38px !important;
+  opacity:.94;
+}
+
+#barra-azioni button,
+.barra-azioni button,
+#azioni-rapide button{
+  min-height:27px !important;
+  padding:4px 10px !important;
+  font-size:.70rem !important;
+}
+
+/* Riduce un po' l'impatto verticale del pannello senza tagliare le card */
+body.tab-costruisci #contenuto-pannello{
+  overflow:hidden !important;
+}
+
+@media (max-width:980px){
+  .build-main-row{
+    grid-template-columns:190px minmax(0,1fr);
+    gap:7px;
+  }
+  .build-main-row .tropico2-build-shelf .build-card,
+  body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card{
+    width:104px !important;
+    min-width:104px !important;
+  }
+}
+
+@media (max-width:760px), (max-height:760px){
+  .tropico2-build{
+    grid-template-rows:0 28px 1fr !important;
+    gap:4px !important;
+  }
+  .tropico2-build .build-dock-head{
+    display:none !important;
+  }
+  .build-main-row{
+    grid-template-columns:150px minmax(0,1fr);
+    min-height:62px;
+    gap:6px;
+  }
+  .build-main-row .build-info-card{
+    min-height:58px;
+    max-height:66px;
+    padding:5px 7px;
+    grid-template-columns:26px minmax(0,1fr);
+  }
+  .build-main-row .build-info-icon{
+    width:24px;
+    height:24px;
+    font-size:.86rem;
+  }
+  .build-main-row .build-info-text b{
+    font-size:.62rem;
+  }
+  .build-main-row .build-info-text small{
+    font-size:.46rem;
+    -webkit-line-clamp:2;
+  }
+  .build-main-row .build-info-cost{
+    display:none;
+  }
+  .build-main-row .tropico2-build-shelf .build-card,
+  body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card{
+    width:88px !important;
+    min-width:88px !important;
+    height:60px !important;
+    min-height:60px !important;
+    max-height:60px !important;
+    grid-template-rows:22px 1fr auto !important;
+    padding:4px 5px !important;
+  }
+  .build-main-row .tropico2-build-shelf .build-card-icon,
+  body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-icon{
+    width:21px !important;
+    height:21px !important;
+    font-size:.78rem !important;
+  }
+  .build-main-row .tropico2-build-shelf .build-card-main b,
+  body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-main b{
+    font-size:.54rem !important;
+  }
+  .build-main-row .tropico2-build-shelf .build-card-cost,
+  body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card-cost{
+    font-size:.44rem !important;
+  }
+  .tropico2-cat-row .build-cat,
+  body.tab-costruisci .tropico2-cat-row .build-cat{
+    min-width:74px !important;
+    height:26px !important;
+    font-size:.50rem !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════
+   HOTFIX LAYERING — menu sotto pergamene/modal
+   Il bottom menu resta visibile ma passa in secondo piano quando appare
+   una pergamena, modale, raid o evento importante.
+   ═══════════════════════════════════════ */
+
+#overlay-evento,
+#overlay-modale,
+#overlay-fine,
+#overlay-battaglia,
+#overlay-campana{
+  z-index:5000 !important;
+  pointer-events:auto !important;
+}
+
+#box-evento,
+#box-modale,
+#box-fine,
+.battaglia-box,
+#campana-icona,
+#campana-titolo,
+#campana-msg{
+  position:relative;
+  z-index:5001 !important;
+}
+
+/* Chrome/Edge supportano :has: è il metodo più sicuro senza toccare JS. */
+body:has(#overlay-evento.aperto) #pannello-dx,
+body:has(#overlay-modale.aperto) #pannello-dx,
+body:has(#overlay-fine.aperto) #pannello-dx,
+body:has(#overlay-battaglia.aperto) #pannello-dx,
+body:has(#overlay-campana.aperto) #pannello-dx,
+body:has(#overlay-evento.aperto) #barra-inf,
+body:has(#overlay-modale.aperto) #barra-inf,
+body:has(#overlay-fine.aperto) #barra-inf,
+body:has(#overlay-battaglia.aperto) #barra-inf,
+body:has(#overlay-campana.aperto) #barra-inf{
+  z-index:40 !important;
+  pointer-events:none !important;
+  opacity:.28 !important;
+  filter:brightness(.55) saturate(.75) !important;
+}
+
+body:has(#overlay-evento.aperto) #portrait-hud,
+body:has(#overlay-modale.aperto) #portrait-hud,
+body:has(#overlay-fine.aperto) #portrait-hud,
+body:has(#overlay-battaglia.aperto) #portrait-hud,
+body:has(#overlay-campana.aperto) #portrait-hud,
+body:has(#overlay-evento.aperto) #consiglio-ui,
+body:has(#overlay-modale.aperto) #consiglio-ui,
+body:has(#overlay-fine.aperto) #consiglio-ui,
+body:has(#overlay-battaglia.aperto) #consiglio-ui,
+body:has(#overlay-campana.aperto) #consiglio-ui{
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+/* Fallback specifico per overlay evento, che nel DOM precede il pannello. */
+#overlay-evento.aperto ~ #pannello-dx{
+  z-index:40 !important;
+  pointer-events:none !important;
+  opacity:.28 !important;
+  filter:brightness(.55) saturate(.75) !important;
+}
+
+/* ═══════════════════════════════════════
+   HOTFIX BETA 3.4.1 — Build menu overlap
+   Corregge la sovrapposizione tra linguette categoria e card edificio.
+   ═══════════════════════════════════════ */
+
+body.tab-costruisci .tropico2-build,
+.tropico2-build{
+  display:grid !important;
+  grid-template-rows:0 36px minmax(70px,1fr) !important;
+  gap:7px !important;
+  padding:0 8px 6px !important;
+  height:100% !important;
+  overflow:hidden !important;
+}
+
+body.tab-costruisci .tropico2-build .build-dock-head,
+.tropico2-build .build-dock-head{
+  display:none !important;
+}
+
+body.tab-costruisci .tropico2-cat-row,
+.tropico2-cat-row,
+body.tab-costruisci .build-cat-row,
+.build-cat-row{
+  grid-row:2 !important;
+  position:relative !important;
+  z-index:3 !important;
+  height:36px !important;
+  min-height:36px !important;
+  max-height:36px !important;
+  display:flex !important;
+  align-items:flex-start !important;
+  gap:7px !important;
+  padding:3px 2px 5px !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+}
+
+body.tab-costruisci .tropico2-cat-row .build-cat,
+.tropico2-cat-row .build-cat,
+body.tab-costruisci .build-cat-row .build-cat,
+.build-cat-row .build-cat{
+  position:relative !important;
+  z-index:4 !important;
+  height:28px !important;
+  min-height:28px !important;
+  max-height:28px !important;
+  margin:0 !important;
+  transform:none !important;
+  align-self:flex-start !important;
+  border-radius:8px 8px 3px 3px !important;
+}
+
+body.tab-costruisci .tropico2-cat-row .build-cat.attiva,
+.tropico2-cat-row .build-cat.attiva,
+body.tab-costruisci .build-cat-row .build-cat.attiva,
+.build-cat-row .build-cat.attiva{
+  transform:none !important;
+  box-shadow:inset 0 1px 0 rgba(255,242,179,.45),0 2px 7px rgba(0,0,0,.28) !important;
+}
+
+body.tab-costruisci .build-main-row,
+.build-main-row{
+  grid-row:3 !important;
+  position:relative !important;
+  z-index:1 !important;
+  margin-top:0 !important;
+  min-height:68px !important;
+  max-height:84px !important;
+  overflow:hidden !important;
+  align-self:start !important;
+}
+
+body.tab-costruisci .build-main-row .tropico2-build-shelf,
+.build-main-row .tropico2-build-shelf,
+body.tab-costruisci .tropico2-build-shelf,
+.tropico2-build-shelf{
+  position:relative !important;
+  z-index:1 !important;
+  margin-top:0 !important;
+  padding-top:0 !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(180,126,45,.75) rgba(32,15,5,.75);
+}
+
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card,
+.build-main-row .tropico2-build-shelf .build-card{
+  margin-top:0 !important;
+  transform:none;
+}
+
+body.tab-costruisci .build-main-row .tropico2-build-shelf .build-card:hover:not(:disabled),
+.build-main-row .tropico2-build-shelf .build-card:hover:not(:disabled){
+  transform:translateY(-1px);
+}
+
+.tropico2-cat-row::-webkit-scrollbar,
+.build-cat-row::-webkit-scrollbar,
+.tropico2-build-shelf::-webkit-scrollbar,
+.build-shelf::-webkit-scrollbar{
+  height:6px;
+}
+.tropico2-cat-row::-webkit-scrollbar-track,
+.build-cat-row::-webkit-scrollbar-track,
+.tropico2-build-shelf::-webkit-scrollbar-track,
+.build-shelf::-webkit-scrollbar-track{
+  background:rgba(26,12,4,.72);
+  border-radius:6px;
+}
+.tropico2-cat-row::-webkit-scrollbar-thumb,
+.build-cat-row::-webkit-scrollbar-thumb,
+.tropico2-build-shelf::-webkit-scrollbar-thumb,
+.build-shelf::-webkit-scrollbar-thumb{
+  background:rgba(181,126,44,.78);
+  border-radius:6px;
+}
+
+@media (max-width:760px), (max-height:760px){
+  body.tab-costruisci .tropico2-build,
+  .tropico2-build{
+    grid-template-rows:0 34px minmax(62px,1fr) !important;
+    gap:6px !important;
+    padding:0 6px 5px !important;
+  }
+
+  body.tab-costruisci .tropico2-cat-row,
+  .tropico2-cat-row,
+  body.tab-costruisci .build-cat-row,
+  .build-cat-row{
+    height:34px !important;
+    min-height:34px !important;
+    max-height:34px !important;
+    padding:3px 1px 5px !important;
+  }
+
+  body.tab-costruisci .build-main-row,
+  .build-main-row{
+    min-height:60px !important;
+    max-height:70px !important;
+  }
+}
