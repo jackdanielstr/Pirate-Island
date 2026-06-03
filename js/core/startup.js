@@ -55,8 +55,7 @@ function avviaGioco(){
   // lo spazio sopra la barra costruzione, senza scatti visivi.
   requestAnimationFrame(()=>{ridimensionaCanvas(); if(typeof disegna==='function') disegna();});
   cicloGioco();
-  // Musica: parte al primo click (policy autoplay browser)
-  document.addEventListener("click", avviaMusicaAlPrimoClick, {once:true});
+  // Musica asset: parte con il click su Salpa tramite startHarborLedger().
   impostaVelocitaUI();
 }
 
